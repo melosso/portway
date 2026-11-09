@@ -47,7 +47,33 @@ public class McpRegistryStartupExtensionsTests
         Assert.Equal("Always filter by AccountCode.", info.Instruction);
         Assert.Equal(new[] { "500", "700" }, info.AllowedEnvironments);
         Assert.Equal("Retrieve accounts", info.MethodDescriptions?["GET"]);
-        Assert.Equal(new[] { "GET", "POST" }, info.Methods);
+        Assert.Equal(new[] { "GET" }, info.Methods);
+    }
+
+    [Fact]
+    public void AllowedMethods_ApplyToFileEndpointsToo()
+    {
+        var endpoint = ProxyEndpoint(mcp: new McpSettings { Exposed = true, AllowedMethods = ["DELETE"] });
+        endpoint.Type = EndpointType.Files;
+        endpoint.Methods = ["GET", "POST", "DELETE"];
+
+        var info = Assert.Single(McpRegistryStartupExtensions.BuildEndpointMcpInfos(new Dictionary<string, EndpointDefinition> { ["Account/Accounts"] = endpoint }));
+
+        Assert.Equal(new[] { "DELETE" }, info.Methods);
+    }
+
+    [Fact]
+    public void AllowedMethods_ListTheReachableMethods()
+    {
+        var endpoints = new Dictionary<string, EndpointDefinition>
+        {
+            ["Account/Accounts"] = ProxyEndpoint(mcp: new McpSettings { Exposed = true, AllowedMethods = ["post", "DELETE"] })
+        };
+
+        var info = Assert.Single(McpRegistryStartupExtensions.BuildEndpointMcpInfos(endpoints));
+
+        Assert.Equal(new[] { "POST" }, info.Methods);
+        Assert.True(info.IsProxy);
     }
 
     [Fact]
@@ -144,5 +170,38 @@ public class McpRegistryStartupExtensionsTests
         Assert.Equal("Account/Accounts", unversioned.Identity);
         Assert.Equal("Account/Accounts", unversioned.RoutePath);
         Assert.Equal(2, registry.ToolsByInvokeName.Count);
+    }
+
+    private static EndpointDefinition SqlEndpoint(string objectType = "Table", List<string>? columns = null) => new()
+    {
+        FolderName = "Products",
+        Namespace = "Inventory",
+        Type = EndpointType.SQL,
+        DatabaseObjectName = "Products",
+        DatabaseObjectType = objectType,
+        Methods = ["GET"],
+        AllowedColumns = columns ?? ["ProductId", "CategoryId"],
+        Relationships = [new EndpointRelationship { Name = "Category", Target = "Categories", LocalColumn = "CategoryId", TargetColumn = "CategoryId" }],
+        Mcp = new McpSettings { Exposed = true }
+    };
+
+    [Fact]
+    public void Relationships_OnSqlTable_AreExpandable()
+    {
+        var info = Assert.Single(McpRegistryStartupExtensions.BuildEndpointMcpInfos(new Dictionary<string, EndpointDefinition> { ["Inventory/Products"] = SqlEndpoint() }));
+
+        Assert.Equal(["Category"], info.Expandable);
+    }
+
+    [Theory]
+    [InlineData("TableValuedFunction", true)]
+    [InlineData("Table", false)]
+    public void Relationships_WithoutExpandSupport_AreNotListed(string objectType, bool withColumns)
+    {
+        var endpoint = SqlEndpoint(objectType, withColumns ? null : []);
+
+        var info = Assert.Single(McpRegistryStartupExtensions.BuildEndpointMcpInfos(new Dictionary<string, EndpointDefinition> { ["Inventory/Products"] = endpoint }));
+
+        Assert.Empty(info.Expandable);
     }
 }

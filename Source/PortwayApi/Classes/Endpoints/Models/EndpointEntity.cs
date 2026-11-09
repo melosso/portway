@@ -3,7 +3,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// Represents an endpoint entity with support for both proxy and SQL endpoints
 /// </summary>
-public class EndpointEntity : EndpointEntityBase
+public sealed class EndpointEntity : EndpointEntityBase
 {
     // SQL endpoint properties
     public string? DatabaseObjectName { get; set; }
@@ -29,6 +29,11 @@ public class EndpointEntity : EndpointEntityBase
     public List<string>? Methods { get; set; }
     public List<DeletePattern>? DeletePatterns { get; set; }
     public List<string>? FallbackUrls { get; set; }
+
+    /// <summary>
+    /// Sends the client Authorization header upstream when it also authenticated the request
+    /// </summary>
+    public bool ForwardAuthorization { get; set; } = false;
     public ProxyRetryOptions? Retry { get; set; }
     public ProxyResponseTransforms? ResponseTransforms { get; set; }
 

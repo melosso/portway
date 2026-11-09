@@ -5,7 +5,7 @@ using Microsoft.Data.Sqlite;
 using PortwayApi.Services.Database;
 using SqlKata.Compilers;
 
-public class SqliteProvider : SqlProviderBase
+public sealed class SqliteProvider : SqlProviderBase
 {
     public override SqlProviderType ProviderType => SqlProviderType.Sqlite;
     public override bool SupportsProcedures => false;

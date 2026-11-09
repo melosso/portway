@@ -21,6 +21,7 @@ public static class TableValuedFunctionSqlHandler
         string[] pathSegments,
         string connectionString,
         Dictionary<string, string> odataParams,
+        ISqlProvider sqlProvider,
         IReadOnlyList<TenantPredicate>? tenantValues = null)
     {
         try
@@ -69,24 +70,7 @@ public static class TableValuedFunctionSqlHandler
                 }), null);
             }
 
-            // Build the function call SQL
-            var schema = endpoint.DatabaseSchema ?? "dbo";
-            var functionName = endpoint.DatabaseObjectName!;
-
-            var (functionCall, sqlParameters) = SqlTableValuedFunctionHelper.BuildFunctionCall(
-                schema,
-                functionName,
-                parameterValues,
-                endpoint.FunctionParameters);
-
-            // Get column mappings from AllowedColumns (using existing system)
-            var (aliasToDb, dbToAlias) = ColumnMappingHelper.ParseColumnMappings(endpoint.AllowedColumns);
-
-            // Resolve provider factory once (used for both OData dialect and connection creation)
-            var providerFactory = request.HttpContext.RequestServices.GetRequiredService<ISqlProviderFactory>();
-
             // Capability guard: a clear 400 instead of a provider syntax error
-            var sqlProvider = providerFactory.GetProvider(connectionString);
             if (!sqlProvider.SupportsTvf)
             {
                 Log.Warning("TVF endpoint {Name} requested against {Provider}, which does not support table valued functions",
@@ -97,6 +81,20 @@ public static class TableValuedFunctionSqlHandler
                     success = false
                 }), null);
             }
+
+            // Build the function call SQL
+            var schema = endpoint.DatabaseSchema ?? "dbo";
+            var functionName = endpoint.DatabaseObjectName!;
+
+            var (functionCall, sqlParameters) = SqlTableValuedFunctionHelper.BuildFunctionCall(
+                sqlProvider,
+                schema,
+                functionName,
+                parameterValues,
+                endpoint.FunctionParameters);
+
+            // Get column mappings from AllowedColumns (using existing system)
+            var (aliasToDb, dbToAlias) = ColumnMappingHelper.ParseColumnMappings(endpoint.AllowedColumns);
 
             // Hybrid OData support for TVFs
             string finalQuery = functionCall;
@@ -114,52 +112,20 @@ public static class TableValuedFunctionSqlHandler
 
                 // Use a dummy table name to generate OData SQL (provider-aware)
                 var dummyTable = "ODataDummy";
-                var providerType = SqlProviderDetector.Detect(connectionString);
-                var (odataQuery, odataParamsDict) = odataConverter.ConvertToSQL(dummyTable, odataParams, providerType);
+                var (odataQuery, odataParamsDict) = odataConverter.ConvertToSQL(dummyTable, odataParams, sqlProvider.ProviderType);
                 odataSqlParams = odataParamsDict;
 
-                // Extract WHERE, ORDER BY, OFFSET/FETCH from the generated SQL
-                string whereClause = string.Empty;
-                string orderByClause = string.Empty;
-                string offsetClause = string.Empty;
-                var whereIdx = odataQuery.IndexOf(" WHERE ", StringComparison.OrdinalIgnoreCase);
-                var orderByIdx = odataQuery.IndexOf(" ORDER BY ", StringComparison.OrdinalIgnoreCase);
-                var offsetIdx = odataQuery.IndexOf(" OFFSET ", StringComparison.OrdinalIgnoreCase);
-
-                if (whereIdx >= 0)
-                {
-                    if (orderByIdx > whereIdx)
-                        whereClause = odataQuery.Substring(whereIdx, orderByIdx - whereIdx);
-                    else if (offsetIdx > whereIdx)
-                        whereClause = odataQuery.Substring(whereIdx, offsetIdx - whereIdx);
-                    else
-                        whereClause = odataQuery.Substring(whereIdx);
-                }
-                if (orderByIdx >= 0)
-                {
-                    if (offsetIdx > orderByIdx)
-                        orderByClause = odataQuery.Substring(orderByIdx, offsetIdx - orderByIdx);
-                    else
-                        orderByClause = odataQuery.Substring(orderByIdx);
-                }
-                if (offsetIdx >= 0)
-                {
-                    offsetClause = odataQuery.Substring(offsetIdx);
-                }
-
-                // Rebuild the TVF query with OData fragments
-                finalQuery = functionCall;
-                if (!string.IsNullOrEmpty(whereClause))
-                    finalQuery += whereClause;
-                if (!string.IsNullOrEmpty(orderByClause))
-                    finalQuery += orderByClause;
-                if (!string.IsNullOrEmpty(offsetClause))
-                    finalQuery += offsetClause;
+                // strip the dummy table prefix
+                var dummySchema = SqlSchemaResolver.Resolve("dbo", sqlProvider);
+                var wrappedDummy = sqlProvider.GetCompiler().Wrap(dummySchema.Length > 0 ? $"{dummySchema}.{dummyTable}" : dummyTable);
+                finalQuery = odataQuery
+                    .Replace($"{wrappedDummy}.", string.Empty)
+                    .Replace($"FROM {wrappedDummy}", $"FROM {functionCall["SELECT * FROM ".Length..]}");
 
                 Log.Debug("Applied OData fragments to TVF: {Query}", finalQuery);
             }
 
-            await using var connection = providerFactory.GetProvider(connectionString).CreateConnection(connectionString);
+            await using var connection = sqlProvider.CreateConnection(connectionString);
             await connection.OpenAsync();
 
             // Merge TVF parameters and OData parameters
@@ -209,6 +175,11 @@ public static class TableValuedFunctionSqlHandler
                 success = false
             })
             { StatusCode = 500 }, null);
+        }
+        catch (Exception ex) when (ex is Microsoft.OData.ODataException or NotSupportedException)
+        {
+            Log.Warning("Invalid OData query for TVF {FunctionName}: {Message}", endpoint.DatabaseObjectName, ex.Message);
+            return (false, PortwayResults.BadRequest("Invalid OData query. Check $filter, $select and $orderby syntax."), null);
         }
         catch (Exception ex)
         {

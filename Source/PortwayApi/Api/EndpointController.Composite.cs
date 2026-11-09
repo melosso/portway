@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace PortwayApi.Api;
 
-public partial class EndpointController
+public sealed partial class EndpointController
 {
     /// <summary>
     /// Handles composite endpoint requests

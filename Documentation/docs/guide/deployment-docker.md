@@ -8,6 +8,7 @@ description: "Deploy Portway with Docker Compose, from a first container through
 ## Prerequisites
 
 - [Docker Engine](https://www.docker.com/get-started) with Compose support
+- *Alternative:* If you use Podman, make sure to use the `podman-docker` plugin.
 
 ## Compose file
 
@@ -18,11 +19,11 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - portway_app:/app
-      - ./environments:/app/environments
-      - ./endpoints:/app/endpoints
-      - ./log:/app/log
-      - ./data:/app/data
+      - portway_app:/app:z
+      - ./environments:/app/environments:z
+      - ./endpoints:/app/endpoints:z
+      - ./log:/app/log:z
+      - ./data:/app/data:z
     environment:
       - PORTWAY_ENCRYPTION_KEY=${PORTWAY_ENCRYPTION_KEY}
       - PORTWAY_PUBLIC_ORIGINS=https://api.example.com
@@ -81,6 +82,8 @@ The API listens on `http://localhost:8080`. Checks:
 | `appsettings.overrides.json` (settings saved in the console) | `portway_app` volume |
 
 Endpoint and environment files are reloaded on change. Other configuration changes require `docker compose restart`.
+
+The image contains the release files in `/opt/portway`. Each start copies them into the `portway_app` volume, so `docker compose pull` followed by `docker compose up -d` runs the new release. An existing `appsettings.json`, `endpoints/` and `environments/` in the volume are not changed.
 
 An environment variable overrides the same setting in `appsettings.overrides.json`, and the console displays that setting as read-only. `appsettings.overrides.json` can be bind-mounted as a single file: create it with the content `{}` before the first start, because Docker creates a directory for a missing bind-mount source.
 

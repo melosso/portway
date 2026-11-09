@@ -24,9 +24,9 @@ public class RateLimiterTests
         {
             Enabled = enabled,
             IpLimit = ipLimit,
-            IpWindow = 60,
+            IpWindowSeconds = 60,
             TokenLimit = tokenLimit,
-            TokenWindow = 60,
+            TokenWindowSeconds = 60,
         };
 
         var tp = timeProvider ?? TimeProvider.System;
@@ -37,15 +37,8 @@ public class RateLimiterTests
         return new RateLimiter(next, settings, store, new RateLimiterState(), tp, logger, telemetryOptions, webUiEnabled);
     }
 
-    // Mints a session cookie in the same format WebUiAuthHelper.ResolveSession expects
-    private static string MintValidSessionCookie(string adminApiKey)
-    {
-        const int userId = 1;
-        var expiry = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds().ToString();
-        using var hmac = new System.Security.Cryptography.HMACSHA256(PortwayApi.Helpers.SessionKeyProvider.Key);
-        var sig = Convert.ToBase64String(hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes($"{userId}:{expiry}")));
-        return $"{userId}.{expiry}.{sig}";
-    }
+    private static string MintValidSessionCookie(string adminApiKey) =>
+        PortwayApi.Helpers.WebUiAuthHelper.IssueSessionCookie(1, "", TimeSpan.FromHours(1));
 
     private static DefaultHttpContext BuildContext(string path = "/api/test", string? bearerToken = null)
     {

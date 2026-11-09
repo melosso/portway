@@ -7,7 +7,7 @@ using Serilog;
 
 namespace PortwayApi.Api;
 
-public partial class EndpointController
+public sealed partial class EndpointController
 {
     /// <summary>
     /// Handles GET requests to endpoints
@@ -41,7 +41,9 @@ public partial class EndpointController
                 case EndpointType.SQL:
                     // Build the full key for lookup
                     var sqlKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
-                    return await HandleSqlGetRequest(env, sqlKey, id, remainingPath, select, filter, orderby, top, skip);
+                    var options = new ODataReadOptions(select, filter, orderby, Request.Query["$expand"].FirstOrDefault(),
+                        string.Equals(Request.Query["$count"].FirstOrDefault(), "true", StringComparison.OrdinalIgnoreCase), top, skip);
+                    return await HandleSqlGetRequest(env, sqlKey, id, remainingPath, options);
                 case EndpointType.Proxy:
                     // Build the full key for lookup
                     var proxyKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
@@ -125,8 +127,8 @@ public partial class EndpointController
                     // RFC 10008: advertise the equivalent GET representation of this query
                     SetQueryContentLocation(env, sqlKey, queryParams);
                     return await HandleSqlGetRequest(env, sqlKey, id, remainingPath,
-                        queryParams.Select, queryParams.Filter, queryParams.OrderBy,
-                        queryParams.Top ?? 10, queryParams.Skip ?? 0, httpMethod: "QUERY");
+                        new ODataReadOptions(queryParams.Select, queryParams.Filter, queryParams.OrderBy, queryParams.Expand,
+                            queryParams.Count, queryParams.Top ?? 10, queryParams.Skip ?? 0), httpMethod: "QUERY");
 
                 case EndpointType.Static:
                     var staticKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
@@ -162,6 +164,8 @@ public partial class EndpointController
         public string? Select { get; init; }
         public string? Filter { get; init; }
         public string? OrderBy { get; init; }
+        public string? Expand { get; init; }
+        public bool Count { get; init; }
         public int? Top { get; init; }
         public int? Skip { get; init; }
     }
@@ -195,11 +199,17 @@ public partial class EndpointController
             return null;
         }
 
+        bool Flag(string a, string b) =>
+            (root.TryGetProperty(a, out var va) || root.TryGetProperty(b, out va))
+            && (va.ValueKind == JsonValueKind.True || va.ValueKind == JsonValueKind.String && string.Equals(va.GetString(), "true", StringComparison.OrdinalIgnoreCase));
+
         return new QueryBody
         {
             Select = Str("$select", "select"),
             Filter = Str("$filter", "filter"),
             OrderBy = Str("$orderby", "orderby"),
+            Expand = Str("$expand", "expand"),
+            Count = Flag("$count", "count"),
             Top = Num("$top", "top"),
             Skip = Num("$skip", "skip")
         };
@@ -214,6 +224,8 @@ public partial class EndpointController
         if (!string.IsNullOrEmpty(q.Select)) parts.Add($"$select={Uri.EscapeDataString(q.Select)}");
         if (!string.IsNullOrEmpty(q.Filter)) parts.Add($"$filter={Uri.EscapeDataString(q.Filter)}");
         if (!string.IsNullOrEmpty(q.OrderBy)) parts.Add($"$orderby={Uri.EscapeDataString(q.OrderBy)}");
+        if (!string.IsNullOrEmpty(q.Expand)) parts.Add($"$expand={Uri.EscapeDataString(q.Expand)}");
+        if (q.Count) parts.Add("$count=true");
         if (q.Top.HasValue) parts.Add($"$top={q.Top.Value}");
         if (q.Skip.HasValue) parts.Add($"$skip={q.Skip.Value}");
 

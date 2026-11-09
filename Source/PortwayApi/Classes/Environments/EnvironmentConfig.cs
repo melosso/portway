@@ -3,7 +3,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// Root configuration model for an environment's settings.json
 /// </summary>
-public class EnvironmentConfig
+public sealed class EnvironmentConfig
 {
     /// <summary>
     /// Connection string for the environment's database (SQL Server)

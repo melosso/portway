@@ -27,7 +27,7 @@ public static class NetworkAccessPolicy
                     "192.168.0.0/16",
                     "169.254.0.0/16"
                 }
-            }, new JsonSerializerOptions { WriteIndented = true }));
+            }, SharedJsonOptions.Indented));
         }
 
         return urlValidatorPath;

@@ -72,24 +72,13 @@ public static class SqlInputValidator
                 {
                     string? value = propValue.GetString();
 
-                    if (!string.IsNullOrEmpty(value) && !string.IsNullOrEmpty(validation.Value.Regex))
+                    if (!string.IsNullOrEmpty(value) && !string.IsNullOrEmpty(validation.Value.Regex)
+                        && !ConfigPattern.IsMatch(value, validation.Value.Regex, columnName))
                     {
-                        try
-                        {
-                            var regex = new System.Text.RegularExpressions.Regex(validation.Value.Regex);
-
-                            if (!regex.IsMatch(value))
-                            {
-                                errors.Add(new ValidationDetail(columnName,
-                                    string.IsNullOrEmpty(validation.Value.ValidationMessage)
-                                        ? $"{columnName} does not match the required format"
-                                        : validation.Value.ValidationMessage));
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Warning(ex, "Invalid regex pattern for column {Column}", columnName);
-                        }
+                        errors.Add(new ValidationDetail(columnName,
+                            string.IsNullOrEmpty(validation.Value.ValidationMessage)
+                                ? $"{columnName} does not match the required format"
+                                : validation.Value.ValidationMessage));
                     }
                 }
             }

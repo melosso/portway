@@ -12,14 +12,14 @@ using Serilog;
 /// <summary>
 /// File-based implementation of log storage
 /// </summary>
-public class FileTrafficLogStorage : ITrafficLogStorage
+public sealed class FileTrafficLogStorage : ITrafficLogStorage
 {
-    private readonly ProxyTrafficLoggerOptions _options;
+    private readonly RequestTrafficLoggingOptions _options;
     private string _currentLogFile;
     private long _currentFileSize;
     private readonly object _fileLock = new object();
 
-    public FileTrafficLogStorage(IOptions<ProxyTrafficLoggerOptions> options)
+    public FileTrafficLogStorage(IOptions<RequestTrafficLoggingOptions> options)
     {
         _options = options.Value;
         _currentLogFile = GenerateLogFileName();
@@ -64,13 +64,7 @@ public class FileTrafficLogStorage : ITrafficLogStorage
 
             foreach (var log in logs)
             {
-                // Use JSON format for all details
-                string logJson = JsonSerializer.Serialize(log, new JsonSerializerOptions
-                {
-                    WriteIndented = false
-                });
-
-                linesToWrite.Add(logJson);
+                linesToWrite.Add(JsonSerializer.Serialize(log));
             }
 
             // Write to file with lock to prevent concurrent access issues

@@ -2,7 +2,7 @@ namespace PortwayApi.Services.Mcp;
 
 using System.Collections.Immutable;
 
-public class McpEndpointRegistry
+public sealed class McpEndpointRegistry
 {
     /// <summary>
     /// Tools, name index and the chat tool-definition cache, swapped as one reference so readers never mix two registrations
@@ -44,6 +44,9 @@ public class McpEndpointRegistry
     public McpToolDescriptor? FindByName(string sanitizedName) =>
         _current.ByName.TryGetValue(sanitizedName, out var t) ? t : null;
 
+    public IReadOnlyList<string> MethodsOf(McpToolDescriptor tool) =>
+        [.. _current.Tools.Where(t => t.Identity == tool.Identity).Select(t => t.Method)];
+
     // same map findbyname uses
     public ImmutableDictionary<string, McpToolDescriptor> ToolsByInvokeName => _current.ByName;
 
@@ -77,13 +80,16 @@ public class McpEndpointRegistry
                     EndpointName = ep.Name,
                     Namespace = ep.Namespace,
                     Version = ep.Version,
+                    Deprecated = ep.Deprecated,
+                    Sunset = ep.Sunset,
+                    Expandable = ep.Expandable,
                     Method = method,
                     AllowedEnvironments = ep.AllowedEnvironments,
                     TenantHeaders = ep.TenantHeaders,
                     AvailableFields = ep.AvailableFields,
-                    Url = ep.Url,
                     ContentType = ep.ContentType,
                     EndpointKind = ep.EndpointKind,
+                    IsProxy = ep.IsProxy,
                     Instruction = ep.Instruction
                 };
 

@@ -215,7 +215,7 @@ public sealed partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTran
     }
 
     // Helper classes for deserializing entity.json
-    private class WebhookEntity
+    private sealed class WebhookEntity
     {
         public Documentation? Documentation { get; set; }
     }

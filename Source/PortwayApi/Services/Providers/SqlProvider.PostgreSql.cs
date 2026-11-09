@@ -1,11 +1,14 @@
 namespace PortwayApi.Services.Providers;
 
+using System.Data;
 using System.Data.Common;
+using Dapper;
 using Npgsql;
+using NpgsqlTypes;
 using PortwayApi.Services.Database;
 using SqlKata.Compilers;
 
-public class PostgreSqlProvider : SqlProviderBase
+public sealed class PostgreSqlProvider : SqlProviderBase
 {
     // Function argument names are spliced into SQL text as identifiers, so they must be strictly validated
     private static readonly System.Text.RegularExpressions.Regex SafeIdentifier =
@@ -20,15 +23,18 @@ public class PostgreSqlProvider : SqlProviderBase
 
     public override string OptimizeConnectionString(string connectionString, SqlPoolingOptions options)
     {
+        var idleLifetime = Math.Max(options.ConnectionTimeout, 1);
         var builder = new NpgsqlConnectionStringBuilder(connectionString)
         {
             MinPoolSize = options.MinPoolSize,
             MaxPoolSize = options.MaxPoolSize,
-            ConnectionIdleLifetime = options.ConnectionTimeout,
+            ConnectionIdleLifetime = idleLifetime,
             CommandTimeout = options.CommandTimeout,
             Pooling = options.EnablePooling,
             ApplicationName = options.ApplicationName
         };
+        // pruning must fit idle lifetime
+        builder.ConnectionPruningInterval = Math.Min(builder.ConnectionPruningInterval, idleLifetime);
         return builder.ConnectionString;
     }
 
@@ -46,6 +52,16 @@ public class PostgreSqlProvider : SqlProviderBase
 
         var arguments = string.Join(", ", parameterNames.Select(p => $"{p.ToLowerInvariant()} => @{p}"));
         return ($"SELECT * FROM \"{schema}\".\"{procedureName}\"({arguments})", System.Data.CommandType.Text);
+    }
+
+    // untyped parameter resolves to uuid or text
+    public override object ProcedureValue(string value) =>
+        Guid.TryParseExact(value, "D", out _) ? new UntypedParameter(value) : value;
+
+    private sealed record UntypedParameter(string Value) : SqlMapper.ICustomQueryParameter
+    {
+        public void AddParameter(IDbCommand command, string name) =>
+            command.Parameters.Add(new NpgsqlParameter(name, NpgsqlDbType.Unknown) { Value = Value });
     }
 
     public override string MapSqlTypeToClr(string nativeType) => nativeType.ToLowerInvariant() switch

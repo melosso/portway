@@ -38,7 +38,7 @@ public static class McpRegistryStartupExtensions
         return app;
     }
 
-    internal static IEnumerable<EndpointMcpInfo> BuildEndpointMcpInfos(Dictionary<string, EndpointDefinition> endpoints)
+    internal static IEnumerable<EndpointMcpInfo> BuildEndpointMcpInfos(IReadOnlyDictionary<string, EndpointDefinition> endpoints)
     {
         foreach (var kvp in endpoints)
         {
@@ -56,11 +56,17 @@ public static class McpRegistryStartupExtensions
                 Name = kvp.Value.EndpointName,
                 Namespace = kvp.Value.EffectiveNamespace,
                 Version = EndpointVersion.IsDefault(kvp.Value.Version) ? null : kvp.Value.Version,
-                Url = kvp.Value.Url,
-                // File endpoints expose GET only; POST (upload) and DELETE are not useful in chat
-                Methods = kvp.Value.Type == EndpointType.Files
-                    ? kvp.Value.Methods.Where(m => m.Equals("GET", StringComparison.OrdinalIgnoreCase)).ToList()
-                    : kvp.Value.Methods,
+                Deprecated = kvp.Value.Deprecated,
+                Sunset = kvp.Value.Sunset,
+                // matches the SqlRequestHandler gate: tables and views with AllowedColumns
+                Expandable = kvp.Value.Type == EndpointType.SQL
+                    && kvp.Value.DatabaseObjectType != "TableValuedFunction"
+                    && kvp.Value.AllowedColumns is { Count: > 0 }
+                    ? kvp.Value.Relationships?.Select(r => r.Name).ToList() ?? []
+                    : [],
+                Methods = kvp.Value.Mcp?.AllowedMethods is { Count: > 0 } allowed
+                    ? kvp.Value.Methods.Where(m => allowed.Contains(m, StringComparer.OrdinalIgnoreCase)).ToList()
+                    : kvp.Value.Methods.Take(1).ToList(),
                 AllowedEnvironments = kvp.Value.AllowedEnvironments,
                 TenantHeaders = kvp.Value.Tenancy?.Keys.ToList() ?? [],
                 MethodDescriptions = kvp.Value.Documentation?.MethodDescriptions,
@@ -74,6 +80,7 @@ public static class McpRegistryStartupExtensions
                 ContentType = kvp.Value.Properties?.TryGetValue("ContentType", out var ct) == true
                     ? ct?.ToString() : null,
                 EndpointKind = endpointKind,
+                IsProxy = kvp.Value.Type == EndpointType.Proxy,
                 Instruction = kvp.Value.Mcp?.Instruction
             };
         }

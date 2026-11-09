@@ -33,6 +33,8 @@ public static class OidcFlow
     // per process state, needs a shared store or sticky sessions for multiple instances
     private static readonly ConcurrentDictionary<string, PendingFlow> Pending = new(StringComparer.Ordinal);
 
+    internal const int PruneThreshold = 1024;
+
     // Keyed on the authority too, so editing a provider's URL drops the document cached for the old one
     private static readonly ConcurrentDictionary<string, ConfigurationManager<OpenIdConnectConfiguration>> Documents = new(StringComparer.Ordinal);
 
@@ -74,7 +76,10 @@ public static class OidcFlow
     /// <summary>
     /// Split from the fetch so the redirect and its one-time state are testable without a provider
     /// </summary>
-    internal static Start Begin(OpenIdConnectConfiguration document, OidcProvider provider, string redirectUri, int linkTo = 0)
+    internal static Start Begin(OpenIdConnectConfiguration document, OidcProvider provider, string redirectUri, int linkTo = 0) =>
+        Begin(document, provider, redirectUri, linkTo, DateTime.UtcNow);
+
+    internal static Start Begin(OpenIdConnectConfiguration document, OidcProvider provider, string redirectUri, int linkTo, DateTime now)
     {
         if (string.IsNullOrEmpty(document.AuthorizationEndpoint))
             throw new InvalidOperationException("The provider's discovery document declares no authorization endpoint.");
@@ -84,7 +89,10 @@ public static class OidcFlow
         var verifier = Token(64);
         var challenge = Base64Url.EncodeToString(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
 
-        Pending[state] = new PendingFlow(provider.Id, verifier, nonce, redirectUri, DateTime.UtcNow.Add(FlowLifetime), linkTo);
+        if (Pending.Count >= PruneThreshold)
+            Prune(now);
+
+        Pending[state] = new PendingFlow(provider.Id, verifier, nonce, redirectUri, now.Add(FlowLifetime), linkTo);
 
         var query = new Dictionary<string, string?>
         {
@@ -142,7 +150,7 @@ public static class OidcFlow
 
         if (!response.IsSuccessStatusCode)
         {
-            // The body holds the provider's own error code, the only thing separating a misconfigured client from a stale code
+            // The body contains the provider's own error code, the only thing separating a misconfigured client from a stale code
             var how = provider.ClientSecret.Length == 0 ? "no secret (public client)"
                     : basic ? "client_secret_basic" : "client_secret_post";
             Log.Warning("Token exchange with {Provider} failed with {Status} using {Method}: {Body}",
@@ -226,6 +234,8 @@ public static class OidcFlow
         claims.TryGetValue(name, out var value) ? value as string ?? value.ToString() ?? "" : "";
 
     private static string Truncate(string body) => body.Length <= 400 ? body : body[..400];
+
+    internal static bool IsPending(string state) => Pending.ContainsKey(state);
 
     internal static void Reset()
     {

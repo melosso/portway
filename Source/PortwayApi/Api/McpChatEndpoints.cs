@@ -6,6 +6,23 @@ using Serilog;
 
 public static class McpChatEndpoints
 {
+    /// <summary>
+    /// Client history as user and assistant turns; system and tool turns come from the server alone
+    /// </summary>
+    internal static List<Services.Mcp.ChatMessage> ReadHistory(JsonArray? items)
+    {
+        var history = new List<Services.Mcp.ChatMessage>();
+        foreach (var item in items ?? [])
+        {
+            var role = item?["role"] is JsonValue r && r.TryGetValue<string>(out var rv) ? rv : null;
+            var content = item?["content"] is JsonValue c && c.TryGetValue<string>(out var cv) ? cv : null;
+            if (role is Services.Mcp.ChatMessage.User or Services.Mcp.ChatMessage.Assistant && content is not null)
+                history.Add(new Services.Mcp.ChatMessage(role, content));
+        }
+
+        return history;
+    }
+
     public static IEndpointRouteBuilder MapMcpChatEndpoints(this IEndpointRouteBuilder app)
     {
         // MCP tools as JSON, with missingMetadata listing tools without SQL field metadata
@@ -44,23 +61,10 @@ public static class McpChatEndpoints
                 return;
             }
 
-            var history = new List<Services.Mcp.ChatMessage>();
-            if (historyArr is not null)
-            {
-                foreach (var item in historyArr)
-                {
-                    var role = item?["role"]?.GetValue<string>();
-                    var content = item?["content"]?.GetValue<string>();
-                    if (role is not null && content is not null)
-                        history.Add(new Services.Mcp.ChatMessage(role, content));
-                }
-            }
+            var history = ReadHistory(historyArr);
             history.Add(new Services.Mcp.ChatMessage("user", message));
 
-            // Loopback on the bound port, never the Host header, to prevent SSRF
-            var req = context.Request;
-            var serverPort = req.Host.Port ?? (req.IsHttps ? 443 : 80);
-            var baseUrl = $"{req.Scheme}://localhost:{serverPort}";
+            var baseUrl = McpLoopback.BaseUrl(context);
 
             // tool execution uses the caller's own bearer token, never an internal one
             var authHeader = context.Request.Headers.Authorization.FirstOrDefault();

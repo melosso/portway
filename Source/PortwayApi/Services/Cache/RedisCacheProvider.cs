@@ -9,7 +9,7 @@ namespace PortwayApi.Services.Caching;
 /// <summary>
 /// Redis implementation of the cache provider
 /// </summary>
-public class RedisCacheProvider : ICacheProvider, IDisposable
+public sealed class RedisCacheProvider : ICacheProvider, IDisposable
 {
     private readonly CacheOptions _options;
     private readonly RedisOptions _redisOptions;
@@ -417,7 +417,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                 await Task.Delay(retryTime, cancellationToken);
             }
 
-            // another instance holds the lock; a local lock would not exclude it
+            // another instance has acquired the lock; a local lock would not exclude it
             Log.Warning("Timed out waiting for Redis lock: {LockKey}", redisLockKey);
             return null;
         }
@@ -572,7 +572,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                 }
             }
 
-            // Atomic compare-and-delete: releases the lock only if it still holds our token, never one acquired after ours expired
+            // Atomic compare-and-delete: releases the lock only if it still contains our token, never one acquired after ours expired
             string script = @"
                 if redis.call('get', KEYS[1]) == ARGV[1] then
                     return redis.call('del', KEYS[1])
@@ -677,7 +677,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     /// <summary>
     /// Redis-based lock handle implementation
     /// </summary>
-    private class RedisLockHandle : ILockHandle
+    private sealed class RedisLockHandle : ILockHandle
     {
         private readonly RedisCacheProvider _provider;
         private readonly string _lockKey;

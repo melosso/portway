@@ -9,15 +9,16 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using PortwayApi.Helpers;
 using Serilog;
 
 /// <summary>
 /// Middleware for logging proxy traffic
 /// </summary>
-public class ProxyTrafficLoggerMiddleware
+public sealed class ProxyTrafficLoggerMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly ProxyTrafficLoggerOptions _options;
+    private readonly RequestTrafficLoggingOptions _options;
     private readonly System.Threading.Channels.Channel<ProxyTrafficLogEntry> _logChannel;
     private readonly IServiceProvider _serviceProvider;
 
@@ -31,7 +32,7 @@ public class ProxyTrafficLoggerMiddleware
 
     public ProxyTrafficLoggerMiddleware(
         RequestDelegate next,
-        IOptions<ProxyTrafficLoggerOptions> options,
+        IOptions<RequestTrafficLoggingOptions> options,
         System.Threading.Channels.Channel<ProxyTrafficLogEntry> logChannel,
         IServiceProvider serviceProvider)
     {
@@ -67,18 +68,11 @@ public class ProxyTrafficLoggerMiddleware
         logEntry.Environment = env ?? string.Empty;
         logEntry.EndpointName = endpoint ?? string.Empty;
 
-        // Get environment-specific sensitive header and query param names for redaction
-        var (extraHeaderNames, queryParamNames) = await GetEnvironmentAuthNamesAsync(env);
-        logEntry.QueryString = RedactQueryString(context, queryParamNames);
+        var extraHeaderNames = await GetEnvironmentAuthHeaderNamesAsync(env);
+        logEntry.QueryString = UrlRedaction.Redact(context.Request.QueryString.Value);
 
         // Log at debug level only
         Log.Debug($"[Trace: {traceId}] Processing {context.Request.Method} request to {context.Request.Path}");
-
-        // Extract target URL if available in Items
-        if (context.Items.TryGetValue("TargetUrl", out var targetUrl) && targetUrl != null)
-        {
-            logEntry.TargetUrl = targetUrl.ToString() ?? string.Empty;
-        }
 
         // Capture request headers if enabled
         if (_options.CaptureHeaders)
@@ -94,7 +88,7 @@ public class ProxyTrafficLoggerMiddleware
         Stream? originalResponseBodyStream = null;
         MemoryStream? responseBodyStream = null;
 
-        if (_options.IncludeResponseBodies)
+        if (_options.CaptureResponseBodies)
         {
             originalResponseBodyStream = context.Response.Body;
             responseBodyStream = new MemoryStream();
@@ -106,7 +100,7 @@ public class ProxyTrafficLoggerMiddleware
         try
         {
             // Capture request body if enabled
-            if (_options.IncludeRequestBodies)
+            if (_options.CaptureRequestBodies)
             {
                 // Create a new MemoryStream to capture the request body
                 requestBodyStream = new MemoryStream();
@@ -160,6 +154,10 @@ public class ProxyTrafficLoggerMiddleware
             // Call the next middleware in the pipeline
             await _next(context);
 
+            // set by the handler
+            if (context.Items.TryGetValue("TargetUrl", out var targetUrl) && targetUrl is not null)
+                logEntry.TargetUrl = targetUrl.ToString() ?? string.Empty;
+
             // Record duration
             stopwatch.Stop();
             logEntry.DurationMs = (int)stopwatch.ElapsedMilliseconds;
@@ -168,7 +166,7 @@ public class ProxyTrafficLoggerMiddleware
             logEntry.StatusCode = context.Response.StatusCode;
 
             // Capture response body if enabled
-            if (_options.IncludeResponseBodies && responseBodyStream != null && originalResponseBodyStream != null)
+            if (_options.CaptureResponseBodies && responseBodyStream != null && originalResponseBodyStream != null)
             {
                 responseBodyStream.Position = 0;
                 logEntry.ResponseSize = responseBodyStream.Length;
@@ -215,7 +213,7 @@ public class ProxyTrafficLoggerMiddleware
             }
 
             // Log with Serilog for immediate visibility
-            if (_options.EnableInfoLogging)
+            if (_options.InfoLoggingEnabled)
             {
                 Log.Information($"[Trace: {traceId}] {logEntry.Method} {logEntry.Path} -> {logEntry.StatusCode} ({logEntry.DurationMs}ms)");
             }
@@ -342,15 +340,14 @@ public class ProxyTrafficLoggerMiddleware
     }
 
     /// <summary>
-    /// Header and query-param names the environment's own auth config uses, so a custom credential name still gets redacted
+    /// Credential header names from environment auth
     /// </summary>
-    private async Task<(HashSet<string> HeaderNames, HashSet<string> QueryParamNames)> GetEnvironmentAuthNamesAsync(string? env)
+    private async Task<HashSet<string>> GetEnvironmentAuthHeaderNamesAsync(string? env)
     {
         var headerNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var queryParamNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         if (string.IsNullOrEmpty(env))
-            return (headerNames, queryParamNames);
+            return headerNames;
 
         try
         {
@@ -363,10 +360,9 @@ public class ProxyTrafficLoggerMiddleware
                 if (string.IsNullOrWhiteSpace(method.Name))
                     continue;
 
-                // cookie credentials are already covered since the whole Cookie header is always redacted
-                if (string.Equals(method.In, "Query", StringComparison.OrdinalIgnoreCase))
-                    queryParamNames.Add(method.Name);
-                else if (!string.Equals(method.In, "Cookie", StringComparison.OrdinalIgnoreCase))
+                // query values and Cookie always redacted
+                if (!string.Equals(method.In, "Query", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(method.In, "Cookie", StringComparison.OrdinalIgnoreCase))
                     headerNames.Add(method.Name);
             }
         }
@@ -375,28 +371,7 @@ public class ProxyTrafficLoggerMiddleware
             Log.Debug(ex, "Could not resolve environment auth config for traffic-log redaction of {Environment}", env);
         }
 
-        return (headerNames, queryParamNames);
-    }
-
-    /// <summary>
-    /// Rebuilds the query string with any sensitive parameter's value replaced, instead of logging it raw
-    /// </summary>
-    private static string RedactQueryString(HttpContext context, ISet<string> queryParamNamesToRedact)
-    {
-        var raw = context.Request.QueryString.Value ?? string.Empty;
-        if (raw.Length == 0 || queryParamNamesToRedact.Count == 0)
-            return raw;
-
-        var query = context.Request.Query;
-        if (!query.Keys.Any(queryParamNamesToRedact.Contains))
-            return raw;
-
-        var rebuilt = QueryString.Create(
-            query.Select(kv => new KeyValuePair<string, Microsoft.Extensions.Primitives.StringValues>(
-                kv.Key,
-                queryParamNamesToRedact.Contains(kv.Key) ? "[REDACTED]" : kv.Value)));
-
-        return rebuilt.Value ?? string.Empty;
+        return headerNames;
     }
 
     private string GetClientIpAddress(HttpContext context)

@@ -36,12 +36,12 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - portway_app:/app
-      - ./environments:/app/environments
-      - ./endpoints:/app/endpoints
-      - ./tokens:/app/tokens
-      - ./log:/app/log
-      - ./data:/app/data
+      - portway_app:/app:z
+      - ./environments:/app/environments:z
+      - ./endpoints:/app/endpoints:z
+      - ./tokens:/app/tokens:z
+      - ./log:/app/log:z
+      - ./data:/app/data:z
     environment:
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
 

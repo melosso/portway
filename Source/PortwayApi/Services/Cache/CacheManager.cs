@@ -7,7 +7,7 @@ namespace PortwayApi.Services.Caching;
 /// <summary>
 /// Manages caching operations using the configured provider
 /// </summary>
-public class CacheManager : ICacheProvider
+public sealed class CacheManager : ICacheProvider
 {
     private readonly ICacheProvider _provider;
     private readonly IOptionsMonitor<CacheOptions> _optionsMonitor;
@@ -27,7 +27,7 @@ public class CacheManager : ICacheProvider
         var options = optionsMonitor.CurrentValue;
 
         // Select the appropriate provider based on configuration
-        _provider = options.ProviderType switch
+        _provider = options.Provider switch
         {
             CacheProviderType.Redis when redisCacheProvider != null => redisCacheProvider,
             _ => memoryCacheProvider
@@ -59,6 +59,12 @@ public class CacheManager : ICacheProvider
         else { _metricsService.RecordCacheMiss(); _portwayMetrics.CacheMiss(); }
         return result;
     }
+
+    /// <summary>
+    /// Gets a bookkeeping value without counting it as a cache hit or miss
+    /// </summary>
+    public Task<T?> GetUncountedAsync<T>(string key) where T : class =>
+        _optionsMonitor.CurrentValue.Enabled ? _provider.GetAsync<T>(key) : Task.FromResult<T?>(null);
 
     /// <summary>
     /// Sets a value in the cache

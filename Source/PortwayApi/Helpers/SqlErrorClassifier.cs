@@ -2,6 +2,7 @@ namespace PortwayApi.Helpers;
 
 using System.Data.Common;
 using Microsoft.Data.SqlClient;
+using Microsoft.Data.Sqlite;
 using MySqlConnector;
 using Npgsql;
 
@@ -18,6 +19,30 @@ public static class SqlErrorClassifier
         SqlException sql => sql.Number == 50000,
         PostgresException pg => pg.SqlState == "P0001",
         MySqlException my => my.SqlState == "45000",
+        _ => false
+    };
+
+    /// <summary>
+    /// True when the database cannot convert a client value to the column type. Applies to record keys and table write values only: these codes also cover other query errors
+    /// </summary>
+    public static bool IsTypeMismatch(DbException ex) => ex switch
+    {
+        SqlException sql => sql.Number is 206 or 245 or 8114 or 8169,
+        PostgresException pg => pg.SqlState is "42883" or "22P02" or "42804",
+        MySqlException my => my.Number is 1292 or 1366,
+        SqliteException sqlite => sqlite.SqliteErrorCode == 20,
+        _ => false
+    };
+
+    /// <summary>
+    /// True when a write violates a primary key or unique constraint
+    /// </summary>
+    public static bool IsDuplicateKey(DbException ex) => ex switch
+    {
+        SqlException sql => sql.Number is 2601 or 2627,
+        PostgresException pg => pg.SqlState == "23505",
+        MySqlException my => my.Number == 1062,
+        SqliteException sqlite => sqlite.SqliteExtendedErrorCode is 1555 or 2067,
         _ => false
     };
 

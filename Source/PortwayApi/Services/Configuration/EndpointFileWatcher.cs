@@ -55,9 +55,8 @@ public class EndpointFileWatcher : FileWatchPump
                 return Task.CompletedTask;
             }
 
-            // Extract endpoint name from file path
-            var endpointName = ExtractEndpointName(filePath);
-            if (string.IsNullOrEmpty(endpointName))
+            var endpointName = DescribeEndpoint(filePath);
+            if (endpointName is null)
             {
                 Log.Debug("Could not determine endpoint name from path: {Path}", filePath);
                 return Task.CompletedTask;
@@ -69,11 +68,7 @@ public class EndpointFileWatcher : FileWatchPump
             if (endpointType == EndpointType.SQL)
                 _sqlMetadataService.QueueRefresh();
 
-            var ns = ExtractNamespace(filePath);
-            if (ns != null)
-                Log.Information("Endpoint '{Name}' ({Type}, namespace: {Namespace}) changed, will reload on next request", endpointName, endpointType, ns);
-            else
-                Log.Information("Endpoint '{Name}' ({Type}) changed, will reload on next request", endpointName, endpointType);
+            Log.Information("Endpoint '{Name}' ({Type}) changed, will reload on next request", endpointName, endpointType);
 
             // Re-populate the MCP registry so IsMcpExposed changes take effect without restart
             _mcpRegistry?.Refresh();
@@ -92,44 +87,25 @@ public class EndpointFileWatcher : FileWatchPump
     private static readonly HashSet<string> _typeFolderNames = new(StringComparer.OrdinalIgnoreCase)
         { "SQL", "Proxy", "Static", "Files", "Webhooks" };
 
-    private string? ExtractEndpointName(string filePath)
+    /// <summary>
+    /// Endpoint identity, e.g. CRM/Accounts@v2
+    /// </summary>
+    internal static string? DescribeEndpoint(string filePath)
     {
-        try
-        {
-            // For entity.json files, the endpoint name is the parent directory
-            if (Path.GetFileName(filePath).Equals("entity.json", StringComparison.OrdinalIgnoreCase))
-            {
-                return Path.GetFileName(Path.GetDirectoryName(filePath));
-            }
-
-            // For other JSON files, use the filename without extension
-            return Path.GetFileNameWithoutExtension(filePath);
-        }
-        catch (Exception ex)
-        {
-            Log.Debug(ex, "Error extracting endpoint name from {Path}", filePath);
-        }
-
-        return null;
-    }
-
-    private string? ExtractNamespace(string filePath)
-    {
-        try
-        {
-            if (!Path.GetFileName(filePath).Equals("entity.json", StringComparison.OrdinalIgnoreCase))
-                return null;
-
-            // .../endpoints/{Type}/{Namespace?}/{EndpointName}/entity.json
-            var endpointDir = Path.GetDirectoryName(filePath);          // EndpointName dir
-            var namespaceDir = Path.GetDirectoryName(endpointDir);       // Namespace or Type dir
-            var namespaceName = Path.GetFileName(namespaceDir);
-
-            return namespaceName == null || _typeFolderNames.Contains(namespaceName) ? null : namespaceName;
-        }
-        catch
-        {
+        var segments = filePath.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length == 0)
             return null;
-        }
+
+        segments = segments[^1].Equals("entity.json", StringComparison.OrdinalIgnoreCase)
+            ? segments[..^1]
+            : [.. segments[..^1], Path.GetFileNameWithoutExtension(segments[^1])];
+        var root = Array.FindLastIndex(segments, s => s.Equals("endpoints", StringComparison.OrdinalIgnoreCase));
+        if (root < 0 || root + 2 >= segments.Length || !_typeFolderNames.Contains(segments[root + 1]))
+            return null;
+
+        var parts = segments[(root + 2)..];
+        return parts.Length > 1 && EndpointVersion.TryParse(parts[^1], out var version)
+            ? string.Join('/', parts[..^1]) + EndpointVersion.Suffix(version)
+            : string.Join('/', parts);
     }
 }

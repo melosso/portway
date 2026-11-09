@@ -1,0 +1,26 @@
+{
+  "DatabaseObjectName": "Industries",
+  "Namespace": "CRM",
+  "NamespaceDisplayName": "CRM",
+  "AllowedEnvironments": ["WMS"],
+  "AllowedMethods": ["GET"],
+  "PrimaryKey": "Code",
+  "AllowedColumns": ["Code;code", "Name;name"],
+  "Properties": {
+    "MaxPageSize": 50,
+    "DefaultSort": "Name ASC"
+  },
+  "Documentation": {
+    "TagDescription": "Industry master data.",
+    "MethodDescriptions": {
+      "GET": "List industries"
+    },
+    "MethodDocumentation": {
+      "GET": "Returns the industries used to classify accounts."
+    }
+  },
+  "Mcp": {
+    "Exposed": true,
+    "Instruction": ""
+  }
+}

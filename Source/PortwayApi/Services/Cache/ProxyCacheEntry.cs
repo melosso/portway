@@ -5,7 +5,7 @@ namespace PortwayApi.Services.Caching;
 /// <summary>
 /// Cache entry for proxy responses
 /// </summary>
-public class ProxyCacheEntry
+public sealed class ProxyCacheEntry
 {
     /// <summary>
     /// Response content

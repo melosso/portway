@@ -7,7 +7,7 @@ using Serilog;
 /// <summary>
 /// Console user authentication, account management, and initial seed migration.
 /// </summary>
-public class AdminUserService
+public sealed class AdminUserService
 {
     private const int Iterations = 600_000;
     private const int SaltBytes = 16;

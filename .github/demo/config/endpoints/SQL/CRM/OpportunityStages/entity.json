@@ -1,0 +1,35 @@
+{
+  "DatabaseObjectName": "OpportunityStages",
+  "Namespace": "CRM",
+  "NamespaceDisplayName": "CRM",
+  "AllowedEnvironments": ["WMS"],
+  "AllowedMethods": ["GET"],
+  "PrimaryKey": "Code",
+  "AllowedColumns": [
+    "Code;code",
+    "Name;name",
+    "SortOrder;sortOrder",
+    "Probability;probability",
+    "ForecastCategory;forecastCategory",
+    "IsClosed;isClosed",
+    "IsWon;isWon",
+    "Description;description"
+  ],
+  "Properties": {
+    "MaxPageSize": 50,
+    "DefaultSort": "SortOrder ASC"
+  },
+  "Documentation": {
+    "TagDescription": "Stages of the opportunity cycle with default probability and forecast category.",
+    "MethodDescriptions": {
+      "GET": "List opportunity stages"
+    },
+    "MethodDocumentation": {
+      "GET": "Returns the opportunity cycle in stage order."
+    }
+  },
+  "Mcp": {
+    "Exposed": true,
+    "Instruction": ""
+  }
+}

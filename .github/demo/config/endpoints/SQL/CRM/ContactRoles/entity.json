@@ -1,0 +1,30 @@
+{
+  "DatabaseObjectName": "ContactRoles",
+  "Namespace": "CRM",
+  "NamespaceDisplayName": "CRM",
+  "AllowedEnvironments": ["WMS"],
+  "AllowedMethods": ["GET"],
+  "PrimaryKey": "Code",
+  "AllowedColumns": [
+    "Code;code",
+    "Name;name",
+    "Description;description"
+  ],
+  "Properties": {
+    "MaxPageSize": 50,
+    "DefaultSort": "Name ASC"
+  },
+  "Documentation": {
+    "TagDescription": "Contact role master data.",
+    "MethodDescriptions": {
+      "GET": "List contact roles"
+    },
+    "MethodDocumentation": {
+      "GET": "Returns the buying roles of contacts."
+    }
+  },
+  "Mcp": {
+    "Exposed": true,
+    "Instruction": ""
+  }
+}

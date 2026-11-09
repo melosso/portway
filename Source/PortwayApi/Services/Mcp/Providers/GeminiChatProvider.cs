@@ -22,6 +22,8 @@ public sealed class GeminiChatProvider(string apiKey, string model, IHttpClientF
                 ["functionDeclarations"] = ChatPayloadFactory.Declarations(tools, "parameters")
             })
         };
+        if (ChatPayloadFactory.SystemText(history) is { } system)
+            body["systemInstruction"] = new JsonObject { ["parts"] = new JsonArray(new JsonObject { ["text"] = system }) };
 
         return new HttpRequestMessage(HttpMethod.Post, BaseUrl)
         {

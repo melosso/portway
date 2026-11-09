@@ -129,7 +129,7 @@ Upstream reachability of proxy endpoints. All public proxy endpoints with GET ar
 
 ### Redis cache check
 
-Registered as `redis_cache` with `Caching:ProviderType: Redis`. Writes and reads a per-instance probe key on the configured database (`Caching:Redis:Database`), then sends `PING`. `data.latency_ms` contains the `PING` round trip. The check requires no Redis admin mode.
+Registered as `redis_cache` with `Caching:Provider: Redis`. Writes and reads a per-instance probe key on the configured database (`Caching:Redis:Database`), then sends `PING`. `data.latency_ms` contains the `PING` round trip. The check requires no Redis admin mode.
 
 | Result | Status |
 |---|---|

@@ -4,9 +4,9 @@ using StackExchange.Redis;
 using Serilog;
 
 /// <summary>
-/// Opt-in Redis-backed store so limits hold across instances, falls back to memory when Redis is down
+/// Opt-in Redis-backed store. Limits apply across instances. Falls back to memory when Redis is down
 /// </summary>
-public class RedisRateLimiterStore : IRateLimiterStore, IDisposable
+public sealed class RedisRateLimiterStore : IRateLimiterStore, IDisposable
 {
     // Atomic token bucket on the Redis server clock, so instance clock skew cannot refill a shared bucket; TIME in a script needs Redis 5 or later
     private const string _consumeScript = @"

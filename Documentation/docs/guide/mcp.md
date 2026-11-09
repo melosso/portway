@@ -15,7 +15,6 @@ Setting `Mcp:Enabled: true` in `appsettings.json` enables the server at `Mcp:Pat
 "Mcp": {
   "Enabled": true,
   "Path": "/mcp",
-  "RequireAuthentication": true,
   "ChatEnabled": true
 }
 ```
@@ -24,12 +23,9 @@ Setting `Mcp:Enabled: true` in `appsettings.json` enables the server at `Mcp:Pat
 |---|---|---|---|
 | `Enabled` | Yes | bool | Enables the MCP server (default `false`) |
 | `Path` | No | string | Server path (default `/mcp`) |
-| `RequireAuthentication` | No | bool | Requires a Portway Bearer token (default `true`) |
 | `ChatEnabled` | No | bool | Enables the Chat UI and `/_/api/mcp/chat`; provider credentials are set in the setup wizard (default `false`) |
 
-:::warning
-Keep `RequireAuthentication: true` on any network-reachable deployment; `false` exposes all registered tools without credentials.
-:::
+Every MCP request requires a Portway Bearer token. Tools run with the scope of the caller's token. `Mcp:RequireAuthentication` has no effect.
 
 ## Expose an endpoint as an MCP tool
 
@@ -87,7 +83,7 @@ Configuration: [Namespaces](/reference/namespaces).
 http(s)://{host}{Mcp:Path}
 ```
 
-With `RequireAuthentication: true`, requests include a Portway Bearer token:
+Requests include a Portway Bearer token:
 
 ```
 Authorization: Bearer {token}

@@ -9,7 +9,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// Implements IODataToSqlConverter, routing OData queries to the correct SQL dialect based on the connection string provider type
 /// </summary>
-public class ODataToSqlConverter : IODataToSqlConverter
+public sealed class ODataToSqlConverter : IODataToSqlConverter
 {
     private readonly IReadOnlyDictionary<SqlProviderType, Compiler> _compilers;
     private readonly IReadOnlyDictionary<SqlProviderType, ISqlProvider> _providers;
@@ -127,47 +127,39 @@ public class ODataToSqlConverter : IODataToSqlConverter
             forkParams.Remove("expand");
         }
 
-        try
+        if (forkParams.TryGetValue("select", out var select) && !string.IsNullOrWhiteSpace(select))
+            Log.Debug("Applied $select: {Columns}", select);
+        if (forkParams.TryGetValue("filter", out var filter) && !string.IsNullOrWhiteSpace(filter))
+            Log.Debug("Applied $filter: {Filter}", filter);
+        if (forkParams.TryGetValue("orderby", out var orderby) && !string.IsNullOrWhiteSpace(orderby))
+            Log.Debug("Applied $orderby: {OrderBy}", orderby);
+
+        string sqlQuery;
+        IDictionary<string, object> rawParams;
+
+        if (expandSpecs is { Count: > 0 } || tenants.Count > 0)
         {
-            if (forkParams.TryGetValue("select", out var select) && !string.IsNullOrWhiteSpace(select))
-                Log.Debug("Applied $select: {Columns}", select);
-            if (forkParams.TryGetValue("filter", out var filter) && !string.IsNullOrWhiteSpace(filter))
-                Log.Debug("Applied $filter: {Filter}", filter);
-            if (forkParams.TryGetValue("orderby", out var orderby) && !string.IsNullOrWhiteSpace(orderby))
-                Log.Debug("Applied $orderby: {OrderBy}", orderby);
-
-            string sqlQuery;
-            IDictionary<string, object> rawParams;
-
-            if (expandSpecs is { Count: > 0 } || tenants.Count > 0)
-            {
-                var kata = dynamicConverter.ConvertToSQLKataQuery(fullTableName, forkParams, count, true);
-                kata = TenantSql.Apply(kata, fullTableName, tenants);
-                if (expandSpecs is { Count: > 0 })
-                    kata = OdataExpandJoinBuilder.Apply(kata, fullTableName, expandSpecs);
-                var compiled = compiler.Compile(kata);
-                (sqlQuery, rawParams) = (compiled.Sql, compiled.NamedBindings);
-            }
-            else
-            {
-                (sqlQuery, rawParams) = dynamicConverter.ConvertToSQL(fullTableName, forkParams, count, true);
-            }
-
-            var parameters = new Dictionary<string, object>(rawParams ?? new Dictionary<string, object>());
-
-            Log.Debug("Successfully converted OData to SQL");
-            Log.Debug("SQL Query: {SqlQuery}", sqlQuery);
-
-            if (parameters.Any())
-                Log.Debug("Parameters: {Parameters}", string.Join(", ", parameters.Select(p => $"{p.Key}={p.Value}")));
-
-            return (sqlQuery, parameters);
+            var kata = dynamicConverter.ConvertToSQLKataQuery(fullTableName, forkParams, count, true);
+            kata = TenantSql.Apply(kata, fullTableName, tenants);
+            if (expandSpecs is { Count: > 0 })
+                kata = OdataExpandJoinBuilder.Apply(kata, fullTableName, expandSpecs);
+            var compiled = compiler.Compile(kata);
+            (sqlQuery, rawParams) = (compiled.Sql, compiled.NamedBindings);
         }
-        catch (Exception ex)
+        else
         {
-            Log.Error(ex, "Error converting OData to SQL: {Message}", ex.Message);
-            throw new InvalidOperationException($"Failed to convert OData to SQL: {ex.Message}", ex);
+            (sqlQuery, rawParams) = dynamicConverter.ConvertToSQL(fullTableName, forkParams, count, true);
         }
+
+        var parameters = new Dictionary<string, object>(rawParams ?? new Dictionary<string, object>());
+
+        Log.Debug("Successfully converted OData to SQL");
+        Log.Debug("SQL Query: {SqlQuery}", sqlQuery);
+
+        if (parameters.Any())
+            Log.Debug("Parameters: {Parameters}", string.Join(", ", parameters.Select(p => $"{p.Key}={p.Value}")));
+
+        return (sqlQuery, parameters);
     }
 
     /// <summary>
@@ -177,12 +169,13 @@ public class ODataToSqlConverter : IODataToSqlConverter
         string expandValue,
         IReadOnlyList<EndpointRelationship> relationships,
         ISqlProvider provider,
-        Dictionary<string, EndpointDefinition> sqlEndpoints)
+        IReadOnlyDictionary<string, EndpointDefinition> sqlEndpoints)
     {
         var specs = new List<RelationalExpandSpec>();
 
         // Bare navigation names only; nested options are rejected upstream on the read path
-        var requested = expandValue.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var requested = expandValue.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase);
 
         foreach (var navRaw in requested)
         {
@@ -192,7 +185,7 @@ public class ODataToSqlConverter : IODataToSqlConverter
             if (rel == null)
                 throw new InvalidOperationException($"Unknown navigation '{nav}' for $expand");
 
-            if (!TryResolveTarget(rel.Target, sqlEndpoints, out var target) || target == null)
+            if (ResolveRelationshipTarget(rel.Target, sqlEndpoints) is not { } target)
                 throw new InvalidOperationException($"Relationship '{rel.Name}' targets unregistered endpoint '{rel.Target}'");
 
             var targetSchema = SqlSchemaResolver.Resolve(target.DatabaseSchema ?? "dbo", provider);
@@ -209,21 +202,14 @@ public class ODataToSqlConverter : IODataToSqlConverter
     }
 
     /// <summary>
-    /// Target-by-name resolution: exact endpoint key or a namespaced key ending in the plain name
+    /// Exact key, else unique namespaced suffix
     /// </summary>
-    private static bool TryResolveTarget(string target, Dictionary<string, EndpointDefinition> sqlEndpoints, out EndpointDefinition? endpoint)
+    public static EndpointDefinition? ResolveRelationshipTarget(string target, IReadOnlyDictionary<string, EndpointDefinition> sqlEndpoints)
     {
-        if (sqlEndpoints.TryGetValue(target, out endpoint))
-            return true;
+        if (sqlEndpoints.TryGetValue(target, out var endpoint))
+            return endpoint;
 
-        var key = sqlEndpoints.Keys.FirstOrDefault(k => k.EndsWith($"/{target}", StringComparison.OrdinalIgnoreCase));
-        if (key != null)
-        {
-            endpoint = sqlEndpoints[key];
-            return true;
-        }
-
-        endpoint = null;
-        return false;
+        var matches = sqlEndpoints.Where(kv => kv.Key.EndsWith($"/{target}", StringComparison.OrdinalIgnoreCase)).Take(2).ToList();
+        return matches.Count == 1 ? matches[0].Value : null;
     }
 }

@@ -6,7 +6,7 @@ namespace PortwayApi.Auth;
 /// <summary>
 /// Represents an authentication token in the system with enhanced security features
 /// </summary>
-public class AuthToken
+public sealed class AuthToken
 {
     public int Id { get; set; }
     public required string Username { get; set; } = $"user_{Guid.NewGuid().ToString("N").Substring(0, 8)}";
@@ -73,7 +73,7 @@ public class AuthToken
     public int? RateLimitRequests { get; set; }
 
     /// <summary>
-    /// Per-token rate limit window in seconds, null falls back to the global RateLimiting:TokenWindow
+    /// Per-token rate limit window in seconds, null falls back to the global RateLimiting:TokenWindowSeconds
     /// </summary>
     public int? RateLimitWindowSeconds { get; set; }
 

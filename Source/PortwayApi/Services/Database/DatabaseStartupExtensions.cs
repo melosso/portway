@@ -32,9 +32,9 @@ public static class DatabaseStartupExtensions
     }
 
     /// <summary>
-    /// Initializes the auth database, seeds the initial admin account, and writes a default token file if none exist and the console is disabled.
+    /// Initializes the auth database, seeds the initial admin account, and creates a first token if none exist: the Console:SeedToken value, or a token file when the console is disabled.
     /// </summary>
-    public static async Task InitializeAuthDatabaseAsync(this WebApplication app, string serverName, PortwayApi.Helpers.AdminSeedKey adminApiKey, bool webUiEnabled, string? seedPassword = null)
+    public static async Task InitializeAuthDatabaseAsync(this WebApplication app, string serverName, PortwayApi.Helpers.AdminSeedKey adminApiKey, bool webUiEnabled, string? seedPassword = null, string? seedToken = null)
     {
         using var scope = app.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
@@ -56,6 +56,11 @@ public static class DatabaseStartupExtensions
                 var tokensDir = Path.Combine(Directory.GetCurrentDirectory(), "tokens");
                 if (Directory.Exists(tokensDir) && Directory.EnumerateFiles(tokensDir, "*.txt").Any())
                     Log.Warning("Tokens detected in the tokens directory; relocate them to a secure location");
+            }
+            else if (!string.IsNullOrEmpty(seedToken))
+            {
+                await tokenService.SeedTokenAsync(seedToken, serverName);
+                Log.Warning("Created access token from Console:SeedToken; do not set this outside demo/non-production instances");
             }
             else if (webUiEnabled)
             {

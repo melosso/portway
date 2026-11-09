@@ -11,6 +11,32 @@ using PortwayApi.Helpers;
 
 public static partial class WebUiEndpointExtensions
 {
+    private const string InvalidSignInBody = "Invalid request body";
+
+    /// <summary>
+    /// Reads a JSON object of text fields, or null.
+    /// </summary>
+    private static bool Remember(JsonElement body) =>
+        body.TryGetProperty("remember", out var r) && r.ValueKind == JsonValueKind.True;
+
+    private static async Task<JsonElement?> ReadSignInBodyAsync(HttpRequest request)
+    {
+        if (!request.HasJsonContentType())
+            return null;
+
+        try
+        {
+            var body = await request.ReadFromJsonAsync<JsonElement>(request.HttpContext.RequestAborted);
+            return body.ValueKind == JsonValueKind.Object && body.EnumerateObject().All(field => field.Name == "remember" ? field.Value.ValueKind is JsonValueKind.True or JsonValueKind.False : field.Value.ValueKind is JsonValueKind.String or JsonValueKind.Null)
+                ? body
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     private static void MapPageAndAuthRoutes(WebApplication app, string wwwroot, string appVersion, bool secureCookies)
     {
         // Login
@@ -34,15 +60,19 @@ public static partial class WebUiEndpointExtensions
         // Auth endpoints
         app.MapPost("/_/api/auth", async (HttpContext context) =>
         {
+            if (await ReadSignInBodyAsync(context.Request) is not { } body)
+                return Results.Json(new { error = InvalidSignInBody }, statusCode: 400);
+
+            var username = body.TryGetProperty("username", out var up) ? up.GetString() ?? "" : "";
+            var password = body.TryGetProperty("password", out var pp) ? pp.GetString() ?? "" : "";
+
             // Rate limiting and lockout check
             var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var blockReason = WebUiAuthHelper.BeginAttempt(clientIp);
+            var blockReason = WebUiAuthHelper.BeginAttempt(clientIp, username);
             if (blockReason != null)
             {
                 return Results.Json(new { error = blockReason }, statusCode: 429);
             }
-
-            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
 
             // CSRF validation
             var csrfToken = body.TryGetProperty("csrf", out var csrf) ? csrf.GetString() : null;
@@ -50,9 +80,6 @@ public static partial class WebUiEndpointExtensions
             {
                 return Results.Json(new { error = "Invalid or expired CSRF token" }, statusCode: 403);
             }
-
-            var username = body.TryGetProperty("username", out var up) ? up.GetString() ?? "" : "";
-            var password = body.TryGetProperty("password", out var pp) ? pp.GetString() ?? "" : "";
 
             var users = context.RequestServices.GetRequiredService<AdminUserService>();
             var account = await users.AuthenticateAsync(username, password);
@@ -63,7 +90,7 @@ public static partial class WebUiEndpointExtensions
             }
 
             // Success - clear failed attempts
-            WebUiAuthHelper.ClearFailedAttempts(clientIp);
+            WebUiAuthHelper.ClearFailedAttempts(clientIp, username);
 
             // No session until the account sets its own password
             if (account.MustChangePassword)
@@ -72,14 +99,15 @@ public static partial class WebUiEndpointExtensions
             // Consume the CSRF token (one-time use)
             WebUiAuthHelper.ConsumeCsrfToken(csrfToken!);
 
-            IssueSessionCookies(context, account.Id, secureCookies);
+            IssueSessionCookies(context, account, secureCookies, Remember(body));
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
         // Completes a first sign-in: verifies the old password again and issues the session only once the new one is set
         app.MapPost("/_/api/auth/password", async (HttpContext context) =>
         {
-            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+            if (await ReadSignInBodyAsync(context.Request) is not { } body)
+                return Results.Json(new { error = InvalidSignInBody }, statusCode: 400);
 
             var username = body.TryGetProperty("username", out var u) ? u.GetString() ?? "" : "";
             var current = body.TryGetProperty("password", out var p) ? p.GetString() ?? "" : "";
@@ -92,7 +120,7 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { error = "Choose a password you have not used here before", field = "newPassword" }, statusCode: 400);
 
             var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            if (WebUiAuthHelper.BeginAttempt(clientIp) is { } blocked)
+            if (WebUiAuthHelper.BeginAttempt(clientIp, username) is { } blocked)
                 return Results.Json(new { error = blocked }, statusCode: 429);
 
             var csrf = body.TryGetProperty("csrf", out var c) ? c.GetString() : null;
@@ -107,13 +135,13 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { error = "Invalid username or password" }, statusCode: 401);
             }
 
-            WebUiAuthHelper.ClearFailedAttempts(clientIp);
+            WebUiAuthHelper.ClearFailedAttempts(clientIp, username);
             WebUiAuthHelper.ConsumeCsrfToken(csrf!);
 
             var account = await users.FindAsync(username);
             Log.Information("Console account {Username} set its own password", username);
 
-            IssueSessionCookies(context, account!.Id, secureCookies);
+            IssueSessionCookies(context, account!, secureCookies, Remember(body));
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
@@ -152,7 +180,8 @@ public static partial class WebUiEndpointExtensions
             ["tokens"] = "Access Tokens",
             ["users"] = "Users",
             ["settings"] = "Settings",
-            ["logs"] = "Logs"
+            ["logs"] = "Logs",
+            ["trace"] = "Trace"
         };
         foreach (var (page, title) in pageTitles)
         {

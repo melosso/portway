@@ -1,6 +1,8 @@
 using System.Text.Json;
+using Dapper;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Options;
+using PortwayApi.Auth;
 using PortwayApi.Helpers;
 using PortwayApi.Services.Configuration;
 using Serilog;
@@ -194,6 +196,13 @@ public class DatabaseMaintenanceService : BackgroundService
                 if (integrity != "ok")
                     throw new InvalidOperationException($"integrity check failed: {integrity}");
 
+                if (dbPath == Path.Combine(Directory.GetCurrentDirectory(), "auth.db"))
+                {
+                    var pruned = await PruneAuthFailureAuditsAsync(conn, _options.CurrentValue.AuditRetention, DateTime.UtcNow, ct);
+                    if (pruned > 0)
+                        Log.Information("Pruned {Count} auth failure audits from {Database}", pruned, name);
+                }
+
                 await ExecAsync(conn, "ANALYZE", ct);
                 analyzed = true;
 
@@ -249,6 +258,38 @@ public class DatabaseMaintenanceService : BackgroundService
             details: $"{results.Count(r => r.Vacuumed)} vacuumed, {reclaimed} bytes reclaimed");
 
         return results;
+    }
+
+    /// <summary>
+    /// Prunes auth failure audits.
+    /// </summary>
+    internal static async Task<int> PruneAuthFailureAuditsAsync(SqliteConnection conn, AuditRetentionOptions retention, DateTime nowUtc, CancellationToken ct)
+    {
+        string[] operations = [AuthFailureAuditQueue.FailedAuth, AuthFailureAuditQueue.AuthorizationFailed];
+        var removed = 0;
+
+        if (retention.Days > 0)
+        {
+            removed += await conn.ExecuteAsync(new CommandDefinition(
+                "DELETE FROM TokenAudits WHERE Operation IN @operations AND Timestamp < @cutoff",
+                new { operations, cutoff = nowUtc.AddDays(-retention.Days).ToString("yyyy-MM-dd HH:mm:ss") }, cancellationToken: ct));
+        }
+
+        if (retention.MaxSizeMb > 0)
+        {
+            // bundled sqlite lacks dbstat
+            removed += await conn.ExecuteAsync(new CommandDefinition("""
+                DELETE FROM TokenAudits WHERE Id IN (
+                    SELECT Id FROM (
+                        SELECT Id, SUM(length(CAST(Details AS BLOB)) + length(CAST(Username AS BLOB)) + length(CAST(Operation AS BLOB))
+                            + length(CAST(Source AS BLOB)) + ifnull(length(CAST(IpAddress AS BLOB)), 0) + ifnull(length(CAST(UserAgent AS BLOB)), 0))
+                            OVER (ORDER BY Id DESC) AS Total
+                        FROM TokenAudits WHERE Operation IN @operations)
+                    WHERE Total > @maxBytes)
+                """, new { operations, maxBytes = retention.MaxSizeMb * 1024L * 1024L }, cancellationToken: ct));
+        }
+
+        return removed;
     }
 
     private List<string> ResolveDatabasePaths()

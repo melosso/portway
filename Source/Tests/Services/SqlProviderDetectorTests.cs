@@ -44,6 +44,16 @@ public class SqlProviderDetectorTests
     }
 
     [Theory]
+    [InlineData("Server=x;Port=3306;Database=d;Uid=u;Pwd=p", SqlProviderType.MySql)]
+    [InlineData("Server=x;Port=3306;Database=d;User=u;Password=p", SqlProviderType.MySql)]
+    [InlineData("Server=x;Port=5432;Database=d;User Id=u;Password=p", SqlProviderType.PostgreSql)]
+    [InlineData("Server=x;Database=d;Username=u;Password=p", SqlProviderType.PostgreSql)]
+    [InlineData("Filename=app.db", SqlProviderType.Sqlite)]
+    [InlineData("Server=x;Database=d;User Id=u;Password=p;Transport=tcp", SqlProviderType.SqlServer)]
+    public void Detect_KeywordsSqlClientRejects_AreNotSqlServer(string connectionString, SqlProviderType expected) =>
+        Assert.Equal(expected, SqlProviderDetector.Detect(connectionString));
+
+    [Theory]
     [InlineData("Data Source=mydb.db;", SqlProviderType.Sqlite)]
     [InlineData("Data Source=app.sqlite;", SqlProviderType.Sqlite)]
     [InlineData("Data Source=store.sqlite3;", SqlProviderType.Sqlite)]
@@ -63,4 +73,19 @@ public class SqlProviderDetectorTests
         var result = SqlProviderDetector.Detect(cs);
         Assert.Equal(SqlProviderType.SqlServer, result);
     }
+
+    [Fact]
+    public void Detect_UserIdOnTheMySqlPort_ReturnsMySql()
+    {
+        const string connectionString = "Server=x;Port=3306;Database=d;User Id=u;Password=p";
+
+        Assert.Equal("u", new MySqlConnector.MySqlConnectionStringBuilder(connectionString).UserID);
+        Assert.Equal(SqlProviderType.MySql, SqlProviderDetector.Detect(connectionString));
+    }
+
+    [Theory]
+    [InlineData("Server=x;Port=33060;Database=d;User Id=u;Password=p")]
+    [InlineData("Server=x;Port=5432;Database=d;User Id=u;Password=p")]
+    public void Detect_UserIdOnAnotherPort_StaysPostgreSql(string connectionString) =>
+        Assert.Equal(SqlProviderType.PostgreSql, SqlProviderDetector.Detect(connectionString));
 }

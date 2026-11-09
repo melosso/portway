@@ -3,7 +3,7 @@ namespace PortwayApi.Services.Files;
 /// <summary>
 /// Configuration options for file storage
 /// </summary>
-public class FileStorageOptions
+public sealed class FileStorageOptions
 {
     /// <summary>
     /// Root directory for file storage
@@ -23,7 +23,7 @@ public class FileStorageOptions
     /// <summary>
     /// How long to keep files in memory cache before flushing to disk (seconds)
     /// </summary>
-    public int MemoryCacheTimeSeconds { get; set; } = 60;
+    public int MemoryCacheDurationSeconds { get; set; } = 60;
 
     /// <summary>
     /// Maximum size of all files to keep in memory (in MB)

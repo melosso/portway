@@ -23,9 +23,11 @@ Accounts are created under **Users** or from the shell. First account, roles, se
 
 ## Settings changes
 
-Settings saved in the console are written to `appsettings.overrides.json`. Values in that file override `appsettings.json`. Environment variables override that file. A key set by an environment variable is read-only in the console and displays the variable name. A save applies all submitted keys or none, and the response states whether a restart is required.
+Settings saved in the console are written to `appsettings.overrides.json`. Values in that file override `appsettings.json`. Environment variables override that file. A key set by an environment variable is read-only in the console and displays the variable name. A save applies all submitted keys or none, and the response states whether a restart is required. Editable keys and validation rules: [Console editing](/reference/app-settings#console-editing).
 
-The section **Settings → Security → Deployment & Access** sets trusted proxies, trusted proxy networks and public console origins. A change that would exclude the current request returns `400`.
+The section **Settings → Security → Deployment & Access** sets trusted proxies, trusted proxy networks, public console origins, CORS origins, allowed hosts and the path base. A change that would exclude the current request returns `400`.
+
+Secrets (Redis connection strings, the outbound proxy password) are write-only. The console displays whether a value is set. **Clear** removes a value on save.
 
 Every console change to environments, endpoints and MCP settings is recorded in the audit trail, and the previous file version is backed up. Both are listed under **Settings → Security → Recent Configuration Changes**, with restore.
 
@@ -76,6 +78,18 @@ One row per environment, endpoint, version and method, with requests, success ra
 ### Retention and clearing
 
 Retention: 31 days in `metrics.db`; 31 days and at most 500,000 requests in memory, reloaded from `metrics.db` on start. Each instance keeps its own data. **Purge** (administrator role, `DELETE /_/api/metrics`) deletes every request recorded before the purge from memory and `metrics.db`, which also resets the dashboard traffic, error and top endpoint cards. The purge is recorded in the audit trail. **Clear filters** resets the environment, endpoint, version and method filters.
+
+## Trace
+
+**Trace** (`/_/trace`) contains the [request traffic logging](/reference/audit) settings:
+
+| Card | Settings |
+|---|---|
+| Traffic Logging | Enabled, storage provider and its path, file rotation, queue, batch, flush interval, headers, summary line |
+| Body Capture | Request bodies, response bodies, size limit |
+| Log Levels | `Serilog:MinimumLevel:Default` and per-source overrides, one `Source=Level` per line |
+
+Turning on body capture requires confirmation. Bodies are logged unfiltered. Traffic logging changes apply after a restart.
 
 ## Logs
 

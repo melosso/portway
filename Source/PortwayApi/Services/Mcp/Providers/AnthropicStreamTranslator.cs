@@ -10,6 +10,7 @@ internal sealed class AnthropicStreamTranslator : IChatStreamTranslator
 {
     private readonly StringBuilder _currentToolInput = new();
     private string? _currentToolName;
+    private string? _currentToolId;
 
     public bool IsComplete { get; private set; }
 
@@ -21,6 +22,7 @@ internal sealed class AnthropicStreamTranslator : IChatStreamTranslator
                 if (chunk["content_block"]?["type"]?.GetValue<string>() == "tool_use")
                 {
                     _currentToolName = chunk["content_block"]?["name"]?.GetValue<string>();
+                    _currentToolId = chunk["content_block"]?["id"]?.GetValue<string>();
                     _currentToolInput.Clear();
                 }
                 break;
@@ -37,7 +39,8 @@ internal sealed class AnthropicStreamTranslator : IChatStreamTranslator
                     {
                         Type = ChatDeltaType.ToolCall,
                         ToolName = _currentToolName,
-                        ToolInput = _currentToolInput.ToString()
+                        ToolInput = _currentToolInput.ToString(),
+                        ToolCallId = _currentToolId
                     };
 
                     _currentToolName = null;

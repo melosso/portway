@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Serilog;
 using PortwayApi.Classes;
+using PortwayApi.Services.Providers;
 
 namespace PortwayApi.Helpers;
 
@@ -114,6 +115,7 @@ public static class SqlTableValuedFunctionHelper
     /// Builds the table valued function call and its Dapper parameters
     /// </summary>
     public static (string FunctionCall, Dictionary<string, object> SqlParameters) BuildFunctionCall(
+        ISqlProvider provider,
         string schema,
         string functionName,
         Dictionary<string, object> parameterValues,
@@ -122,7 +124,8 @@ public static class SqlTableValuedFunctionHelper
         var sqlBuilder = new StringBuilder();
         var sqlParameters = new Dictionary<string, object>();
 
-        sqlBuilder.Append($"SELECT * FROM [{schema}].[{functionName}](");
+        var resolvedSchema = SqlSchemaResolver.Resolve(schema, provider);
+        sqlBuilder.Append("SELECT * FROM ").Append(provider.GetCompiler().Wrap(resolvedSchema.Length > 0 ? $"{resolvedSchema}.{functionName}" : functionName)).Append('(');
 
         var paramParts = new List<string>();
         for (int i = 0; i < functionParameters.Count; i++)
@@ -147,6 +150,10 @@ public static class SqlTableValuedFunctionHelper
                 paramParts.Add("NULL");
             }
         }
+
+        // only sql server needs default
+        while (provider.ProviderType != SqlProviderType.SqlServer && paramParts.LastOrDefault()?.Equals("DEFAULT", StringComparison.OrdinalIgnoreCase) == true)
+            paramParts.RemoveAt(paramParts.Count - 1);
 
         sqlBuilder.Append(string.Join(", ", paramParts));
         sqlBuilder.Append(")");
@@ -210,22 +217,8 @@ public static class SqlTableValuedFunctionHelper
     private static (bool IsValid, string? Error) ValidateParameterValue(TVFParameter param, string value)
     {
         // Check validation pattern if specified
-        if (!string.IsNullOrEmpty(param.ValidationPattern))
-        {
-            try
-            {
-                // timeout bounds ReDoS from operator-supplied patterns
-                if (!Regex.IsMatch(value, param.ValidationPattern, RegexOptions.None, TimeSpan.FromSeconds(1)))
-                {
-                    return (false, $"Parameter '{param.Name}' does not match required pattern");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Warning("Invalid regex pattern for parameter '{Parameter}': {Pattern}. Error: {Error}",
-                    param.Name, param.ValidationPattern, ex.Message);
-            }
-        }
+        if (!string.IsNullOrEmpty(param.ValidationPattern) && !ConfigPattern.IsMatch(value, param.ValidationPattern, param.Name))
+            return (false, $"Parameter '{param.Name}' does not match required pattern");
 
         // Basic type validation
         return ValidateSqlType(value, param.SqlType);

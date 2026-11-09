@@ -5,22 +5,22 @@ namespace PortwayApi.Helpers;
 /// </summary>
 public static class OdataExpandResponseShaper
 {
-    public static List<Dictionary<string, object>> Nest(
+    public static List<Dictionary<string, object?>> Nest(
         IEnumerable<object> rows,
         IReadOnlyList<(string NavName, IReadOnlyDictionary<string, string> DbToAlias)> navs)
     {
-        var result = new List<Dictionary<string, object>>();
+        var result = new List<Dictionary<string, object?>>();
 
         foreach (var row in rows)
         {
             if (row is not IDictionary<string, object> dict)
             {
                 // Not a reshapeable row; leave it as an empty object rather than throw
-                result.Add(new Dictionary<string, object>());
+                result.Add(new Dictionary<string, object?>());
                 continue;
             }
 
-            var outRow = new Dictionary<string, object>();
+            var outRow = new Dictionary<string, object?>();
             var nested = navs.ToDictionary(
                 n => n.NavName,
                 _ => new Dictionary<string, object>(),
@@ -43,8 +43,9 @@ public static class OdataExpandResponseShaper
                 }
             }
 
+            // all null means no related record
             foreach (var nav in navs)
-                outRow[nav.NavName] = nested[nav.NavName];
+                outRow[nav.NavName] = nested[nav.NavName] is { Count: > 0 } columns && columns.Values.All(v => v is null) ? null : nested[nav.NavName];
 
             result.Add(outRow);
         }

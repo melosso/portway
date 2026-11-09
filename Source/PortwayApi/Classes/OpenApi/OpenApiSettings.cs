@@ -1,6 +1,6 @@
 namespace PortwayApi.Classes.OpenApi;
 
-public class OpenApiSettings
+public sealed class OpenApiSettings
 {
     public bool Enabled { get; set; } = true;
     public string Title { get; set; } = "API Documentation";
@@ -17,11 +17,5 @@ public class OpenApiSettings
 
     // Scalar-specific
     public FooterInfo Footer { get; set; } = new FooterInfo();
-    public string ScalarTheme { get; set; } = "purple"; // portway, alternate, default, moon, purple, solarized, bluePlanet, saturn, kepler, mars, deepSpace
-    public string ScalarLayout { get; set; } = "modern"; // modern, classic
-    public bool ScalarShowSidebar { get; set; } = true;
-    public bool ScalarHideDownloadButton { get; set; } = false;
-    public bool ScalarHideModels { get; set; } = true; // Hide the Models/Schemas section
-    public bool ScalarHideClientButton { get; set; } = true; // Hide the client generation button
-    public bool ScalarHideTestRequestButton { get; set; } = false; // Hide the test request button
+    public ScalarInfo Scalar { get; set; } = new ScalarInfo();
 }

@@ -3,7 +3,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// DELETE operation pattern configuration
 /// </summary>
-public class DeletePattern
+public sealed class DeletePattern
 {
     /// <summary>
     /// Style of DELETE operation: PathParameter, QueryParameter, ODataGuid, ODataKey

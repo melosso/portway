@@ -6,7 +6,7 @@ public interface ISqlProviderFactory
     ISqlProvider GetProvider(SqlProviderType type);
 }
 
-public class SqlProviderFactory : ISqlProviderFactory
+public sealed class SqlProviderFactory : ISqlProviderFactory
 {
     private readonly IReadOnlyDictionary<SqlProviderType, ISqlProvider> _providers;
 

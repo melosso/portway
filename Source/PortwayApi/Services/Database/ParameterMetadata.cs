@@ -1,6 +1,6 @@
 namespace PortwayApi.Services.Database;
 
-public class ParameterMetadata
+public sealed class ParameterMetadata
 {
     public string ParameterName { get; set; } = string.Empty;
     public string DataType { get; set; } = string.Empty;

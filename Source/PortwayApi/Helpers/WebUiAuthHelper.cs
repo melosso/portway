@@ -9,12 +9,13 @@ namespace PortwayApi.Helpers;
 /// </summary>
 public static class WebUiAuthHelper
 {
-    // Account lockout: attempts before lockout, cleared on success, and lockout duration
+    // Account lockout: attempts per client and account, attempts per client across accounts, lock and counting window
     private const int MaxFailuresBeforeLockout = 10;
+    private const int MaxFailuresPerClient = 50;
     private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(30);
 
-    // Track failed attempts: IP -> (failures, lockedUntil)
-    private static readonly ConcurrentDictionary<string, (int Failures, DateTime? LockedUntil)> _failedAttempts = new();
+    // client ip, or client ip plus account, to failures in the current window
+    private static readonly ConcurrentDictionary<string, (int Failures, DateTime? LockedUntil, DateTime WindowStart)> _failedAttempts = new();
 
     // Track CSRF tokens: token -> expiresAt
     private static readonly ConcurrentDictionary<string, DateTime> _csrfTokens = new();
@@ -29,17 +30,36 @@ public static class WebUiAuthHelper
     }
 
     /// <summary>
-    /// Counts an attempt before the password is checked; returns the block reason, or null when allowed. Call ClearFailedAttempts on success
+    /// Counts an attempt for the client and the account before the password is checked; returns the block reason, or null when allowed. Call ClearFailedAttempts with the same arguments on success
     /// </summary>
-    public static string? BeginAttempt(string clientIp)
+    public static string? BeginAttempt(string clientIp, string account) =>
+        Count(clientIp, MaxFailuresPerClient) ?? Count(AccountKey(clientIp, account), MaxFailuresBeforeLockout);
+
+    /// <summary>
+    /// Clears the account count and returns the attempt to the client count after successful auth
+    /// </summary>
+    public static void ClearFailedAttempts(string clientIp, string account)
+    {
+        _failedAttempts.TryRemove(AccountKey(clientIp, account), out _);
+        _failedAttempts.AddOrUpdate(
+            clientIp,
+            _ => (0, null, DateTime.UtcNow),
+            (_, existing) => existing.LockedUntil.HasValue ? existing : (Math.Max(0, existing.Failures - 1), null, existing.WindowStart));
+    }
+
+    // fixed size for untrusted names
+    internal static string AccountKey(string clientIp, string account) =>
+        $"{clientIp}\n{Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(account.ToLowerInvariant())))}";
+
+    private static string? Count(string key, int limit)
     {
         var now = DateTime.UtcNow;
         string? reason = null;
 
         // counted up front so parallel requests cannot all pass before the first failure is recorded
         _failedAttempts.AddOrUpdate(
-            clientIp,
-            _ => (1, null),
+            key,
+            _ => (1, null, now),
             (_, existing) =>
             {
                 reason = null;
@@ -49,53 +69,56 @@ public static class WebUiAuthHelper
                     return existing;
                 }
 
-                var attempts = existing.LockedUntil.HasValue ? 1 : existing.Failures + 1;
-                return (attempts, attempts >= MaxFailuresBeforeLockout ? now.Add(LockoutDuration) : null);
+                var expired = existing.LockedUntil.HasValue || now - existing.WindowStart > LockoutDuration;
+                var attempts = expired ? 1 : existing.Failures + 1;
+                return (attempts, attempts >= limit ? now.Add(LockoutDuration) : null, expired ? now : existing.WindowStart);
             });
 
         return reason;
     }
 
     /// <summary>
-    /// Clears failed attempts after successful auth
+    /// Signs a session cookie carrying the account id and a stamp of its password
     /// </summary>
-    public static void ClearFailedAttempts(string clientIp)
+    public static string IssueSessionCookie(int userId, string passwordHash, TimeSpan lifetime)
     {
-        _failedAttempts.TryRemove(clientIp, out _);
+        var expiry = DateTimeOffset.UtcNow.Add(lifetime).ToUnixTimeSeconds().ToString();
+        var stamp = SessionStamp(passwordHash);
+        return $"{userId}.{expiry}.{stamp}.{SignSession($"{userId}:{expiry}:{stamp}")}";
     }
 
     /// <summary>
-    /// Signs a session cookie carrying the account id
+    /// The account id and password stamp in a valid, unexpired session cookie, or null
     /// </summary>
-    public static string IssueSessionCookie(int userId, int expiryHours)
-    {
-        var expiry = DateTimeOffset.UtcNow.AddHours(expiryHours).ToUnixTimeSeconds().ToString();
-        return $"{userId}.{expiry}.{SignSession(userId, expiry)}";
-    }
-
-    /// <summary>
-    /// The account id in a valid, unexpired session cookie, or null
-    /// </summary>
-    public static int? ResolveSession(string? token)
+    public static (int UserId, string Stamp)? ResolveSession(string? token)
     {
         if (string.IsNullOrEmpty(token)) return null;
 
         var parts = token.Split('.');
-        if (parts.Length != 3) return null;
+        if (parts.Length != 4) return null;
         if (!int.TryParse(parts[0], out var userId)) return null;
         if (!long.TryParse(parts[1], out var expiry) ||
             DateTimeOffset.FromUnixTimeSeconds(expiry) < DateTimeOffset.UtcNow) return null;
 
-        var expected = SignSession(userId, parts[1]);
+        var expected = SignSession($"{userId}:{parts[1]}:{parts[2]}");
         return CryptographicOperations.FixedTimeEquals(
             Encoding.UTF8.GetBytes(expected),
-            Encoding.UTF8.GetBytes(parts[2])) ? userId : null;
+            Encoding.UTF8.GetBytes(parts[3])) ? (userId, parts[2]) : null;
     }
 
-    private static string SignSession(int userId, string expiry)
+    /// <summary>
+    /// Derives the session stamp from a password hash; a password change ends every session
+    /// </summary>
+    public static string SessionStamp(string passwordHash)
     {
         using var hmac = new HMACSHA256(SessionKeyProvider.Key);
-        return Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes($"{userId}:{expiry}")));
+        return Convert.ToHexString(hmac.ComputeHash(Encoding.UTF8.GetBytes($"stamp:{passwordHash}")), 0, 8);
+    }
+
+    private static string SignSession(string payload)
+    {
+        using var hmac = new HMACSHA256(SessionKeyProvider.Key);
+        return Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(payload)));
     }
 
     /// <summary>
@@ -149,11 +172,12 @@ public static class WebUiAuthHelper
         }
 
         // Clean up old failed attempts
-        var expiredAttempts = _failedAttempts.Where(kvp =>
-            kvp.Value.LockedUntil.HasValue && kvp.Value.LockedUntil.Value < now).Select(kvp => kvp.Key).ToList();
-        foreach (var ip in expiredAttempts)
+        var expiredAttempts = _failedAttempts.Where(kvp => kvp.Value.LockedUntil is { } until
+            ? until < now
+            : now - kvp.Value.WindowStart > LockoutDuration).Select(kvp => kvp.Key).ToList();
+        foreach (var key in expiredAttempts)
         {
-            _failedAttempts.TryRemove(ip, out _);
+            _failedAttempts.TryRemove(key, out _);
         }
     }
 }

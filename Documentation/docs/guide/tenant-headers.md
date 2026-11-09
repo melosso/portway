@@ -25,11 +25,11 @@ Header names are configurable (e.g. `X-Company-Id`, `X-Client-Id`, `Administrati
 |---|---|
 | Endpoint has no `Tenancy` | Request unchanged |
 | No bearer token (environment authentication) | `403` |
-| Token holds no value for the header | `403` |
-| Header absent, token holds one value | That value |
-| Header absent, token holds several values or `*` | `400` |
-| Header holds a value the token holds | That value |
-| Header holds another value | `403` |
+| Token has no value for the header | `403` |
+| Header absent, token has one value | That value |
+| Header absent, token has several values or `*` | `400` |
+| Header contains a value of the token | That value |
+| Header contains another value | `403` |
 | Header repeated or malformed | `400` |
 
 The `Tenancy` value depends on the endpoint type:

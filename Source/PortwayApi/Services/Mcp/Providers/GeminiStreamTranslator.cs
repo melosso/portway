@@ -27,7 +27,8 @@ internal sealed class GeminiStreamTranslator : IChatStreamTranslator
                 {
                     Type = ChatDeltaType.ToolCall,
                     ToolName = call["name"]?.GetValue<string>(),
-                    ToolInput = call["args"]?.ToJsonString()
+                    ToolInput = call["args"]?.ToJsonString(),
+                    ToolSignature = part?["thoughtSignature"]?.GetValue<string>()
                 };
             }
         }

@@ -7,7 +7,7 @@ namespace PortwayApi.Classes.OpenApi;
 /// <summary>
 /// Loads and caches OpenAPI examples from JSON files
 /// </summary>
-public class OpenApiExampleLoader
+public sealed class OpenApiExampleLoader
 {
     private static readonly ConcurrentDictionary<string, JsonNode> _exampleCache = new();
     private readonly string _examplesBasePath;

@@ -7,7 +7,7 @@ using PortwayApi.Classes;
 using PortwayApi.Helpers;
 using Serilog;
 
-public class CompositeEndpoint
+public sealed class CompositeEndpoint
 {
     private readonly CompositeEndpointHandler _compositeHandler;
     private readonly EnvironmentSettings _environmentSettings;

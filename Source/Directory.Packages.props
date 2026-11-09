@@ -48,7 +48,7 @@
     <PackageVersion Include="Dapper" Version="2.1.89" />
     <PackageVersion Include="SqlKata" Version="4.0.1" />
     <PackageVersion Include="SqlKata.Execution" Version="4.0.1" />
-    <PackageVersion Include="Melosso.DynamicODataToSQL" Version="1.0.5" />
+    <PackageVersion Include="Melosso.DynamicODataToSQL" Version="1.0.7" />
   </ItemGroup>
   <ItemGroup Label="Serilog">
     <PackageVersion Include="Serilog" Version="$(SerilogVersion)" />
@@ -72,7 +72,6 @@
   </ItemGroup>
   <ItemGroup Label="Other">
     <PackageVersion Include="StackExchange.Redis" Version="3.4.31" />
-    <PackageVersion Include="Scalar.AspNetCore" Version="2.18.5" />
     <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="2.3.1" />
   </ItemGroup>
   <ItemGroup Label="Test Dependencies">

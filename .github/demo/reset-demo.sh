@@ -44,10 +44,8 @@ files=(
     "config/environments/settings.json"
     "config/environments/WMS/settings.json"
     "config/environments/network-access-policy.json"
-    "config/endpoints/Proxy/CRM/Accounts/v1/entity.json"
-    "config/endpoints/Proxy/CRM/Accounts/v2/entity.json"
-    "config/endpoints/Proxy/Company/Companies/v1/entity.json"
-    "config/endpoints/Proxy/Company/Companies/v2/entity.json"
+    "config/endpoints/Proxy/CRM/Divisions/v1/entity.json"
+    "config/endpoints/Proxy/CRM/Divisions/v2/entity.json"
     "config/endpoints/Proxy/Warehouse/Products/v1/entity.json"
     "config/endpoints/Proxy/Warehouse/Products/v2/entity.json"
     "config/endpoints/Proxy/Production/Orders/v1/entity.json"
@@ -55,6 +53,13 @@ files=(
     "config/endpoints/SQL/Warehouse/Warehouses/v1/entity.json"
     "config/endpoints/SQL/Warehouse/Warehouses/v2/entity.json"
     "config/endpoints/SQL/Warehouse/CountryWarehouses/entity.json"
+    "config/endpoints/SQL/CRM/Accounts/entity.json"
+    "config/endpoints/SQL/CRM/Contacts/entity.json"
+    "config/endpoints/SQL/CRM/Opportunities/entity.json"
+    "config/endpoints/SQL/CRM/AccountTypes/entity.json"
+    "config/endpoints/SQL/CRM/Industries/entity.json"
+    "config/endpoints/SQL/CRM/ContactRoles/entity.json"
+    "config/endpoints/SQL/CRM/OpportunityStages/entity.json"
     "data/demo.db"
     "data/auth.db"
 )
@@ -70,19 +75,22 @@ docker compose up -d
 
 echo "Sending sample traffic for the health page..."
 for _ in $(seq 1 30); do
-    curl -fs -o /dev/null http://localhost:8080/health/live && ls tokens/*.txt >/dev/null 2>&1 && break
+    curl -fs -o /dev/null http://localhost:8080/health/live && break
     sleep 2
 done
-TOKEN="$(sed -n 's/.*"Token": *"\([^"]*\)".*/\1/p' tokens/*.txt | head -n 1)"
-for path in CRM/Accounts v2/CRM/Accounts Company/Companies v2/Company/Companies Warehouse/Products v2/Warehouse/Products \
+TOKEN="$(sed -n 's/.*PORTWAY_SEED_TOKEN=//p' docker-compose.yml)"
+echo "Granting X-Country tenants to the seeded token..."
+docker exec demo-portway sqlite3 /app/auth.db "UPDATE Tokens SET AllowedTenants='{\"X-Country\":[\"NL\",\"DE\",\"US\"]}';"
+for path in CRM/Accounts CRM/Contacts CRM/Opportunities CRM/Opportunities?\$expand=Account,Contact,Stage CRM/Divisions v2/CRM/Divisions Warehouse/Products v2/Warehouse/Products \
     Production/Orders v2/Production/Orders Warehouse/Warehouses v2/Warehouse/Warehouses v2/Warehouse/Warehouses?\$top=1; do
     for _ in 1 2 3; do
         curl -s -o /dev/null -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/WMS/$path"
     done
 done
-curl -s -o /dev/null -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"name":"Jansen Agri B.V.","country":"NL"}' http://localhost:8080/api/WMS/v2/CRM/Accounts
-curl -s -o /dev/null -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"email":"inkoop@brouwerzonen.example"}' http://localhost:8080/api/WMS/v2/CRM/Accounts/01JNH6R020RJKTTWA0V4PC549M
-curl -s -o /dev/null http://localhost:8080/api/WMS/v2/CRM/Accounts
+curl -s -o /dev/null -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"code":"BR-VIE","name":"Branch Vienna","country":"AT"}' http://localhost:8080/api/WMS/v2/CRM/Divisions
+curl -s -o /dev/null -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"code":"HQ-AMS","name":"Head office Amsterdam"}' http://localhost:8080/api/WMS/v2/CRM/Divisions/01JCZ92WX0CH9MDSEQSXFB9NNB
+curl -s -o /dev/null http://localhost:8080/api/WMS/v2/CRM/Divisions
+curl -s -o /dev/null -H "Authorization: Bearer $TOKEN" -H "X-Country: NL" http://localhost:8080/api/WMS/Warehouse/CountryWarehouses
 curl -s -o /dev/null -X QUERY -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "{\"filter\":\"country eq 'NL'\",\"top\":5}" http://localhost:8080/api/WMS/v2/Warehouse/Warehouses
 
 echo "Demo reset successfully!"

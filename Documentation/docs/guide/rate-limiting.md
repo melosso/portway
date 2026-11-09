@@ -16,10 +16,10 @@ Rate limiting runs before token authentication. Invalid tokens consume from thei
   "RateLimiting": {
     "Enabled": true,
     "IpLimit": 100,
-    "IpWindow": 60,
+    "IpWindowSeconds": 60,
     "TokenLimit": 1000,
-    "TokenWindow": 60,
-    "Store": "Memory"
+    "TokenWindowSeconds": 60,
+    "Provider": "Memory"
   }
 }
 ```
@@ -28,11 +28,11 @@ Rate limiting runs before token authentication. Invalid tokens consume from thei
 |---|---|---|
 | `Enabled` | Enable or disable rate limiting globally | `true` |
 | `IpLimit` | Maximum requests per IP per window | `100` |
-| `IpWindow` | Window duration in seconds for IP limits | `60` |
+| `IpWindowSeconds` | Window duration in seconds for IP limits | `60` |
 | `TokenLimit` | Maximum requests per token per window | `1000` |
-| `TokenWindow` | Window duration in seconds for token limits | `60` |
-| `Store` | Bucket storage backend, `Memory` or `Redis` | `Memory` |
-| `RedisConnectionString` | Connection string for the Redis store | none |
+| `TokenWindowSeconds` | Window duration in seconds for token limits | `60` |
+| `Provider` | Bucket storage backend, `Memory` or `Redis` | `Memory` |
+| `Redis:ConnectionString` | Connection string for the Redis store | none |
 
 The `Memory` store keeps bucket state in process memory; behind a load balancer, limits apply per instance.
 
@@ -61,13 +61,15 @@ The Redis store shares bucket state across instances:
 ```json
 {
   "RateLimiting": {
-    "Store": "Redis",
-    "RedisConnectionString": "localhost:6379"
+    "Provider": "Redis",
+    "Redis": {
+      "ConnectionString": "localhost:6379"
+    }
   }
 }
 ```
 
-An empty `RedisConnectionString` reuses the [caching](/reference/caching) connection string. Buckets are evaluated atomically on the Redis server, with the Redis server clock. When Redis is unreachable, the in-memory store is used with per-instance limits.
+An empty `Redis:ConnectionString` reuses the [caching](/reference/caching) connection string. Buckets are evaluated atomically on the Redis server, with the Redis server clock. When Redis is unreachable, the in-memory store is used with per-instance limits.
 
 ## Rate limit response
 

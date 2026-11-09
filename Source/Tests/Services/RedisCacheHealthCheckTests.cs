@@ -22,7 +22,7 @@ public class RedisCacheHealthCheckTests
     private static RedisCacheProvider Provider(string connectionString, bool fallbackToMemoryCache = true) => new(
         Options.Create(new CacheOptions
         {
-            ProviderType = CacheProviderType.Redis,
+            Provider = CacheProviderType.Redis,
             Redis = new RedisOptions { ConnectionString = connectionString, FallbackToMemoryCache = fallbackToMemoryCache }
         }),
         new MemoryCacheProvider(Options.Create(new CacheOptions())));
@@ -64,7 +64,7 @@ public class RedisCacheHealthCheckTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Caching:ProviderType"] = "Redis",
+                ["Caching:Provider"] = "Redis",
                 ["Caching:Redis:ConnectionString"] = Unreachable
             })
             .Build();
@@ -88,7 +88,7 @@ public class RedisCacheHealthCheckTests
             var configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Caching:ProviderType"] = "Redis",
+                    ["Caching:Provider"] = "Redis",
                     ["Caching:Redis:ConnectionString"] = connectionString
                 })
                 .Build();

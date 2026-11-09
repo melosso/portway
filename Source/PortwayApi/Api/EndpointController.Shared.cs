@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 using PortwayApi.Classes;
 using PortwayApi.Helpers;
@@ -6,35 +7,38 @@ using Serilog;
 
 namespace PortwayApi.Api;
 
-public partial class EndpointController
+public sealed partial class EndpointController
 {
     /// <summary>
     /// Resolves an endpoint via the central resolver; returns an error result when not found
     /// </summary>
-    private IActionResult? TryResolveEndpoint(
+    private bool TryResolveEndpoint(
         EndpointType type,
         string endpointName,
         string? namespaceName,
-        out EndpointDefinition endpoint,
+        [NotNullWhen(true)] out EndpointDefinition? endpoint,
+        [NotNullWhen(false)] out IActionResult? error,
         string? notFoundMessage = null)
     {
-        if (_endpointResolver.TryResolve(type, namespaceName, endpointName, out var found))
+        endpoint = null;
+        if (!_endpointResolver.TryResolve(type, namespaceName, endpointName, out var found))
         {
-            endpoint = found!;
-
-            // Resolved but switched off: report the outage instead of serving
-            if (!endpoint.Enabled)
-            {
-                Log.Debug("Endpoint disabled: {EndpointName}", endpointName);
-                return DisabledEndpoint.Result(this);
-            }
-
-            return null;
+            Log.Warning("Endpoint not found: {EndpointName}", endpointName);
+            error = PortwayResults.NotFound(notFoundMessage ?? $"Endpoint '{endpointName}' not found");
+            return false;
         }
 
-        endpoint = null!;
-        Log.Warning("Endpoint not found: {EndpointName}", endpointName);
-        return PortwayResults.NotFound(notFoundMessage ?? $"Endpoint '{endpointName}' not found");
+        // Resolved but switched off: report the outage instead of serving
+        if (!found.Enabled)
+        {
+            Log.Debug("Endpoint disabled: {EndpointName}", endpointName);
+            error = DisabledEndpoint.Result(this);
+            return false;
+        }
+
+        endpoint = found;
+        error = null;
+        return true;
     }
 
     /// <summary>
@@ -58,6 +62,28 @@ public partial class EndpointController
         Log.Error(ex, "Error processing {Operation} request for {Path}", operation, Request.Path);
         return PortwayResults.ServerError(HttpContext, "Error processing. Please check the logs for more details.");
     }
+
+    private const string KeyForms = @"guid'(?<key>[\w\-]+)'|'(?<key>[^']+)'|(?<key>[0-9a-fA-F\-]{36})|(?<key>\d+)";
+
+    [GeneratedRegex(@"^[\w\-]+\((?:" + KeyForms + @")\)$")]
+    private static partial Regex KeyedName();
+
+    [GeneratedRegex(@"^\((?:" + KeyForms + @")\)$|^guid'(?<key>[\w\-]+)'$|^'(?<key>[^']+)'$|^(?<key>\d+)$")]
+    private static partial Regex KeySegment();
+
+    /// <summary>
+    /// Key in a segment such as Items(123), Items('ABC') or Items(guid'...')
+    /// </summary>
+    internal static string? ReadKeyedName(string segment) =>
+        KeyedName().Match(segment) is { Success: true } match ? match.Groups["key"].Value : null;
+
+    /// <summary>
+    /// Key in the segment after an endpoint name, with or without parentheses
+    /// </summary>
+    internal static string? ReadKeySegment(string segment) =>
+        KeySegment().Match(segment) is { Success: true } match ? match.Groups["key"].Value
+        : Guid.TryParse(segment, out _) ? segment
+        : null;
 
     private sealed record ResolvedIdentity(string Path, (EndpointType Type, string Namespace, string Name, int NameIndex)? Value);
 
@@ -109,6 +135,9 @@ public partial class EndpointController
         return null;
     }
 
+    // read after environment checks
+    private bool _malformedSqlKey;
+
     /// <summary>
     /// Parses the catchall segment to determine endpoint type and name with namespace support
     /// </summary>
@@ -130,27 +159,8 @@ public partial class EndpointController
             // If the endpoint part itself included the id (e.g. Cancellations(123) ) extract it
             if (Regex.IsMatch(potentialEndpointRaw, @"\([^\)]*\)$"))
             {
-                // attempt to extract id from the parentheses in segment[1]
-                var segment = potentialEndpointRaw;
-                id = segment switch
-                {
-                    // guid'...' form: Cancellations(guid'...') 
-                    var s when Regex.IsMatch(s, @"^\w+\(guid'([\w\-]+)'\)$") =>
-                        Regex.Match(s, @"^\w+\(guid'([\w\-]+)'\)$").Groups[1].Value,
-
-                    // quoted string form: Cancellations('value')
-                    var s when Regex.IsMatch(s, @"^\w+\('([^']+)'\)$") =>
-                        Regex.Match(s, @"^\w+\('([^']+)'\)$").Groups[1].Value,
-
-                    // plain GUID inside parentheses: Cancellations(744276de-4918-4b56-af75-16901371983b)
-                    var s when Regex.IsMatch(s, @"^\w+\(([0-9a-fA-F\-]{36})\)$") =>
-                        Regex.Match(s, @"^\w+\(([0-9a-fA-F\-]{36})\)$").Groups[1].Value,
-
-                    // numeric key: Cancellations(123)
-                    var s when Regex.IsMatch(s, @"^\w+\((\d+)\)$") =>
-                        Regex.Match(s, @"^\w+\((\d+)\)$").Groups[1].Value,
-                    _ => null
-                };
+                id = ReadKeyedName(potentialEndpointRaw);
+                _malformedSqlKey = id is null && endpointType == EndpointType.SQL;
             }
 
             // The segment after the endpoint may contain an ID or the remaining path
@@ -161,28 +171,7 @@ public partial class EndpointController
                 // Extract ID if it matches expected patterns (only if we didn't already get id)
                 if (id == null)
                 {
-                    id = thirdSegment switch
-                    {
-                        // Parenthesized formats
-                        var seg when Regex.IsMatch(seg, @"^\(guid'([\w\-]+)'\)$") =>
-                            Regex.Match(seg, @"^\(guid'([\w\-]+)'\)$").Groups[1].Value,
-                        var seg when Regex.IsMatch(seg, @"^\('([^']+)'\)$") =>
-                            Regex.Match(seg, @"^\('([^']+)'\)$").Groups[1].Value,
-                        var seg when Regex.IsMatch(seg, @"^\(([0-9a-fA-F\-]{36})\)$") =>
-                            Regex.Match(seg, @"^\(([0-9a-fA-F\-]{36})\)$").Groups[1].Value,
-                        var seg when Regex.IsMatch(seg, @"^\((\d+)\)$") =>
-                            Regex.Match(seg, @"^\((\d+)\)$").Groups[1].Value,
-
-                        // Non-parenthesized formats 
-                        var seg when Regex.IsMatch(seg, @"^guid'([\w\-]+)'$") =>
-                            Regex.Match(seg, @"^guid'([\w\-]+)'$").Groups[1].Value,
-                        var seg when Regex.IsMatch(seg, @"^'([^']+)'$") =>
-                            Regex.Match(seg, @"^'([^']+)'$").Groups[1].Value,
-                        var seg when Guid.TryParse(seg, out _) => seg,
-                        var seg when Regex.IsMatch(seg, @"^\d+$") => seg,
-
-                        _ => null
-                    };
+                    id = ReadKeySegment(thirdSegment);
 
                     // Set remaining path if there are segments after the ID
                     if (id != null && segments.Length > nameIndex + 2)
@@ -220,19 +209,7 @@ public partial class EndpointController
             endpointName, fallbackRemainingPath);
 
         // Extract ID from endpoint name (legacy format)
-        fallbackId = endpointName switch
-        {
-            var name when Regex.IsMatch(name, @"^\w+\(guid'([\w\-]+)'\)$") =>
-                Regex.Match(name, @"^\w+\(guid'([\w\-]+)'\)$").Groups[1].Value,
-            var name when Regex.IsMatch(name, @"^\w+\('([^']+)'\)$") =>
-                Regex.Match(name, @"^\w+\('([^']+)'\)$").Groups[1].Value,
-            // plain GUID inside parentheses fallback
-            var name when Regex.IsMatch(name, @"^\w+\(([0-9a-fA-F\-]{36})\)$") =>
-                Regex.Match(name, @"^\w+\(([0-9a-fA-F\-]{36})\)$").Groups[1].Value,
-            var name when Regex.IsMatch(name, @"^\w+\((\d+)\)$") =>
-                Regex.Match(name, @"^\w+\((\d+)\)$").Groups[1].Value,
-            _ => null
-        };
+        fallbackId = ReadKeyedName(endpointName);
 
         // Clean endpoint name if ID was extracted
         if (fallbackId != null)

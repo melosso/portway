@@ -20,15 +20,39 @@ internal static class OpenApiVersionSelector
             .ToList();
 
     /// <summary>
-    /// Removes the paths and tags of other versions; false when the version has no operations
+    /// Removes the paths and tags of other versions; the highest version also keeps endpoints without a version folder. False when the version has no operations
     /// </summary>
     public static bool Select(OpenApiDocument document, string version)
     {
-        var bases = OpenApiEndpointCatalog.All()
-            .Where(e => EndpointVersion.Number(e.Definition.Version) == EndpointVersion.Number(version))
+        var endpoints = OpenApiEndpointCatalog.All().ToList();
+        var number = EndpointVersion.Number(version);
+        var highest = number == EndpointVersion.Number(Versions()[^1]);
+        var bases = endpoints
+            .Where(e => EndpointVersion.Number(e.Definition.Version) == number || (highest && IsUnversioned(e.Definition, endpoints)))
             .Select(e => e.BasePath)
             .ToList();
 
+        if (!Keep(document, bases))
+        {
+            return false;
+        }
+
+        foreach (var operation in document.Paths!.Values.SelectMany(p => p.Operations?.Values ?? Enumerable.Empty<OpenApiOperation>()))
+        {
+            EndpointVersionDocumentFilter.RemoveVersionLabels(operation, version);
+        }
+
+        return true;
+    }
+
+    // no v{n} folder and no other version of the same endpoint
+    private static bool IsUnversioned(EndpointDefinition definition, IEnumerable<(string BasePath, EndpointDefinition Definition)> endpoints) =>
+        definition.Version is null
+        && !endpoints.Any(e => e.Definition.Version is not null && e.Definition.Type == definition.Type
+            && string.Equals(e.Definition.FullPath, definition.FullPath, StringComparison.OrdinalIgnoreCase));
+
+    private static bool Keep(OpenApiDocument document, IReadOnlyList<string> bases)
+    {
         foreach (var pathKey in (document.Paths?.Keys ?? Enumerable.Empty<string>()).ToList())
         {
             if (!bases.Any(b => OpenApiEndpointCatalog.Covers(b, pathKey)))

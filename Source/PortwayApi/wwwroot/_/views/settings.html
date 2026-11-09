@@ -1,4 +1,5 @@
 <script src="js/components/dialog.js"></script>
+<script src="js/components/settings-form.js"></script>
 <style>
     .wizard-intro {
         font-size: 0.82rem;
@@ -78,83 +79,6 @@
     }
     .settings-section.active {
         display: flex;
-    }
-    .settings-pane {
-        display: flex;
-        flex-direction: column;
-        gap: 2rem;
-    }
-
-    /* Markdown fields need the full card width, not the 22rem control column */
-    .setting-row-stacked {
-        grid-template-columns: minmax(0, 1fr);
-    }
-    .setting-row-stacked textarea {
-        width: 100%;
-        resize: vertical;
-        min-height: 3.5rem;
-        font-family: inherit;
-        line-height: 1.5;
-    }
-
-    .setting-unit {
-        position: relative;
-    }
-    .setting-unit .input {
-        width: 100%;
-        padding-right: 3.5rem;
-    }
-    .setting-unit span {
-        position: absolute;
-        right: 0.75rem;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 0.8125rem;
-        color: hsl(var(--muted-foreground));
-        pointer-events: none;
-    }
-    .setting-label label {
-        display: inline;
-    }
-    .setting-link {
-        margin-left: 0.25rem;
-        color: hsl(var(--muted-foreground));
-    }
-    .setting-link:hover {
-        color: hsl(var(--foreground));
-    }
-    .card-footer-actions {
-        display: flex;
-        gap: 0.5rem;
-    }
-    .setting-value .card-footer-actions {
-        justify-content: flex-end;
-    }
-    .card-doc {
-        align-self: center;
-        width: 1rem;
-        height: 1rem;
-        background-color: hsl(var(--muted-foreground));
-        -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/%3E%3Cpath d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/%3E%3C/svg%3E") center / contain no-repeat;
-        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/%3E%3Cpath d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/%3E%3C/svg%3E") center / contain no-repeat;
-    }
-    .card-doc:hover {
-        background-color: hsl(var(--foreground));
-    }
-
-    .setting-on {
-        color: hsl(var(--success));
-        font-weight: 600;
-    }
-    .setting-off {
-        color: hsl(var(--muted-foreground));
-    }
-    .setting-bad {
-        color: hsl(var(--destructive));
-    }
-    .setting-warn {
-        color: hsl(var(--warning, var(--destructive)));
-        font-weight: 600;
     }
 
     .card-featured .ai-clear-row {
@@ -266,6 +190,16 @@
 
                 <div class="card">
                     <div class="card-header">
+                        <h2 class="card-title">Redis</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/reference/caching" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
+                    </div>
+                    <div class="card-body" id="redisBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
                         <h2 class="card-title">SQL Connection Pooling</h2>
                         <a class="card-doc" href="https://melosso.github.io/portway/reference/app-settings#sqlconnectionpooling" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
                     </div>
@@ -291,10 +225,10 @@
 
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title">Logging</h2>
-                        <a class="card-doc" href="https://melosso.github.io/portway/reference/logging" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
+                        <h2 class="card-title">Outbound Proxy</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/reference/app-settings" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
                     </div>
-                    <div class="card-body" id="loggingBody">
+                    <div class="card-body" id="outboundProxyBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
                     </div>
                 </div>
@@ -421,125 +355,6 @@
 
 <script>
 
-let _writable = {};
-
-// display labels for raw choice values
-const CHOICE_LABELS = { _blank: 'New tab', _self: 'Same tab' };
-
-// pages a setting serves, relative to the base href
-const SETTING_LINKS = {
-  'OpenApi:Enabled': 'docs',
-  'OpenApi:ServeMarkdown': 'docs/openapi.md',
-  'Console:Customization:EnableLandingPage': './'
-};
-
-const EXTERNAL_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
-
-function labelBlock(label, desc, forId, key) {
-  const env = key ? _writable[key]?.env : null;
-  const href = key ? SETTING_LINKS[key] : null;
-  const link = href != null
-    ? ` <a class="setting-link" href="${href}" target="_blank" rel="noopener noreferrer" aria-label="Open" title="Open">${EXTERNAL_SVG}</a>`
-    : '';
-  const note = env
-    ? `<p title="${esc(env)}">Managed by environment variable</p>`
-    : desc ? `<p>${esc(desc)}</p>` : '';
-  return `<div class="setting-label">
-      <label${forId ? ` for="${forId}"` : ''}>${label}</label>${link}
-      ${note}
-    </div>`;
-}
-
-function settingItem(label, value, desc, key) {
-  return settingItemRaw(label, esc(String(value ?? '—')), desc, key);
-}
-
-function settingItemRaw(label, valueHtml, desc, key) {
-  return `<div class="setting-row">
-    ${labelBlock(label, desc, null, key)}
-    <span class="setting-value">${valueHtml}</span>
-  </div>`;
-}
-
-// setting row with a status icon and the status text as tooltip
-function statusItem(label, state, status, desc) {
-  return settingItemRaw(label, statusIcon(state, status, 'left'), desc);
-}
-
-function riskItem(label, ok, okText, badText, desc) {
-  return statusItem(label, ok ? 'ok' : 'warn', ok ? okText : badText, desc);
-}
-
-function editable(key) {
-  const spec = _writable[key];
-  return spec && !spec.env ? spec : null;
-}
-
-// env-set values render as disabled controls, skipped on save
-function locked(key) { return _writable[key]?.env ? ' disabled' : ''; }
-
-const LIST_KINDS = ['originlist', 'iplist', 'cidrlist'];
-
-// one editable row; control and value come from the writable schema entry
-// scale converts the stored value into the displayed unit, e.g. bytes shown as MB
-function field(key, label, desc, { unit, scale = 1, multiline, placeholder = '' } = {}) {
-  const spec = _writable[key];
-  if (!spec) return settingItem(label, '—', desc);
-  const id = 'set-' + key.replace(/[:.]/g, '-');
-  const dis = locked(key);
-  const attrs = `${dis} id="${id}" data-setting="${key}"`;
-  const ph = ` placeholder="${esc(placeholder)}"`;
-  const maxlength = spec.max != null ? ` maxlength="${spec.max}"` : '';
-  const v = spec.value;
-  let control;
-  let stacked = false;
-
-  if (spec.kind === 'bool') {
-    control = `<label class="switch${dis}"><input${attrs} data-kind="bool" type="checkbox"${v ? ' checked' : ''}><span class="slider"></span></label>`;
-  } else if (spec.kind === 'int') {
-    const shown = v != null ? Math.round((v / scale) * 100) / 100 : '';
-    const min = spec.min != null ? ` min="${spec.min / scale}"` : '';
-    const max = spec.max != null ? ` max="${spec.max / scale}"` : '';
-    const step = scale !== 1 ? ' step="any"' : '';
-    const input = `<input${attrs} data-kind="int" data-scale="${scale}" type="number" class="input"${min}${max}${step} value="${shown}">`;
-    control = unit ? `<div class="setting-unit">${input}<span>${esc(unit)}</span></div>` : input;
-  } else if (spec.kind === 'choice') {
-    const opts = (spec.choices ?? []).map(c =>
-      `<option value="${esc(c)}"${c.toLowerCase() === String(v ?? '').toLowerCase() ? ' selected' : ''}>${esc(CHOICE_LABELS[c] ?? c)}</option>`).join('');
-    control = `<select${attrs} data-kind="choice" class="input">${opts}</select>`;
-  } else if (spec.kind === 'time') {
-    control = `<input${attrs} data-kind="time" type="time" class="input" value="${esc(v ?? '')}">`;
-  } else if (LIST_KINDS.includes(spec.kind)) {
-    stacked = true;
-    control = `<textarea${attrs} data-kind="list" class="input" rows="3" spellcheck="false"${ph}>${esc((v ?? []).join('\n'))}</textarea>`;
-  } else if (multiline) {
-    stacked = true;
-    control = `<textarea${attrs} data-kind="text" class="input" rows="2"${maxlength}${ph}>${esc(v ?? '')}</textarea>`;
-  } else {
-    control = `<input${attrs} data-kind="text" type="text" class="input"${maxlength} spellcheck="false"${ph} value="${esc(v ?? '')}">`;
-  }
-
-  return `<div class="setting-row${stacked ? ' setting-row-stacked' : ''}">
-    ${labelBlock(label, desc, id, key)}
-    ${control}
-  </div>`;
-}
-
-function cardFooter(bodyId, actionsHtml = '') {
-  return `<div class="card-footer">
-    <span class="restart-note" id="${bodyId}-note"></span>
-    <div class="card-footer-actions">
-      ${actionsHtml}
-      <button class="btn btn-primary card-save" disabled onclick="saveCard('${bodyId}', this)">Save</button>
-    </div>
-  </div>`;
-}
-
-// a card's save button enables on its first edit
-['input', 'change'].forEach(type => document.addEventListener(type, e => {
-  e.target.closest?.('[data-setting]')?.closest('.card')?.querySelector('.card-save')?.removeAttribute('disabled');
-}));
-
 function fmtKb(bytes) { return `${Math.max(0, Math.round(bytes / 1024))} KB`; }
 
 function maintenanceSummary(r) {
@@ -659,41 +474,6 @@ function clearAdminKey() {
   });
 }
 
-// Collects the editable controls in one card and sends them as a single request
-async function saveCard(bodyId, btn) {
-  const body = document.getElementById(bodyId);
-  if (!body) return;
-  const changes = {};
-  body.querySelectorAll('[data-setting]:not(:disabled)').forEach(el => {
-    const key = el.dataset.setting;
-    el.classList.remove('input-invalid');
-    if (el.dataset.kind === 'bool') changes[key] = el.checked;
-    else if (el.dataset.kind === 'int') changes[key] = Math.round(Number(el.value) * (Number(el.dataset.scale) || 1));
-    else if (el.dataset.kind === 'list') changes[key] = el.value.split('\n').map(v => v.trim()).filter(Boolean);
-    else changes[key] = el.value;
-  });
-  if (!Object.keys(changes).length) return;
-
-  btn.classList.add('is-loading');
-  btn.disabled = true;
-  try {
-    const r = await api('/_/api/settings', {
-      method: 'PUT', body: changes, success: 'Settings saved', failure: 'Failed to save settings'
-    });
-    await load();
-    const note = document.getElementById(bodyId + '-note');
-    if (note) note.textContent = r.restart_required ? 'Saved. Restart Portway to apply.' : '';
-  } catch(e) {
-    if (e.field) {
-      const el = body.querySelector(`[data-setting="${e.field}"]`);
-      if (el) { el.classList.add('input-invalid'); el.focus(); }
-    }
-  } finally {
-    btn.classList.remove('is-loading');
-    btn.disabled = false;
-  }
-}
-
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 // card body id to its rows; footer: false marks a read-only card
@@ -731,6 +511,14 @@ const CARDS = {
       { placeholder: '172.18.0.0/16' }),
     field('Console:PublicOrigins', 'Public console origins', 'Origins that may open the console from outside the local network. One per line.',
       { placeholder: 'https://portway.example.com' }),
+    field('Console:CorsOrigins', 'CORS origins', 'Browser origins allowed to call the API. One per line.',
+      { placeholder: 'https://app.example.com' }),
+    field('AllowedHosts', 'Allowed hosts', 'Host names this gateway answers to. One per line, * for any.',
+      { placeholder: 'portway.example.com' }),
+    field('PathBase', 'Path base', 'Prefix for every route, such as /portway. The console moves with it.',
+      { placeholder: '/portway' }),
+    field('Console:SeedPassword', 'Seed password', 'First-start password of the seeded account.'),
+    field('Console:SeedToken', 'Seed token', 'First-start token value.'),
     field('Oidc:Enabled', 'Single sign-on', feat.oidc_providers
       ? `Sign-in through ${feat.oidc_providers} configured provider(s).`
       : 'Sign-in through an identity provider. No providers configured.'),
@@ -757,13 +545,13 @@ const CARDS = {
     field('OpenApi:ShowNamespaces', 'Group by namespace', 'Groups endpoints by namespace in the sidebar.'),
     field('OpenApi:DefaultGroup', 'Default group', 'Group for endpoints without a namespace.', { placeholder: 'General' }),
     field('OpenApi:ShowBadges', 'MCP and OData badges', 'Labels operations that support MCP or OData.'),
-    field('OpenApi:ScalarTheme', 'Theme', 'Color theme of the reference.'),
-    field('OpenApi:ScalarLayout', 'Layout', 'Page layout of the reference.'),
-    field('OpenApi:ScalarShowSidebar', 'Sidebar', 'Shows the operation sidebar.'),
-    field('OpenApi:ScalarHideDownloadButton', 'Hide download', 'Hides the document download button.'),
-    field('OpenApi:ScalarHideModels', 'Hide models', 'Hides the schema section.'),
-    field('OpenApi:ScalarHideClientButton', 'Hide client generation', 'Hides the client code generator.'),
-    field('OpenApi:ScalarHideTestRequestButton', 'Hide test requests', 'Hides the request runner.'),
+    field('OpenApi:Scalar:Theme', 'Theme', 'Color theme of the reference.'),
+    field('OpenApi:Scalar:Layout', 'Layout', 'Page layout of the reference.'),
+    field('OpenApi:Scalar:ShowSidebar', 'Sidebar', 'Shows the operation sidebar.'),
+    field('OpenApi:Scalar:HideDownloadButton', 'Hide download', 'Hides the document download button.'),
+    field('OpenApi:Scalar:HideModels', 'Hide models', 'Hides the schema section.'),
+    field('OpenApi:Scalar:HideClientButton', 'Hide client generation', 'Hides the client code generator.'),
+    field('OpenApi:Scalar:HideTestRequestButton', 'Hide test requests', 'Hides the request runner.'),
   ] },
 
   footerBody: { rows: () => [
@@ -774,7 +562,7 @@ const CARDS = {
   ] },
 
   customizationBody: { rows: () => [
-    field('Console:Customization:EnableLandingPage', 'Landing page', 'Serves the public landing page.'),
+    field('Console:Customization:LandingPageEnabled', 'Landing page', 'Serves the public landing page.'),
     field('Console:Customization:PromoText', 'Promo banner', 'Markdown banner across the console.', { multiline: true, placeholder: 'Empty hides the banner' }),
     field('Console:Customization:PromoLogin', 'Banner on sign-in', 'Shows the banner on the sign-in page.'),
     field('Console:Customization:LoginFooter', 'Sign-in footer', 'Markdown below the sign-in form.', { multiline: true, placeholder: 'Contact your [administrator](mailto:...)' }),
@@ -784,6 +572,10 @@ const CARDS = {
     rows: ({ database_maintenance: dbm = {} }) => [
       field('DatabaseMaintenance:Enabled', 'Enabled', 'Checks, analyzes and compacts the SQLite databases daily.'),
       field('DatabaseMaintenance:Schedule', 'Run at', 'Server local time of the daily run.'),
+      field('DatabaseMaintenance:RunOnStartup', 'Run on start', 'Also runs once when Portway starts.'),
+      field('DatabaseMaintenance:FreePageRatioThreshold', 'Compact above', 'Share of free pages that triggers compaction.', { placeholder: '0.25' }),
+      field('DatabaseMaintenance:AuditRetention:Days', 'Token audit retention', 'Maintenance deletes FailedAuth and AuthorizationFailed entries older than this. Use 0 to disable.', { unit: 'days' }),
+      field('DatabaseMaintenance:AuditRetention:MaxSizeMb', 'Token audit size limit', 'Maintenance deletes the oldest FailedAuth and AuthorizationFailed entries above this size. Use 0 to disable.', { unit: 'MB' }),
       settingItem('Last run', dbm.last_run_utc ? new Date(dbm.last_run_utc).toLocaleString() : 'Not yet', 'Most recent completed run.'),
       ...(dbm.last_results ?? []).map(r => statusItem(esc(r.database),
         r.integrity === 'ok' ? 'ok' : r.integrity ? 'bad' : 'warn',
@@ -797,38 +589,60 @@ const CARDS = {
     '<div id="backupList"></div>',
   ] },
 
-  rateLimitBody: { rows: ({ rate_limiting: rl = {} }) => [
+  rateLimitBody: { rows: () => [
     field('RateLimiting:Enabled', 'Enabled', 'Limits requests per client address and per token.'),
-    settingItem('Store', rl.store ?? 'Memory', 'Memory or Redis, set at startup.'),
+    field('RateLimiting:Provider', 'Store', 'Redis shares limits across instances.'),
+    field('RateLimiting:Redis:ConnectionString', 'Redis connection', 'Empty uses the cache Redis connection. Stored encrypted.'),
     field('RateLimiting:IpLimit', 'Requests per IP', 'Requests allowed from one address per window.'),
-    field('RateLimiting:IpWindow', 'IP window', 'Length of the address window.', { unit: 's' }),
+    field('RateLimiting:IpWindowSeconds', 'IP window', 'Length of the address window.', { unit: 's' }),
     field('RateLimiting:TokenLimit', 'Requests per token', 'Default for tokens without their own limit.'),
-    field('RateLimiting:TokenWindow', 'Token window', 'Length of the token window.', { unit: 's' }),
+    field('RateLimiting:TokenWindowSeconds', 'Token window', 'Length of the token window.', { unit: 's' }),
   ] },
 
-  cachingBody: { rows: ({ caching: c = {} }) => [
+  cachingBody: { rows: () => [
     field('Caching:Enabled', 'Enabled', 'Caches responses of endpoints with caching enabled.'),
-    settingItem('Provider', c.provider ?? '—', 'Memory or Redis, set at startup.'),
+    field('Caching:Provider', 'Provider', 'Redis shares the cache across instances.'),
     field('Caching:DefaultCacheDurationSeconds', 'Default duration', 'Time a cached response stays valid.', { unit: 's' }),
     field('Caching:MemoryCacheSizeLimitMB', 'Memory budget', 'Upper limit of the in-memory cache.', { unit: 'MB' }),
+    field('Caching:EndpointCacheDurations', 'Per-endpoint duration', 'One Endpoint=seconds per line.', { placeholder: 'Products=600' }),
+    field('Caching:CacheableContentTypes', 'Cached content types', 'Responses of these types are cached. One per line.', { placeholder: 'application/json' }),
+  ] },
+
+  redisBody: { rows: () => [
+    field('Caching:Redis:ConnectionString', 'Connection', 'Redis connection string. Stored encrypted.'),
+    field('Caching:Redis:InstanceName', 'Key prefix', 'Prefix of every cache key.', { placeholder: 'Portway:' }),
+    field('Caching:Redis:Database', 'Database', 'Redis database number.'),
+    field('Caching:Redis:UseSsl', 'TLS', 'Connects over TLS.'),
+    field('Caching:Redis:ConnectTimeoutMs', 'Connect timeout', 'Wait time to connect.', { unit: 'ms' }),
+    field('Caching:Redis:AbortOnConnectFail', 'Fail on connect error', 'Stops retrying when the first connect fails.'),
+    field('Caching:Redis:FallbackToMemoryCache', 'Memory fallback', 'Uses the memory cache while Redis is unreachable.'),
+    field('Caching:Redis:MaxRetryAttempts', 'Retries', 'Attempts per failed operation.'),
+    field('Caching:Redis:RetryDelayMs', 'Retry delay', 'Wait time between attempts.', { unit: 'ms' }),
   ] },
 
   sqlBody: { rows: () => [
     field('SqlConnectionPooling:Enabled', 'Enabled', 'Reuses database connections between requests.'),
     field('SqlConnectionPooling:MinPoolSize', 'Minimum pool size', 'Connections kept open per connection string.'),
     field('SqlConnectionPooling:MaxPoolSize', 'Maximum pool size', 'Upper limit before requests wait for a connection.'),
-    field('SqlConnectionPooling:ConnectionTimeout', 'Connection timeout', 'Wait time to open a connection.', { unit: 's' }),
-    field('SqlConnectionPooling:CommandTimeout', 'Command timeout', 'Wait time for a statement to finish.', { unit: 's' }),
+    field('SqlConnectionPooling:ConnectionTimeoutSeconds', 'Connection timeout', 'Wait time to open a connection.', { unit: 's' }),
+    field('SqlConnectionPooling:CommandTimeoutSeconds', 'Command timeout', 'Wait time for a statement to finish.', { unit: 's' }),
+    field('SqlConnectionPooling:ApplicationName', 'Application name', 'Name reported to the database server.'),
   ] },
 
-  fileBody: { rows: ({ file_storage: f = {} }) => [
-    settingItem('Storage directory', f.directory || '—', 'Folder for uploaded files, set at startup.'),
+  fileBody: { rows: () => [
+    field('FileStorage:StorageDirectory', 'Storage directory', 'Folder for uploaded files, relative to the Portway folder.', { placeholder: 'storage/files' }),
     field('FileStorage:MaxFileSizeBytes', 'Max file size', 'Largest accepted upload.', { unit: 'MB', scale: 1048576 }),
+    field('FileStorage:UseMemoryCache', 'Memory cache', 'Keeps recent uploads in memory.'),
+    field('FileStorage:MemoryCacheDurationSeconds', 'Memory cache duration', 'Time a file stays in memory.', { unit: 's' }),
+    field('FileStorage:MaxTotalMemoryCacheMB', 'Memory cache budget', 'Upper limit of files held in memory.', { unit: 'MB' }),
+    field('FileStorage:AllowedExtensions', 'Allowed extensions', 'Empty allows every extension not blocked. One per line.', { placeholder: '.pdf' }),
+    field('FileStorage:BlockedExtensions', 'Blocked extensions', 'Refused on upload. One per line.', { placeholder: '.exe' }),
   ] },
 
-  loggingBody: { rows: () => [
-    field('Serilog:MinimumLevel:Default', 'Minimum level', 'Events below this level are not written.'),
-    field('RequestTrafficLogging:Enabled', 'Request traffic logging', 'Records proxied requests to file or SQLite.'),
+  outboundProxyBody: { rows: () => [
+    field('Proxy:Username', 'Username', 'Account for outbound requests through a Windows proxy.'),
+    field('Proxy:Password', 'Password', 'Stored encrypted.'),
+    field('Proxy:Domain', 'Domain', 'Windows domain of the account.'),
   ] },
 
   reloadBody: { rows: () => [
@@ -836,16 +650,21 @@ const CARDS = {
     field('EndpointReloading:DebounceMs', 'Debounce', 'Wait time after a change before reloading.', { unit: 'ms' }),
   ] },
 
-  telemetryBody: { rows: ({ telemetry: tel = {} }) => [
+  telemetryBody: { rows: () => [
     field('Telemetry:Provider', 'Provider', 'Exporter for traces and metrics.'),
     field('Telemetry:ServiceName', 'Service name', 'Service name on every span and metric.', { placeholder: 'Portway.Api' }),
     field('Telemetry:Otlp:Endpoint', 'OTLP endpoint', 'Collector address for the Otlp provider.', { placeholder: 'http://localhost:4317' }),
-    ...(tel.prometheus_path ? [settingItem('Scrape path', tel.prometheus_path, 'Path Prometheus scrapes metrics from.')] : []),
+    field('Telemetry:ResourceAttributes', 'Resource attributes', 'key=value pairs on every span and metric, comma separated.', { placeholder: 'deployment.environment=production' }),
+    field('Telemetry:Prometheus:Path', 'Scrape path', 'Path Prometheus scrapes metrics from.', { placeholder: '/metrics' }),
   ] },
 
   mcpBody: { rows: () => [
     field('Mcp:Enabled', 'Enabled', 'Serves the MCP server for AI clients.'),
-    field('Mcp:RequireAuthentication', 'Require a token', 'Rejects MCP calls without a bearer token.'),
+    field('Mcp:Path', 'Path', 'Route of the MCP server.', { placeholder: '/mcp' }),
+    field('Mcp:ToolTimeoutSeconds', 'Tool timeout', 'Wait time for one tool call.', { unit: 's' }),
+    field('Mcp:DefaultPageSize', 'Default page size', 'Rows per tool result page.'),
+    field('Mcp:MaxPageSize', 'Max page size', 'Upper limit a client can request.'),
+    field('Mcp:MaxToolResultChars', 'Result limit', 'Characters per tool result sent to the model.'),
   ] },
 
   chatBody: { rows: () => [
@@ -859,10 +678,7 @@ async function load() {
 
   try {
     const d = await api('/_/api/settings', { failure: 'Failed to load settings' });
-    _writable = Object.fromEntries((d.writable ?? []).map(w => [w.key, w]));
-    for (const [id, card] of Object.entries(CARDS)) {
-      document.getElementById(id).innerHTML = card.rows(d).join('') + (card.footer === false ? '' : cardFooter(id, card.actions));
-    }
+    renderCards(CARDS, d);
     loadBackups();
     loadUsageRows(d.mcp?.enabled);
   } catch(e) {

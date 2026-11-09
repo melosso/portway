@@ -10,4 +10,7 @@ public sealed record ChatDelta
     public string? ToolName { get; init; } // tool_call: which tool
     public string? ToolInput { get; init; } // tool_call: raw JSON input
     public string? ToolResult { get; init; } // tool_call: result after execution
+    [System.Text.Json.Serialization.JsonIgnore] public string? ToolCallId { get; init; }
+    // gemini thought signature, returned with the call in the next request
+    [System.Text.Json.Serialization.JsonIgnore] public string? ToolSignature { get; init; }
 }

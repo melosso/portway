@@ -3,7 +3,7 @@ namespace PortwayApi.Auth;
 /// <summary>
 /// A registered OpenID Connect provider: Authelia, Authentik, Pocket ID, Keycloak, or anything else publishing a discovery document
 /// </summary>
-public class OidcProvider
+public sealed class OidcProvider
 {
     public int Id { get; set; }
 

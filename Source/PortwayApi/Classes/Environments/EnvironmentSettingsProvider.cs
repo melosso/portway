@@ -8,8 +8,15 @@ using PortwayApi.Helpers;
 
 namespace PortwayApi.Classes;
 
-public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
+public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 {
+    private static readonly JsonSerializerOptions SettingsFileJsonOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+    };
+
     private readonly string _basePath;
     private readonly string? _keyVaultUri;
     private readonly string? _privateKeyPem;
@@ -733,14 +740,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
                 }
             }
 
-            var jsonOptions = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-            };
-
-            var json = JsonSerializer.Serialize(config, jsonOptions);
+            var json = JsonSerializer.Serialize(config, SettingsFileJsonOptions);
             AtomicFile.WriteAllText(settingsPath, json);
             Log.Debug("Successfully saved encrypted configuration to {Path}", settingsPath);
         }

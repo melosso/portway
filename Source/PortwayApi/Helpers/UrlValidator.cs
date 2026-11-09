@@ -12,19 +12,15 @@ public class UrlValidator
 {
     private readonly List<string> _allowedHosts;
     private readonly List<string> _blockedRanges;
-    private readonly ConcurrentDictionary<string, bool> _hostCache;
-    private readonly ConcurrentDictionary<string, IPAddress[]> _dnsCache = new();
     private readonly ConcurrentDictionary<string, Regex> _regexCache = new();
 
     public UrlValidator(string configPath)
     {
-        _hostCache = new ConcurrentDictionary<string, bool>();
-
         EnsureConfigFileExists(configPath);
 
         var config = JsonSerializer.Deserialize<HostConfig>(
             File.ReadAllText(configPath),
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+            SharedJsonOptions.CaseInsensitive
         );
 
         if (config == null)
@@ -156,10 +152,10 @@ public class UrlValidator
             var uri = new Uri(url);
             string host = uri.Host.Split(':')[0];
 
-            Log.Debug("Validating URL: {Url}", url);
+            Log.Debug("Validating URL: {Url}", UrlRedaction.Redact(url));
             Log.Debug("Host to validate: {Host}", host);
 
-            // Check allowedHosts first; explicit allowlist bypasses IP range checks
+            // blockedIpRanges applies at connection
             bool isHostAllowed = _allowedHosts.Any(allowed =>
                 string.Equals(host, allowed, StringComparison.OrdinalIgnoreCase) ||
                 MatchHostPattern(host, allowed));
@@ -204,12 +200,12 @@ public class UrlValidator
                 return false;
             }
 
-            Log.Debug("URL {Url} validated successfully", url);
+            Log.Debug("URL {Url} validated successfully", UrlRedaction.Redact(url));
             return true;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "URL Validation Error for {Url}", url);
+            Log.Error(ex, "URL Validation Error for {Url}", UrlRedaction.Redact(url));
             return false;
         }
     }
@@ -258,25 +254,6 @@ public class UrlValidator
     }
 
     /// <summary>
-    /// Validates if the given host is allowed based on the configuration
-    /// </summary>
-    public virtual bool IsHostAllowed(string host)
-    {
-        if (_hostCache.TryGetValue(host, out bool isAllowed))
-            return isAllowed;
-
-        if (IsHostPatternAllowed(host))
-        {
-            _hostCache[host] = true;
-            return true;
-        }
-
-        bool isValid = ValidateHost(host);
-        _hostCache[host] = isValid;
-        return isValid;
-    }
-
-    /// <summary>
     /// Creates a default configuration file if one is not already present at configPath
     /// </summary>
     private void EnsureConfigFileExists(string configPath)
@@ -295,25 +272,6 @@ public class UrlValidator
     }
 
     /// <summary>
-    /// Validates the host against the allowed hosts and blocked IP ranges
-    /// </summary>
-    private bool ValidateHost(string host)
-    {
-        // Resolve DNS and check IP ranges
-        var addresses = ResolveDnsWithCache(host);
-        return addresses.All(IsIpAllowed);
-    }
-
-    /// <summary>
-    /// Checks if the host matches any of the allowed patterns
-    /// </summary>
-    private bool IsHostPatternAllowed(string host)
-    {
-        return _allowedHosts.Any(pattern =>
-            MatchHostPattern(host, pattern));
-    }
-
-    /// <summary>
     /// Matches host against a wildcard pattern
     /// </summary>
     private bool MatchHostPattern(string host, string pattern)
@@ -322,24 +280,6 @@ public class UrlValidator
             "^" + Regex.Escape(p).Replace(@"\*", "[^.]*") + "$",
             RegexOptions.Compiled | RegexOptions.IgnoreCase));
         return regex.IsMatch(host);
-    }
-
-    /// <summary>
-    /// Resolves the DNS for the given host and caches the result
-    /// </summary>
-    private IPAddress[] ResolveDnsWithCache(string host)
-    {
-        return _dnsCache.GetOrAdd(host, key =>
-        {
-            try
-            {
-                return Dns.GetHostAddresses(key) ?? Array.Empty<IPAddress>();
-            }
-            catch
-            {
-                return Array.Empty<IPAddress>();
-            }
-        });
     }
 
     /// <summary>

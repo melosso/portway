@@ -244,7 +244,7 @@ public class SqlTableValuedFunctionHelperTests
         };
 
         // Act
-        var result = SqlTableValuedFunctionHelper.BuildFunctionCall(schema, functionName, parameterValues, functionParameters);
+        var result = SqlTableValuedFunctionHelper.BuildFunctionCall(new PortwayApi.Services.Providers.MsSqlProvider(), schema, functionName, parameterValues, functionParameters);
 
         // Assert
         Assert.StartsWith("SELECT * FROM [dbo].[GetCustomerOrders]", result.FunctionCall);
@@ -254,5 +254,19 @@ public class SqlTableValuedFunctionHelperTests
         // Check the parameter values exist (type conversion may occur)
         Assert.NotNull(result.SqlParameters["@param0"]);
         Assert.NotNull(result.SqlParameters["@param1"]);
+    }
+
+    [Theory]
+    [InlineData(@"^(a+)+$", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!")]
+    [InlineData(@"(", "anything")]
+    public void ExtractParameterValues_BrokenOrSlowPattern_RejectsValue(string pattern, string value)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.QueryString = QueryString.Create("code", value);
+        var parameters = new List<TVFParameter> { new() { Name = "code", SqlType = "nvarchar", Source = "Query", ValidationPattern = pattern } };
+
+        var (_, errors) = SqlTableValuedFunctionHelper.ExtractParameterValues(parameters, context.Request, []);
+
+        Assert.NotEmpty(errors);
     }
 }

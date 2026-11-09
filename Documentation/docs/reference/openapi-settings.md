@@ -20,14 +20,16 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 | Errors | One shared response per status code under `components/responses` (`BadRequest`, `Unauthorized`, ...), each with the `ErrorResponse` schema (`ValidationErrorResponse` for `422`); `Unauthorized` declares `WWW-Authenticate` |
 | Security | Bearer requirement declared once on the document root |
 | `operationId` | `{method}_{namespace}_{endpoint}` (`get_WMS_Bins`, `merge_WMS_Bins`); `_byId` for `GET {endpoint}({id})`; composites `composite_...`, files `uploadFile_...`, `listFiles_...`, `downloadFile_...`, `deleteFile_...`. Derived from the route. Adding an endpoint changes no other id |
-| SQL key lookup | `GET /api/{env}/{endpoint}({id})` for tables and views that allow `GET` |
+| SQL key lookup | `GET /api/{env}/{endpoint}({id})` for tables and views that allow `GET`. `{id}` accepts `123`, `'ABC'`, `guid'...'` or a plain GUID; any other value returns `400` |
 | Tenant headers | Optional header parameters per `Tenancy` header; tenant columns `readOnly` in request bodies |
 | Table-valued function parameters | Query and header parameters from `FunctionParameters` |
 | `Hidden: true` | Endpoint omitted |
 | `Mcp.Exposed: true` | `MCP` badge (`x-badges`) on the endpoint's operations |
 | OData parameters | `OData` badge on operations that accept `$filter` |
+| `Badges` | `x-badges` on the endpoint's operations |
+| `Stability` | `x-scalar-stability` on the endpoint's operations; omitted for a deprecated endpoint |
 | `ExternalDocs` | Document-level `externalDocs` |
-| Endpoint versions | `/api/{env}/v{n}/...` paths under the endpoint's tag; `(v{n})` summary and `operationId` suffix ([Versions](/reference/namespaces#versions)) |
+| Endpoint versions | `/api/{env}/v{n}/...` paths under the endpoint's tag; `_v{n}` `operationId` suffix. `/docs/openapi.json` also includes a `(v{n})` summary suffix and version badge ([Versions](/reference/namespaces#versions)) |
 | Stored procedure names | Never included |
 
 ## Global configuration
@@ -60,13 +62,15 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
       "Url": "https://example.com/api-guide",
       "Description": "Integration guide"
     },
-    "ScalarTheme": "default",
-    "ScalarLayout": "modern",
-    "ScalarShowSidebar": true,
-    "ScalarHideDownloadButton": false,
-    "ScalarHideModels": true,
-    "ScalarHideClientButton": true,
-    "ScalarHideTestRequestButton": false
+    "Scalar": {
+      "Theme": "default",
+      "Layout": "modern",
+      "ShowSidebar": true,
+      "HideDownloadButton": false,
+      "HideModels": true,
+      "HideClientButton": true,
+      "HideTestRequestButton": false
+    }
   }
 }
 ```
@@ -90,21 +94,23 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 | `ForceHttpsInProduction` | boolean | HTTPS server URLs in production (default `true`) |
 | `ShowNamespaces` | boolean | Groups endpoints by namespace in the sidebar (default `true`); `false` lists every endpoint flat |
 | `DefaultGroup` | string | Sidebar group for endpoints without a namespace (default `General`); empty lists them ungrouped |
-| `ShowBadges` | boolean | `MCP` and `OData` badges on operations (default `true`) |
+| `ShowBadges` | boolean | `MCP` and `OData` badges on operations (default `true`). Configured `Badges` are independent of this setting. |
 | `ServeMarkdown` | boolean | Serves the reference as Markdown at `/docs/openapi.md` (default `true`, `PORTWAY_OPENAPI_MARKDOWN`) |
 | `ExternalDocs.Url` | string | Link to an external API guide, shown with the document description; empty omits it |
 | `ExternalDocs.Description` | string | Label for that link |
-| `ScalarTheme` | string | Scalar theme; `portway` applies the console colours |
-| `ScalarLayout` | string | `modern` or `classic` |
-| `ScalarShowSidebar` | boolean | Sidebar |
-| `ScalarHideDownloadButton` | boolean | Hides the document download |
-| `ScalarHideModels` | boolean | Hides the schema section |
-| `ScalarHideClientButton` | boolean | Hides client generation |
-| `ScalarHideTestRequestButton` | boolean | Hides test requests |
+| `Scalar.Theme` | string | Scalar theme; `portway` applies the console colours |
+| `Scalar.Layout` | string | `modern` or `classic` |
+| `Scalar.ShowSidebar` | boolean | Sidebar |
+| `Scalar.HideDownloadButton` | boolean | Hides the document download |
+| `Scalar.HideModels` | boolean | Hides the schema section |
+| `Scalar.HideClientButton` | boolean | Hides client generation |
+| `Scalar.HideTestRequestButton` | boolean | Hides test requests |
+
+The flat `ScalarTheme`, `ScalarLayout`, `ScalarShowSidebar` and `ScalarHide*` keys are deprecated and still read: [Deprecated keys](/reference/app-settings#deprecated-keys).
 
 The console edits these properties under **Settings → OpenAPI** (`/_/settings#openapi`: OpenAPI, API Reference and Reference Footer cards), except `SecurityDefinition.Name`, `Type`, `In` and `Scheme`: Portway accepts tokens only in the `Authorization` header. `Enabled` and `SecurityDefinition.Description` apply after a restart; the others apply on save. `Version` and `DefaultGroup` accept letters, digits, `.`, `-` and `_`. `Footer.Url` accepts `http`, `https` and `mailto` links or `#`. `ExternalDocs.Url` accepts `http` and `https` links or empty.
 
-The document is served at `/docs/openapi.json`; `/docs/openapi/v{n}/openapi.json` holds the operations of one endpoint version. Other names under `/docs/openapi/{name}/openapi.json` redirect to `/docs/openapi.json`.
+The document is served at `/docs/openapi.json`; `/docs/openapi/v{n}/openapi.json` contains the operations of one endpoint version. The document of the highest version also contains every endpoint without a `v{n}` folder and is the default document of `/docs`. Other names under `/docs/openapi/{name}/openapi.json` redirect to `/docs/openapi.json`.
 
 Every operation has a shareable URL under `/docs` (for example `/docs/tag/...`). Code samples cover curl (default), C#, JavaScript, Python and PowerShell.
 
@@ -135,7 +141,7 @@ Every operation has a shareable URL under `/docs` (for example `/docs/tag/...`).
 | Property | Type | Required | Description |
 |---|---|---|---|
 | `TagDescription` | string | No | Tag description (Markdown) |
-| `MethodDescriptions` | object | No | Short summary per method |
+| `MethodDescriptions` | object | No | Short summary per method. `GET:id` (case-insensitive) sets the SQL key lookup summary; default `Get {DisplayName} by ID`, or `Get record by ID` without `DisplayName` |
 | `MethodDocumentation` | object | No | Long description per method (Markdown) |
 | `Examples` | object | No | Success response example per method; replaces generated sample data |
 

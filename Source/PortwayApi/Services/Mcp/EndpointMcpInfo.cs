@@ -5,7 +5,12 @@ public sealed record EndpointMcpInfo
     public string Name { get; init; } = string.Empty;
     public string? Namespace { get; init; }
     public string? Version { get; init; }
-    public string Url { get; init; } = string.Empty;
+    public bool Deprecated { get; init; }
+    public DateTimeOffset? Sunset { get; init; }
+    /// <summary>
+    /// Relationship names accepted by $expand
+    /// </summary>
+    public IReadOnlyList<string> Expandable { get; init; } = [];
     public IReadOnlyList<string> Methods { get; init; } = [];
     public IReadOnlyList<string>? AllowedEnvironments { get; init; }
     public IReadOnlyList<string>? AvailableFields { get; init; }
@@ -30,4 +35,8 @@ public sealed record EndpointMcpInfo
     /// "api" | "static" | "file"; affects how the chat layer handles the response
     /// </summary>
     public string EndpointKind { get; init; } = "api";
+    /// <summary>
+    /// Proxy upstreams define their own QUERY body
+    /// </summary>
+    public bool IsProxy { get; init; }
 }

@@ -28,7 +28,7 @@
         <span class="card-title">How MCP works</span>
       </div>
       <div class="card-body">
-        <p style="color: var(--text-secondary); font-size: 0.875rem; line-height: 1.6;">
+        <p style="color: hsl(var(--muted-foreground)); font-size: 0.875rem; line-height: 1.6;">
           Endpoints marked <strong>Expose in MCP</strong> are published as callable tools at the MCP server path below. AI clients connect to that path and can invoke these tools during chat. Endpoints not listed here will not be visible to AI clients.
         </p>
       </div>
@@ -46,7 +46,7 @@
     <div class="card" style="margin-top: 1.5rem;">
       <div class="card-header">
         <span class="card-title">Exposed Tools</span>
-        <span id="toolCount" class="card-count"></span>
+        <span id="toolCount" class="muted" style="font-size:0.75rem"></span>
       </div>
       <div class="card-body" id="toolsBody">
         <span class="muted" style="font-size:0.8rem">Loading endpoints...</span>
@@ -87,7 +87,6 @@ async function load() {
 
     document.getElementById('mcpConfig').innerHTML = [
       settingItem('Server path', mcp.path || '/mcp'),
-      boolItem('Require Authentication', mcp.require_authentication),
     ].join('');
 
     const [endpointsRes, toolsRes] = await Promise.all([
@@ -124,37 +123,29 @@ async function load() {
 
     let html = '';
     Object.keys(grouped).sort().forEach(ns => {
-      html += '<div style="margin-bottom: 1.25rem;">';
-      html += '<div style="font-weight: 600; color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">' + esc(ns) + '</div>';
-      html += '<div style="display: flex; flex-direction: column; gap: 0.5rem;">';
+      html += '<div class="tools-group">' + esc(ns) + '</div>';
       grouped[ns].forEach(ep => {
-        const methodsHtml = (ep.methods || ['GET']).map(m =>
-          '<span class="method-badge method-' + m.toLowerCase() + '">' + m + '</span>'
-        ).join('');
-        // ep.name is already the full dict key e.g. "Finance/OutstandingItems"
-        const isUnhealthy = missingMetadataKeys.has(ep.name);
-        const unhealthyBadge = isUnhealthy
-          ? '<span class="badge-unhealthy" title="No SQL field metadata. Query hints for this tool are limited.">No metadata</span>'
+        const shortName = ep.name.startsWith(ns + '/') ? ep.name.slice(ns.length + 1) : ep.name;
+        const metadataBadge = missingMetadataKeys.has(ep.name)
+          ? '<span class="badge badge-warning" title="No SQL field metadata. Query hints for this tool are limited.">No metadata</span>'
           : '';
-        html += '<div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem; background: var(--bg-secondary); border-radius: 6px;">';
-        html += '<div style="flex: 1;">';
-        html += '<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">';
-        html += methodsHtml;
-        html += '<span style="font-weight: 500;">' + esc(ep.name) + '</span>';
-        html += unhealthyBadge;
-        html += '</div>';
-        html += '<div style="font-size: 0.75rem; color: var(--text-secondary); word-break: break-all;">' + esc(ep.url) + '</div>';
-        html += '</div>';
-        html += '</div>';
+        html += '<div class="settings-item">' +
+          '<div class="tool-main">' +
+            '<div class="settings-item-label">' + esc(shortName) + '</div>' +
+            '<div class="settings-item-desc tool-url">' + esc(ep.url) + '</div>' +
+          '</div>' +
+          '<div class="tool-meta">' + metadataBadge +
+            '<span class="tool-methods">' + esc((ep.methods || ['GET']).join(' ')) + '</span>' +
+          '</div>' +
+        '</div>';
       });
-      html += '</div></div>';
     });
 
     document.getElementById('toolsBody').innerHTML = html;
 
   } catch(e) {
     document.getElementById('toolsBody').innerHTML = 
-      '<p class="muted" style="font-size:0.875rem; color: var(--error);">Failed to load: ' + esc(e.message) + '</p>';
+      '<p style="font-size:0.875rem; color: hsl(var(--destructive));">Failed to load: ' + esc(e.message) + '</p>';
   }
 }
 
@@ -176,30 +167,20 @@ load();
 }
 .setup-banner svg { flex-shrink: 0; color: hsl(var(--warning, 38 92% 50%)); }
 .setup-banner a { color: inherit; font-weight: 600; }
-.method-badge {
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 10px;
+.tools-group {
+  padding-top: 1.25rem;
+  font-size: 0.8125rem;
   font-weight: 600;
-  font-family: var(--font-mono);
+  color: hsl(var(--muted-foreground));
 }
-.method-get { background: #e3f2fd; color: #1565c0; }
-.method-post { background: #f3e5f5; color: #7b1fa2; }
-.method-put { background: #fff3e0; color: #e65100; }
-.method-delete { background: #ffebee; color: #c62828; }
-.method-patch { background: #e8f5e9; color: #2e7d32; }
-.badge-unhealthy {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  font-family: var(--font-mono);
-  background: color-mix(in srgb, var(--warning, #f59e0b) 15%, transparent);
-  color: color-mix(in srgb, var(--warning, #f59e0b) 80%, #000 20%);
-  border: 1px solid color-mix(in srgb, var(--warning, #f59e0b) 40%, transparent);
+.tools-group:first-child { padding-top: 0; }
+.tool-main { min-width: 0; }
+.tool-url { font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace; overflow-wrap: anywhere; }
+.tool-meta { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
+.tool-methods {
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
 }
 </style>
 

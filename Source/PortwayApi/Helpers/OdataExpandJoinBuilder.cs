@@ -12,10 +12,9 @@ public static class OdataExpandJoinBuilder
     {
         foreach (var spec in specs)
         {
-            // INNER JOIN target AS Nav ON Nav.TargetColumn = root.LocalColumn (to-one)
-            query = query.Join($"{spec.TargetTable} as {spec.NavName}",
-                j => j.On($"{spec.NavName}.{spec.TargetColumn}", $"{rootTable}.{spec.LocalColumn}"),
-                "inner join");
+            // left join includes unmatched root rows
+            query = query.LeftJoin($"{spec.TargetTable} as {spec.NavName}",
+                j => j.On($"{spec.NavName}.{spec.TargetColumn}", $"{rootTable}.{spec.LocalColumn}"));
 
             // Namespaced alias so target columns arrive as dotted keys (Nav.Column) for later nesting
             foreach (var column in spec.TargetColumns.Distinct(StringComparer.OrdinalIgnoreCase))

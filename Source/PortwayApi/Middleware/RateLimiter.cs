@@ -1,13 +1,12 @@
 namespace PortwayApi.Middleware;
 
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
 using Serilog;
 using Microsoft.Extensions.DependencyInjection;
 using PortwayApi.Auth;
 using PortwayApi.Helpers;
 
-public class RateLimiter
+public sealed class RateLimiter
 {
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -53,12 +52,6 @@ public class RateLimiter
 
         // Agrees with UseWebUiAuth so the exemption check applies exactly when the UI middleware does
         _uiAuthEnabled = webUiEnabled;
-
-        if (_settings.Enabled)
-        {
-            _logger.LogInformation("Rate limiting enabled. Store: {Store}, IP: {IpLimit}/{IpWindow}s, Token: {TokenLimit}/{TokenWindow}s",
-                _store.GetType().Name, _settings.IpLimit, _settings.IpWindow, _settings.TokenLimit, _settings.TokenWindow);
-        }
 
         // Periodically remove expired entries to prevent unbounded dictionary growth
         _cleanupTimer = timeProvider.CreateTimer(_ => CleanupExpiredEntries(), null,
@@ -173,23 +166,23 @@ public class RateLimiter
             }
             else
             {
-                // removes the entry if it still holds the expired block
+                // removes the entry if it still contains the expired block
                 _state.BlockedIps.TryRemove(KeyValuePair.Create(clientIp, blockInfo));
                 Log.Information("Rate limit for IP {IP} has expired, allowing traffic", clientIp);
             }
         }
 
         // IP-based rate limiting
-        var ipLease = await _store.TryConsumeAsync($"ip:{clientIp}", _settings.IpLimit, _settings.IpWindow, context.RequestAborted);
+        var ipLease = await _store.TryConsumeAsync($"ip:{clientIp}", _settings.IpLimit, _settings.IpWindowSeconds, context.RequestAborted);
 
         if (!ipLease.Allowed)
         {
             // Deliberate penalty box: an overflowing IP is blocked for the full window as a deterrent
-            var blockedUntil = now.AddSeconds(_settings.IpWindow);
+            var blockedUntil = now.AddSeconds(_settings.IpWindowSeconds);
             _state.BlockedIps[clientIp] = (blockedUntil, now); // Log this first violation
 
-            Log.Warning("IP {IP} has exceeded rate limit, blocking for {Seconds}s", clientIp, _settings.IpWindow);
-            await RespondWithRateLimit(context, clientIp, _settings.IpWindow, _settings.IpLimit, "ip", true);
+            Log.Warning("IP {IP} has exceeded rate limit, blocking for {Seconds}s", clientIp, _settings.IpWindowSeconds);
+            await RespondWithRateLimit(context, clientIp, _settings.IpWindowSeconds, _settings.IpLimit, "ip", true);
             return;
         }
 
@@ -307,7 +300,7 @@ public class RateLimiter
             {
                 var details = await tokenService.GetTokenDetailsByTokenAsync(token);
                 if (details?.RateLimitRequests is int requests and > 0)
-                    return (requests, details.RateLimitWindowSeconds is int w and > 0 ? w : _settings.TokenWindow);
+                    return (requests, details.RateLimitWindowSeconds is int w and > 0 ? w : _settings.TokenWindowSeconds);
             }
         }
         catch (Exception ex)
@@ -316,7 +309,7 @@ public class RateLimiter
             Log.Warning(ex, "Per-token rate limit lookup failed, using global limits");
         }
 
-        return (_settings.TokenLimit, _settings.TokenWindow);
+        return (_settings.TokenLimit, _settings.TokenWindowSeconds);
     }
 
     private TokenBlockInfo CreateBlockInfo(DateTimeOffset now, int windowSeconds)

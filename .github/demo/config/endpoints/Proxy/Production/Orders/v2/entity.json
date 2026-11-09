@@ -8,6 +8,52 @@
             "POST": "Create a new production order",
             "PUT": "Update production order status",
             "DELETE": "Cancel/Delete production order"
+        },
+        "MethodDocumentation": {
+            "GET": "Returns every production order. Status values: `planned`, `in_progress`, `on_hold`, `completed`, `cancelled`.",
+            "POST": "Creates a production order. Returns `201` with the order.",
+            "PUT": "Replaces the production order with the request body. Returns the order.",
+            "DELETE": "Cancels the production order. Returns `204`."
+        },
+        "Examples": {
+            "GET": [
+                {
+                    "id": "01M3MB76W0ERN9SECTH5W46XH3",
+                    "orderNumber": "PO-2026-0412",
+                    "sku": "EP-1208",
+                    "quantity": 500,
+                    "status": "completed",
+                    "plant": "Eindhoven",
+                    "dueDate": "2026-10-02"
+                },
+                {
+                    "id": "01M3V77KV0QAPDZKAQ25W9A88A",
+                    "orderNumber": "PO-2026-0413",
+                    "sku": "PB-2700",
+                    "quantity": 120,
+                    "status": "completed",
+                    "plant": "Eindhoven",
+                    "dueDate": "2026-10-05"
+                }
+            ],
+            "POST": {
+                "id": "01M60XP470EHCKJMYMCB9HKW8H",
+                "orderNumber": "PO-2026-0422",
+                "sku": "BS-3050",
+                "quantity": 1500,
+                "status": "planned",
+                "plant": "Eindhoven",
+                "dueDate": "2026-11-14"
+            },
+            "PUT": {
+                "id": "01M43RVQ508F04RWHXFF59V1W5",
+                "orderNumber": "PO-2026-0414",
+                "sku": "PU-1000",
+                "quantity": 40,
+                "status": "completed",
+                "plant": "Eindhoven",
+                "dueDate": "2026-10-16"
+            }
         }
     },
     "Mcp": {

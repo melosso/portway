@@ -1,33 +1,37 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using PortwayApi.Classes;
+using PortwayApi.Helpers;
+using PortwayApi.Services;
 
 namespace PortwayApi.Api;
 
-public partial class EndpointController
+public sealed partial class EndpointController
 {
     private async Task<IActionResult> HandleSqlGetRequest(
         string env,
         string endpointName,
         string? id,
         string? remainingPath,
-        string? select,
-        string? filter,
-        string? orderby,
-        int top,
-        int skip,
+        ODataReadOptions options,
         string httpMethod = "GET")
     {
-        if (TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint) is { } resolveError)
+        if (!TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint, out var resolveError))
         {
             return resolveError;
+        }
+
+        var unreadablePath = id is null && !string.IsNullOrEmpty(remainingPath) && !SqlTableValuedFunctionHelper.IsTableValuedFunction(endpoint);
+        if (_malformedSqlKey || unreadablePath)
+        {
+            return PortwayResults.BadRequest(SqlRequestHandler.InvalidRecordIdMessage);
         }
 
         var tenants = ResolveTenants(endpoint, out var refusal);
         if (refusal is not null)
             return refusal;
 
-        return await _sqlRequestHandler.HandleSqlGetRequest(HttpContext, endpoint, env, endpointName, id, remainingPath, select, filter, orderby, top, skip, httpMethod, tenants.Values);
+        return await _sqlRequestHandler.HandleSqlGetRequest(HttpContext, endpoint, env, endpointName, id, remainingPath, options, httpMethod, tenants.Values);
     }
 
     private async Task<IActionResult> HandleSqlPostRequest(
@@ -35,7 +39,7 @@ public partial class EndpointController
         string endpointName,
         JsonElement data)
     {
-        if (TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint) is { } resolveError)
+        if (!TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint, out var resolveError))
         {
             return resolveError;
         }
@@ -52,7 +56,7 @@ public partial class EndpointController
         string endpointName,
         JsonElement data)
     {
-        if (TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint) is { } resolveError)
+        if (!TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint, out var resolveError))
         {
             return resolveError;
         }
@@ -70,7 +74,7 @@ public partial class EndpointController
         JsonDocument requestBody,
         string method = "PATCH")
     {
-        if (TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint) is { } resolveError)
+        if (!TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint, out var resolveError))
         {
             return resolveError;
         }
@@ -87,7 +91,7 @@ public partial class EndpointController
         string endpointName,
         string id)
     {
-        if (TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint) is { } resolveError)
+        if (!TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint, out var resolveError))
         {
             return resolveError;
         }

@@ -1,12 +1,57 @@
 {
     "Url": "http://nginx/api/products",
-    "Methods": [
-        "GET"
-    ],
+    "Methods": ["GET", "QUERY"],
     "Documentation": {
         "TagDescription": "Manage your product catalog and inventory SKUs. Version 2 returns `itemCode` and `description`.",
         "MethodDescriptions": {
-            "GET": "List all products"
+            "GET": "List all products",
+            "QUERY": "Search products"
+        },
+        "MethodDocumentation": {
+            "GET": "Returns every product with `itemCode`, `description`, price and stock.",
+            "QUERY": "Sends the JSON request body to the product service. Returns the `GET` shape."
+        },
+        "Examples": {
+            "GET": [
+                {
+                    "id": "01JJ2X71S0SJ41J3YJJ2YJERM3",
+                    "itemCode": "EP-1208",
+                    "description": "Euro pallet 1200 x 800 mm (EPAL)",
+                    "unit": "pcs",
+                    "price": 14.5,
+                    "currency": "EUR",
+                    "stock": 1840
+                },
+                {
+                    "id": "01JJACP0M000346E13R40TXBRJ",
+                    "itemCode": "PB-2700",
+                    "description": "Pallet rack beam 2700 mm",
+                    "unit": "pcs",
+                    "price": 42.9,
+                    "currency": "EUR",
+                    "stock": 312
+                }
+            ],
+            "QUERY": [
+                {
+                    "id": "01JJ2X71S0SJ41J3YJJ2YJERM3",
+                    "itemCode": "EP-1208",
+                    "description": "Euro pallet 1200 x 800 mm (EPAL)",
+                    "unit": "pcs",
+                    "price": 14.5,
+                    "currency": "EUR",
+                    "stock": 1840
+                },
+                {
+                    "id": "01JJACP0M000346E13R40TXBRJ",
+                    "itemCode": "PB-2700",
+                    "description": "Pallet rack beam 2700 mm",
+                    "unit": "pcs",
+                    "price": 42.9,
+                    "currency": "EUR",
+                    "stock": 312
+                }
+            ]
         }
     },
     "Mcp": {

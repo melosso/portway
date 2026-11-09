@@ -3,7 +3,7 @@ namespace PortwayApi.Services.Configuration;
 /// <summary>
 /// Configuration options for endpoint hot-reload functionality
 /// </summary>
-public class EndpointReloadingOptions
+public sealed class EndpointReloadingOptions
 {
     /// <summary>
     /// Master kill switch - enables/disables endpoint hot-reload

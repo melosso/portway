@@ -21,7 +21,6 @@ public sealed class StaticRequestHandler
         _cacheManager = cacheManager;
     }
 
-    private static readonly JsonSerializerOptions IndentedJsonOptions = new() { WriteIndented = true };
 
     /// <summary>
     /// Serves a resolved static endpoint request
@@ -38,7 +37,7 @@ public sealed class StaticRequestHandler
         int skip)
     {
         var url = $"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}{context.Request.QueryString}";
-        Log.Debug("Static Content Request: {Url}", url);
+        Log.Debug("Static Content Request: {Url}", UrlRedaction.Redact(url));
 
         {
             var endpointPath = endpoint.ConfigDirectory ?? Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", endpointName);
@@ -204,7 +203,7 @@ public sealed class StaticRequestHandler
             // Build result in the correct API format
             var result = CollectionResponse<object>.Of(items.Select(SerializeJsonElement).ToList()!);
 
-            var resultJson = JsonSerializer.Serialize(result, IndentedJsonOptions);
+            var resultJson = JsonSerializer.Serialize(result, SharedJsonOptions.Indented);
             var resultBytes = Encoding.UTF8.GetBytes(resultJson);
 
             Log.Debug("JSON filtering applied successfully: {Count} items returned", items.Count);

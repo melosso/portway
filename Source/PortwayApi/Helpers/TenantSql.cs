@@ -7,7 +7,7 @@ namespace PortwayApi.Helpers;
 /// <summary>
 /// Tenant column and value
 /// </summary>
-public readonly record struct TenantPredicate(string Column, string Value);
+public readonly record struct TenantPredicate(string Column, string Value, bool ExactText = false);
 
 /// <summary>
 /// Tenant predicates and literals for SQL endpoints
@@ -35,6 +35,9 @@ public static class TenantSql
         if (predicates.Count == 0)
             return query;
 
+        // Clear a pending Not-operator from builders
+        query.Not(false);
+
         var existing = query.GetComponents("where");
         if (existing.Count > 0)
         {
@@ -48,7 +51,18 @@ public static class TenantSql
         }
 
         foreach (var predicate in predicates)
-            query.Where($"{table}.{predicate.Column}", Literal(predicate.Value));
+        {
+            if (predicate.ExactText)
+                WhereExactText(query, $"{table}.{predicate.Column}", predicate.Value);
+            else
+                query.Where($"{table}.{predicate.Column}", Literal(predicate.Value));
+        }
         return query;
     }
+
+    /// <summary>
+    /// Compares the column as text, for providers that coerce '3abc' to 3 on a numeric column
+    /// </summary>
+    public static Query WhereExactText(Query query, string column, string value) =>
+        query.WhereRaw($"CAST([{column.Replace(".", "].[")}] AS CHAR) = ?", value);
 }

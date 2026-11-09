@@ -14,10 +14,12 @@
     "CapacityUnits",
     "IsActive"
   ],
+  "Stability": "Experimental",
   "Documentation": {
     "TagDescription": "Staging bins used while inbound goods are being received.",
     "MethodDescriptions": {
-      "GET": "Retrieve inbound staging bins"
+      "GET": "Retrieve inbound staging bins",
+      "GET:id": "Retrieve inbound staging bin by ID"
     },
     "MethodDocumentation": {
       "GET": "Read-only view of the bins reserved for inbound receiving."

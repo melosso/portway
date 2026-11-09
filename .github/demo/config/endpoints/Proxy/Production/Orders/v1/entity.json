@@ -11,6 +11,45 @@
             "POST": "Create a new production order",
             "PUT": "Update production order status",
             "DELETE": "Cancel/Delete production order"
+        },
+        "MethodDocumentation": {
+            "GET": "Returns every production order with plant and due date.",
+            "POST": "Creates a production order. Returns `201` with the order id.",
+            "PUT": "Replaces the production order with the request body.",
+            "DELETE": "Cancels the production order."
+        },
+        "Examples": {
+            "GET": [
+                {
+                    "id": "01M3MB76W0ERN9SECTH5W46XH3",
+                    "order": "PO-2026-0412",
+                    "sku": "EP-1208",
+                    "quantity": 500,
+                    "status": "Completed",
+                    "plant": "Eindhoven",
+                    "dueDate": "2026-10-02"
+                },
+                {
+                    "id": "01M3V77KV0QAPDZKAQ25W9A88A",
+                    "order": "PO-2026-0413",
+                    "sku": "PB-2700",
+                    "quantity": 120,
+                    "status": "Completed",
+                    "plant": "Eindhoven",
+                    "dueDate": "2026-10-05"
+                }
+            ],
+            "POST": {
+                "id": "01M60XP470EHCKJMYMCB9HKW8H",
+                "message": "Production order created successfully"
+            },
+            "PUT": {
+                "id": "01M3MB76W0ERN9SECTH5W46XH3",
+                "message": "Production order updated successfully"
+            },
+            "DELETE": {
+                "message": "Production order deleted successfully"
+            }
         }
     },
     "Mcp": {

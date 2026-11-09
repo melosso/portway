@@ -18,7 +18,8 @@ public static partial class WebUiEndpointExtensions
 {
     private const string CookieName = "portway_auth";
     private const string CsrfCookieName = "portway_csrf";
-    private const int TokenExpiryHours = 12;
+    private static readonly TimeSpan SessionLifetime = TimeSpan.FromHours(12);
+    private static readonly TimeSpan RememberedSessionLifetime = TimeSpan.FromDays(30);
     private static readonly DateTime ProcessStartTime = DateTime.UtcNow;
 
     /// <summary>
@@ -72,27 +73,28 @@ public static partial class WebUiEndpointExtensions
                 !path.StartsWithSegments("/_/api/auth") &&
                 !path.StartsWithSegments("/_/api/customization"))
             {
-                var userId = context.Request.Cookies.TryGetValue(CookieName, out var cookie)
+                var session = context.Request.Cookies.TryGetValue(CookieName, out var cookie)
                     ? WebUiAuthHelper.ResolveSession(cookie)
                     : null;
 
-                if (userId is null)
+                if (session is not { } signedIn)
                 {
                     context.Response.Redirect($"{context.Request.PathBase}/_/login");
                     return;
                 }
 
-                context.Items[SignedInUserKey] = userId.Value;
+                context.Items[SignedInUserKey] = signedIn.UserId;
 
                 // recheck the account on every request so revocation is immediate
                 var accounts = context.RequestServices.GetRequiredService<AdminUserService>();
-                var account = await accounts.FindByIdAsync(userId.Value);
-                if (account is null || !account.IsActive)
+                var account = await accounts.FindByIdAsync(signedIn.UserId);
+                if (account is null || !account.IsActive || WebUiAuthHelper.SessionStamp(account.PasswordHash) != signedIn.Stamp)
                 {
                     context.Response.Redirect($"{context.Request.PathBase}/_/login");
                     return;
                 }
                 context.Items[SignedInUsernameKey] = account.Username;
+                context.Items[SignedInRoleKey] = account.Role;
 
                 // csrf double submit on mutations, client-error uses sendBeacon and is exempt
                 if (path.StartsWithSegments("/_/api") &&
@@ -116,7 +118,7 @@ public static partial class WebUiEndpointExtensions
                     if (!IsSelfServiceWrite(path) && account.Role != AdminUserRoles.Administrator)
                     {
                         Log.Warning("Console account {UserId} was refused {Method} {Path}: administrator role required",
-                            userId.Value, context.Request.Method, path.Value);
+                            signedIn.UserId, context.Request.Method, path.Value);
                         context.Response.StatusCode = 403;
                         context.Response.ContentType = "application/json";
                         await context.Response.WriteAsJsonAsync(new { error = "This action needs an administrator account" });
@@ -149,7 +151,7 @@ public static partial class WebUiEndpointExtensions
     /// </summary>
     internal static bool IsPublicOriginAllowed(HttpRequest request, string[] patterns)
     {
-        // navigation requests carry no origin header, fall back to scheme and host
+        // navigation requests include no origin header, fall back to scheme and host
         var origin = request.Headers.Origin.FirstOrDefault();
         if (string.IsNullOrEmpty(origin))
         {
@@ -200,17 +202,15 @@ public static partial class WebUiEndpointExtensions
         return app;
     }
 
-    private static string GenerateToken(int userId)
-        => WebUiAuthHelper.IssueSessionCookie(userId, TokenExpiryHours);
-
     /// <summary>
     /// The signed session, plus the CSRF cookie the pages echo back in X-CSRF-Token
     /// </summary>
-    internal static void IssueSessionCookies(HttpContext context, int userId, bool secureCookies)
+    internal static void IssueSessionCookies(HttpContext context, AdminUser account, bool secureCookies, bool remember = false)
     {
-        var expires = DateTimeOffset.UtcNow.AddHours(TokenExpiryHours);
+        var lifetime = remember ? RememberedSessionLifetime : SessionLifetime;
+        var expires = DateTimeOffset.UtcNow.Add(lifetime);
 
-        context.Response.Cookies.Append(CookieName, GenerateToken(userId), new CookieOptions
+        context.Response.Cookies.Append(CookieName, WebUiAuthHelper.IssueSessionCookie(account.Id, account.PasswordHash, lifetime), new CookieOptions
         {
             HttpOnly = true,
             Secure = secureCookies,
@@ -302,6 +302,7 @@ public static partial class WebUiEndpointExtensions
 
     internal const string SignedInUserKey = "portway.user";
     internal const string SignedInUsernameKey = "portway.username";
+    internal const string SignedInRoleKey = "portway.role";
 
     /// <summary>
     /// Composes a page from the shared shell, its view fragment and the footer, then applies the standard post-processing

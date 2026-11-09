@@ -3,7 +3,7 @@ using PortwayApi.Classes;
 
 namespace PortwayApi.Api;
 
-public partial class EndpointController
+public sealed partial class EndpointController
 {
     /// <summary>
     /// Handles proxy requests for any HTTP method
@@ -15,7 +15,7 @@ public partial class EndpointController
         string remainingPath,
         string method)
     {
-        if (TryResolveEndpoint(EndpointType.Proxy, endpointName, null, out var endpointDefinition) is { } resolveError)
+        if (!TryResolveEndpoint(EndpointType.Proxy, endpointName, null, out var endpointDefinition, out var resolveError))
         {
             return resolveError;
         }

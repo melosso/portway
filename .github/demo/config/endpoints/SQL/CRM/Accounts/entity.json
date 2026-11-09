@@ -1,0 +1,57 @@
+{
+  "DatabaseObjectName": "Accounts",
+  "Namespace": "CRM",
+  "NamespaceDisplayName": "CRM",
+  "AllowedEnvironments": ["WMS"],
+  "AllowedMethods": ["GET", "QUERY"],
+  "PrimaryKey": "Id",
+  "AllowedColumns": [
+    "Id;id",
+    "Name;name",
+    "AccountTypeCode;accountTypeCode",
+    "IndustryCode;industryCode",
+    "City;city",
+    "Country;country",
+    "VatNumber;vatNumber",
+    "Email;email",
+    "Website;website",
+    "Phone;phone",
+    "Employees;employees",
+    "AnnualRevenue;annualRevenue",
+    "Owner;owner",
+    "CreatedAt;createdAt"
+  ],
+  "Relationships": [
+    {
+      "Name": "AccountType",
+      "Target": "CRM/AccountTypes",
+      "LocalColumn": "AccountTypeCode",
+      "TargetColumn": "Code"
+    },
+    {
+      "Name": "Industry",
+      "Target": "CRM/Industries",
+      "LocalColumn": "IndustryCode",
+      "TargetColumn": "Code"
+    }
+  ],
+  "Properties": {
+    "MaxPageSize": 50,
+    "DefaultSort": "Name ASC"
+  },
+  "Documentation": {
+    "TagDescription": "Customer, prospect, partner and vendor accounts from the sales CRM.",
+    "MethodDescriptions": {
+      "GET": "List accounts",
+      "QUERY": "Search accounts"
+    },
+    "MethodDocumentation": {
+      "GET": "Returns accounts with type, industry and account owner. `$expand` accepts `AccountType` and `Industry`.",
+      "QUERY": "Same query as `GET` with the OData options in a JSON request body, e.g. `{\"filter\": \"status eq 'Open'\", \"top\": 5}`."
+    }
+  },
+  "Mcp": {
+    "Exposed": true,
+    "Instruction": ""
+  }
+}

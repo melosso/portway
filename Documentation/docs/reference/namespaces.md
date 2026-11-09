@@ -56,7 +56,7 @@ Endpoints without a namespace use `/api/{env}/{endpoint}` and `/api/{env}/{endpo
 
 ## Versions
 
-A `v{n}` folder (`v1` to `v999`) below an endpoint folder holds that version of the endpoint. Without a `v1` folder, the endpoint folder's own `entity.json` is `v1`.
+A `v{n}` folder (`v1` to `v999`) below an endpoint folder contains that version of the endpoint. Without a `v1` folder, the endpoint folder's own `entity.json` is `v1`.
 
 ```
 endpoints/SQL/Inventory/Products/
@@ -77,7 +77,7 @@ endpoints/SQL/Inventory/Products/
 | MCP | Each exposed version registers its own tool, with the version in the tool name |
 | Namespace named `v2` | Resolves as before; a versioned endpoint with the same path takes precedence, logged at load |
 
-The OpenAPI document lists every version under the endpoint's tag, with the version appended to the operation summary and `operationId`. `/docs/openapi/v{n}/openapi.json` holds one version; `/docs` offers a version switch when more than one version exists.
+The OpenAPI document will show every version configured for your endpoint's tag. Users will automatically be forwarded to the latest version available when accessing the `/docs` route.
 
 ### Retiring a version
 

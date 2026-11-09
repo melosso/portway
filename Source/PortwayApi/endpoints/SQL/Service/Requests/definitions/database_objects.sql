@@ -1,11 +1,57 @@
-USE [500]
+IF OBJECT_ID('dbo.ServiceRequestCategories') IS NULL
+CREATE TABLE dbo.ServiceRequestCategories (
+    CategoryId INT PRIMARY KEY,
+    CategoryName NVARCHAR(50) NOT NULL,
+    Description NVARCHAR(200)
+);
+GO
+IF OBJECT_ID('dbo.ServiceRequests') IS NULL
+CREATE TABLE dbo.ServiceRequests (
+    RequestId UNIQUEIDENTIFIER PRIMARY KEY,
+    CustomerCode NVARCHAR(20) NOT NULL,
+    Title NVARCHAR(100) NOT NULL,
+    Description NVARCHAR(MAX),
+    Priority INT,
+    Status NVARCHAR(20),
+    CategoryId INT,
+    AssignedTo NVARCHAR(50),
+    CreatedBy NVARCHAR(50),
+    CreatedDate DATETIME,
+    LastModifiedBy NVARCHAR(50),
+    LastModifiedDate DATETIME,
+    ResolvedDate DATETIME,
+    ClosedDate DATETIME,
+    DueDate DATETIME,
+    IsDeleted BIT NOT NULL DEFAULT 0
+);
+GO
+IF OBJECT_ID('dbo.ServiceRequestsAudit') IS NULL
+CREATE TABLE dbo.ServiceRequestsAudit (
+    RequestId UNIQUEIDENTIFIER NOT NULL,
+    Action NVARCHAR(20) NOT NULL,
+    Field NVARCHAR(50),
+    OldValue NVARCHAR(MAX),
+    NewValue NVARCHAR(MAX),
+    ModifiedBy NVARCHAR(50),
+    ModifiedDate DATETIME
+);
+GO
+IF OBJECT_ID('dbo.ServiceRequestComments') IS NULL
+CREATE TABLE dbo.ServiceRequestComments (
+    CommentId INT IDENTITY PRIMARY KEY,
+    RequestId UNIQUEIDENTIFIER NOT NULL,
+    Comment NVARCHAR(MAX) NOT NULL,
+    IsInternal BIT NOT NULL DEFAULT 0,
+    CreatedBy NVARCHAR(50),
+    CreatedDate DATETIME
+);
 GO
 /****** Object:  StoredProcedure [dbo].[sp_ManageServiceRequests]    Script Date: 28-10-2025 09:53:03 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-ALTER   PROCEDURE [dbo].[sp_ManageServiceRequests]
+CREATE OR ALTER PROCEDURE [dbo].[sp_ManageServiceRequests]
     @Method NVARCHAR(10), -- 'INSERT', 'UPDATE', or 'DELETE'
     -- Primary key for existing records
     @Id UNIQUEIDENTIFIER = NULL,

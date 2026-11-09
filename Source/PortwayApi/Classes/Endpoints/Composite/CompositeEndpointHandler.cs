@@ -8,9 +8,8 @@ using Microsoft.AspNetCore.Http;
 using PortwayApi.Helpers;
 using Serilog;
 
-public class CompositeEndpointHandler
+public sealed class CompositeEndpointHandler
 {
-    private static readonly JsonSerializerOptions CaseInsensitiveOptions = new() { PropertyNameCaseInsensitive = true };
     private static readonly JsonSerializerOptions CaseInsensitiveIndentedOptions = new() { PropertyNameCaseInsensitive = true, WriteIndented = true };
 
     private readonly IHttpClientFactory _httpClientFactory;
@@ -259,8 +258,8 @@ public class CompositeEndpointHandler
             }
             else
             {
-                throw new Exception(
-                    $"Property '{step.ArrayProperty}' is not an array or not found in the request data for step '{step.Name}'");
+                var problem = $"Property '{step.ArrayProperty}' must be an array";
+                throw new CompositeStepException(problem, step.Name, StatusCodes.Status400BadRequest, problem, string.Empty);
             }
         }
         else
@@ -315,7 +314,7 @@ public class CompositeEndpointHandler
         // Prepare the URL for the request
         string fullUrl = endpoint.Url;
 
-        Log.Debug("Executing step {StepName} to {Url} with method {Method}", step.Name, fullUrl, step.Method);
+        Log.Debug("Executing step {StepName} to {Url} with method {Method}", step.Name, UrlRedaction.Redact(fullUrl), step.Method);
 
         HttpRequestMessage BuildRequest(string targetUrl)
         {
@@ -352,7 +351,7 @@ public class CompositeEndpointHandler
             {
                 // Try to parse the response as JSON
                 parsedError = JsonSerializer.Deserialize<object>(responseContent,
-                    CaseInsensitiveOptions);
+                    SharedJsonOptions.CaseInsensitive);
 
                 // Already-JSON responses are kept out of the string field so the error response serializes them structured, not escaped
                 errorDetail = "See structured error details";
@@ -383,7 +382,7 @@ public class CompositeEndpointHandler
         {
             // Try to parse as JSON object
             var jsonResponse = JsonSerializer.Deserialize<object>(responseContent,
-                CaseInsensitiveOptions);
+                SharedJsonOptions.CaseInsensitive);
 
             return jsonResponse!;
         }
@@ -522,7 +521,7 @@ public class CompositeEndpointHandler
             try
             {
                 var shaped = HttpResponseTransformHelper.Apply(JsonSerializer.Serialize(stepResult), transforms);
-                result.StepResults[step.Name] = JsonSerializer.Deserialize<object>(shaped, CaseInsensitiveOptions) ?? stepResult;
+                result.StepResults[step.Name] = JsonSerializer.Deserialize<object>(shaped, SharedJsonOptions.CaseInsensitive) ?? stepResult;
             }
             catch (Exception ex)
             {
@@ -553,7 +552,7 @@ public class CompositeEndpointHandler
                     // Parse original URL parts for replacement
                     if (!Uri.TryCreate(endpoint.Value.Url, UriKind.Absolute, out var originalUri))
                     {
-                        Log.Warning("Could not parse endpoint URL as URI: {Url}", endpoint.Value.Url);
+                        Log.Warning("Could not parse endpoint URL as URI: {Url}", UrlRedaction.Redact(endpoint.Value.Url));
                         continue;
                     }
 

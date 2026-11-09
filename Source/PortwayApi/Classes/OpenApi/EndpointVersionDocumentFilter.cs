@@ -16,14 +16,11 @@ public sealed class EndpointVersionDocumentFilter : IOpenApiDocumentTransformer
             return Task.CompletedTask;
         }
 
-        var versioned = OpenApiEndpointCatalog.All()
-            .Select(e => (e.BasePath, Version: e.Definition.Version))
-            .Where(e => !EndpointVersion.IsDefault(e.Version))
-            .ToList();
+        var endpoints = OpenApiEndpointCatalog.All().ToList();
 
         foreach (var (pathKey, pathItem) in document.Paths)
         {
-            if (versioned.FirstOrDefault(e => OpenApiEndpointCatalog.Covers(e.BasePath, pathKey)).Version is not { } version)
+            if (OpenApiEndpointCatalog.Owner(endpoints, pathKey)?.Version is not { } version || EndpointVersion.IsDefault(version))
             {
                 continue;
             }
@@ -43,5 +40,35 @@ public sealed class EndpointVersionDocumentFilter : IOpenApiDocumentTransformer
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Removes the summary suffix and version badge from a single-version document; the operation id keeps its suffix
+    /// </summary>
+    internal static void RemoveVersionLabels(OpenApiOperation operation, string version)
+    {
+        if (EndpointVersion.IsDefault(version))
+        {
+            return;
+        }
+
+        var suffix = $"({version})";
+        if (operation.Summary?.EndsWith(suffix, StringComparison.Ordinal) == true)
+        {
+            var summary = operation.Summary[..^suffix.Length].TrimEnd();
+            operation.Summary = summary.Length == 0 ? null : summary;
+        }
+
+        if (operation.Extensions?.TryGetValue("x-badges", out var existing) == true
+            && existing is JsonNodeExtension { Node: JsonArray list }
+            && list.Count > 0
+            && list[0]?["name"]?.GetValue<string>() == version)
+        {
+            list.RemoveAt(0);
+            if (list.Count == 0)
+            {
+                operation.Extensions.Remove("x-badges");
+            }
+        }
     }
 }

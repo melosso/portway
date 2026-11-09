@@ -159,7 +159,7 @@ public class EnvironmentSettingsProviderTests : IDisposable
         };
         var json = JsonSerializer.Serialize(config);
 
-        // Editor truncated the file and still holds it, exactly what the watcher sees
+        // Editor truncated the file and keeps it open, the state the watcher reads
         var writer = new FileStream(settingsPath, FileMode.Create, FileAccess.Write, FileShare.None);
 
         // Dedicated thread, a pooled task can start too late on a loaded CI runner

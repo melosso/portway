@@ -6,6 +6,7 @@ public record SqlPoolingOptions(
     int ConnectionTimeout,
     bool EnablePooling,
     string ApplicationName,
-    // Applied as the driver's default command timeout, so every Dapper call on the connection inherits it
+
+    // Applied as the driver's default command timeout for every Dapper execution
     int CommandTimeout = 30
 );

@@ -2,6 +2,7 @@ namespace PortwayApi.Services.Providers;
 
 using System.Data;
 using System.Data.Common;
+using Dapper;
 using PortwayApi.Services.Database;
 using Serilog;
 using SqlKata.Compilers;
@@ -14,6 +15,7 @@ public abstract class SqlProviderBase : ISqlProvider
     public abstract SqlProviderType ProviderType { get; }
 
     public virtual bool SupportsTvf => false;
+    public virtual bool CoercesTextKeys => false;
     public virtual bool SupportsProcedures => true;
     public virtual bool SupportsSchemas => true;
     public virtual string DefaultSchema => "dbo";
@@ -28,6 +30,12 @@ public abstract class SqlProviderBase : ISqlProvider
     public virtual (string CommandText, CommandType CommandType) BuildProcedureInvocation(
         string schema, string procedureName, IReadOnlyCollection<string> parameterNames)
         => (schema.Length > 0 ? $"{schema}.{procedureName}" : procedureName, CommandType.StoredProcedure);
+
+    public virtual object ProcedureValue(string value) => value;
+
+    public virtual Task AddMissingProcedureArgumentsAsync(
+        DbConnection connection, string schema, string procedureName, DynamicParameters parameters, CancellationToken cancellationToken)
+        => Task.CompletedTask;
 
     public virtual Task<List<ColumnMetadata>> GetTvfColumnsAsync(
         DbConnection connection, string schema, string functionName, CancellationToken cancellationToken)

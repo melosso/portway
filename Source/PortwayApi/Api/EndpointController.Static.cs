@@ -3,7 +3,7 @@ using PortwayApi.Classes;
 
 namespace PortwayApi.Api;
 
-public partial class EndpointController
+public sealed partial class EndpointController
 {
     /// <summary>
     /// Handles Static GET requests
@@ -19,7 +19,7 @@ public partial class EndpointController
     {
         try
         {
-            if (TryResolveEndpoint(EndpointType.Static, endpointName, null, out var endpoint) is { } resolveError)
+            if (!TryResolveEndpoint(EndpointType.Static, endpointName, null, out var endpoint, out var resolveError))
             {
                 return resolveError;
             }

@@ -1,6 +1,7 @@
-using System.Collections.Frozen;
 namespace PortwayApi.Auth;
 
+using PortwayApi.Helpers;
+using System.Collections.Frozen;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -47,12 +48,40 @@ public class TokenService
     {
         if (!TenantGrants.TryParse(allowedTenants, out var grants, out var tenantError))
             throw new ArgumentException(tenantError, nameof(allowedTenants));
-        allowedTenants = TenantGrants.Serialize(grants);
 
-        // Generate a random token
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-        string token = RandomNumberGenerator.GetString(chars, 128);
+        var token = RandomNumberGenerator.GetString(chars, 128);
 
+        await StoreTokenAsync(token, username, allowedScopes, allowedEnvironments, description, expiresInDays,
+            rateLimitRequests, rateLimitWindowSeconds, TenantGrants.Serialize(grants), ct);
+        return token;
+    }
+
+    private const int MinSeedTokenLength = 32;
+
+    /// <summary>
+    /// Stores a fixed token with full access for demo and non-production instances (Console:SeedToken)
+    /// </summary>
+    public async Task SeedTokenAsync(string token, string username, CancellationToken ct = default)
+    {
+        if (token.Length < MinSeedTokenLength || token.Any(char.IsWhiteSpace))
+            throw new ArgumentException($"Console:SeedToken must be at least {MinSeedTokenLength} characters without whitespace", nameof(token));
+
+        await StoreTokenAsync(token, username, "*", "*", "Seeded from Console:SeedToken", null, null, null, TenantGrants.Empty, ct);
+    }
+
+    private async Task StoreTokenAsync(
+        string token,
+        string username,
+        string allowedScopes,
+        string allowedEnvironments,
+        string description,
+        int? expiresInDays,
+        int? rateLimitRequests,
+        int? rateLimitWindowSeconds,
+        string allowedTenants,
+        CancellationToken ct)
+    {
         // pbkdf2 hash kept so a rollback to an older release still verifies this token
         byte[] salt = RandomNumberGenerator.GetBytes(16);
         string saltString = Convert.ToBase64String(salt);
@@ -98,8 +127,6 @@ public class TokenService
             }));
 
         Log.Information("Created new token (ID: {TokenId}) for user: {Username}", tokenEntry.Id, username);
-
-        return token;
     }
 
     /// <summary>
@@ -252,7 +279,7 @@ public class TokenService
                 Usage = "Use this token in the Authorization header as: Bearer <token>"
             };
 
-            var options = new JsonSerializerOptions { WriteIndented = true };
+            var options = SharedJsonOptions.Indented;
             string tokenJson = JsonSerializer.Serialize(tokenInfo, options);
             await File.WriteAllTextAsync(filePath, tokenJson);
 
@@ -289,7 +316,7 @@ public class TokenService
     }
 
     /// <summary>
-    /// Returns null if the token can be revoked, or an error message if it is protected. A token is protected when it is the last active token, or the last active token that holds full wildcard (*/*)  permissions
+    /// Returns null if the token can be revoked, or an error message if it is protected. A token is protected when it is the last active token, or the last active token that has full wildcard (*/*)  permissions
     /// </summary>
     public async Task<string?> GetRevokeBlockReasonAsync(int tokenId)
     {

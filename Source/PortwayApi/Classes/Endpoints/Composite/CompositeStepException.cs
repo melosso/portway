@@ -2,7 +2,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// Detailed exception for composite step failures
 /// </summary>
-public class CompositeStepException : Exception
+public sealed class CompositeStepException : Exception
 {
     /// <summary>
     /// The name of the step that failed

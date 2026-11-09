@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Data;
 using System.Data.Common;
 using PortwayApi.Classes;
@@ -8,17 +9,16 @@ namespace PortwayApi.Services;
 
 public class SqlMetadataService
 {
-    private readonly Dictionary<string, List<Services.Database.ColumnMetadata>> _objectMetadataCache = new();
-    private readonly Dictionary<string, List<Services.Database.ParameterMetadata>> _procedureMetadataCache = new();
-    private readonly object _cacheLock = new();
+    private readonly ConcurrentDictionary<string, IReadOnlyList<Services.Database.ColumnMetadata>> _objectMetadataCache = new();
+    private readonly ConcurrentDictionary<string, IReadOnlyList<Services.Database.ParameterMetadata>> _procedureMetadataCache = new();
     private readonly SqlConnectionPoolService _connectionPoolService;
     private readonly ISqlProviderFactory _providerFactory;
-    private bool _isInitialized = false;
+    private int _initialized;
     private EnvironmentSettings? _environmentSettings;
     private Func<string, Task<string>>? _getConnectionStringAsync;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private int _refreshQueued;
-    private readonly Dictionary<string, string> _sourceSignatures = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, string> _sourceSignatures = new(StringComparer.OrdinalIgnoreCase);
 
     public SqlMetadataService(SqlConnectionPoolService connectionPoolService, ISqlProviderFactory providerFactory)
     {
@@ -27,26 +27,16 @@ public class SqlMetadataService
     }
 
     public virtual async Task InitializeAsync(
-        Dictionary<string, Classes.EndpointDefinition> sqlEndpoints,
+        IReadOnlyDictionary<string, Classes.EndpointDefinition> sqlEndpoints,
         EnvironmentSettings environmentSettings,
         Func<string, Task<string>> getConnectionStringAsync,
         CancellationToken cancellationToken = default)
     {
-        if (_isInitialized)
+        if (Interlocked.CompareExchange(ref _initialized, 1, 0) != 0)
         {
             Log.Warning("SqlMetadataService is already initialized. Skipping re-initialization.");
             return;
         }
-
-        bool shouldInitialize = false;
-        lock (_cacheLock)
-        {
-            if (!_isInitialized)
-                shouldInitialize = true;
-        }
-
-        if (!shouldInitialize)
-            return;
 
         Log.Debug("Initializing SQL metadata cache for {Count} endpoints...", sqlEndpoints.Count);
         _environmentSettings = environmentSettings;
@@ -60,11 +50,6 @@ public class SqlMetadataService
         {
             Log.Error("One or more metadata initialization tasks failed: {ErrorType} - {ErrorMessage}",
                 ex.GetType().Name, ex.Message);
-        }
-
-        lock (_cacheLock)
-        {
-            _isInitialized = true;
         }
 
         Log.Debug("SQL metadata cache initialized successfully. Objects: {ObjectCount}, Procedures: {ProcedureCount}",
@@ -108,22 +93,17 @@ public class SqlMetadataService
             return;
 
         var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
-        Dictionary<string, Classes.EndpointDefinition> changed;
-        lock (_cacheLock)
-            changed = sqlEndpoints
+        var changed = sqlEndpoints
                 .Where(kv => !_sourceSignatures.TryGetValue(kv.Key, out var known) || known != Signature(kv.Value))
                 .ToDictionary(StringComparer.OrdinalIgnoreCase);
         LogFailures(await Task.WhenAll(BuildInitTasks(changed, _environmentSettings, _getConnectionStringAsync, cancellationToken)));
 
-        lock (_cacheLock)
-        {
-            foreach (var removed in _objectMetadataCache.Keys.Where(k => !sqlEndpoints.ContainsKey(k)).ToList())
-                _objectMetadataCache.Remove(removed);
-            foreach (var removed in _procedureMetadataCache.Keys.Where(k => !sqlEndpoints.ContainsKey(k)).ToList())
-                _procedureMetadataCache.Remove(removed);
-            foreach (var removed in _sourceSignatures.Keys.Where(k => !sqlEndpoints.ContainsKey(k)).ToList())
-                _sourceSignatures.Remove(removed);
-        }
+        foreach (var removed in _objectMetadataCache.Keys.Where(k => !sqlEndpoints.ContainsKey(k)))
+            _objectMetadataCache.TryRemove(removed, out _);
+        foreach (var removed in _procedureMetadataCache.Keys.Where(k => !sqlEndpoints.ContainsKey(k)))
+            _procedureMetadataCache.TryRemove(removed, out _);
+        foreach (var removed in _sourceSignatures.Keys.Where(k => !sqlEndpoints.ContainsKey(k)))
+            _sourceSignatures.TryRemove(removed, out _);
     }
 
     // settings that metadata loading reads; a refresh skips endpoints with an unchanged signature
@@ -148,15 +128,14 @@ public class SqlMetadataService
     private sealed record MetadataLoadResult(string Endpoint, IReadOnlyList<string> Environments, string? Error);
 
     private List<Task<MetadataLoadResult>> BuildInitTasks(
-        Dictionary<string, Classes.EndpointDefinition> sqlEndpoints,
+        IReadOnlyDictionary<string, Classes.EndpointDefinition> sqlEndpoints,
         EnvironmentSettings environmentSettings,
         Func<string, Task<string>> getConnectionStringAsync,
         CancellationToken cancellationToken)
     {
         var initTasks = new List<Task<MetadataLoadResult>>();
-        lock (_cacheLock)
-            foreach (var (key, definition) in sqlEndpoints)
-                _sourceSignatures[key] = Signature(definition);
+        foreach (var (key, definition) in sqlEndpoints)
+            _sourceSignatures[key] = Signature(definition);
         var globalEnvironments = environmentSettings.GetAllowedEnvironments().Take(3).ToList();
 
         foreach (var endpoint in sqlEndpoints)
@@ -305,10 +284,7 @@ public class SqlMetadataService
 
         columns = ProcessColumnMetadata(columns, definition, endpointName);
 
-        lock (_cacheLock)
-        {
-            _objectMetadataCache[endpointName] = columns;
-        }
+        _objectMetadataCache[endpointName] = columns;
 
         Log.Debug("Cached object metadata for {EndpointName}: {ColumnCount} columns", endpointName, columns.Count);
         return columns.Count;
@@ -351,10 +327,7 @@ public class SqlMetadataService
         var parameters = await provider.GetProcedureParametersAsync(connection, schema, name, cancellationToken).ConfigureAwait(false);
         parameters = parameters.Where(p => !IsReservedParameter(p.ParameterName)).ToList();
 
-        lock (_cacheLock)
-        {
-            _procedureMetadataCache[endpointName] = parameters;
-        }
+        _procedureMetadataCache[endpointName] = parameters;
 
         Log.Debug("Cached procedure metadata for {EndpointName}: {ParameterCount} parameters", endpointName, parameters.Count);
     }
@@ -485,49 +458,24 @@ public class SqlMetadataService
 
     // Public metadata retrieval methods
 
-    public List<Services.Database.ColumnMetadata>? GetObjectMetadata(string endpointName)
-    {
-        lock (_cacheLock)
-            return _objectMetadataCache.TryGetValue(endpointName, out var metadata) ? metadata : null;
-    }
+    public IReadOnlyList<Services.Database.ColumnMetadata>? GetObjectMetadata(string endpointName) =>
+        _objectMetadataCache.GetValueOrDefault(endpointName);
 
-    public List<Services.Database.ParameterMetadata>? GetProcedureMetadata(string endpointName)
-    {
-        lock (_cacheLock)
-            return _procedureMetadataCache.TryGetValue(endpointName, out var metadata) ? metadata : null;
-    }
+    public IReadOnlyList<Services.Database.ParameterMetadata>? GetProcedureMetadata(string endpointName) =>
+        _procedureMetadataCache.GetValueOrDefault(endpointName);
 
-    public bool HasObjectMetadata(string endpointName)
-    {
-        lock (_cacheLock)
-            return _objectMetadataCache.ContainsKey(endpointName);
-    }
+    public bool HasObjectMetadata(string endpointName) => _objectMetadataCache.ContainsKey(endpointName);
 
-    public bool HasProcedureMetadata(string endpointName)
-    {
-        lock (_cacheLock)
-            return _procedureMetadataCache.ContainsKey(endpointName);
-    }
+    public bool HasProcedureMetadata(string endpointName) => _procedureMetadataCache.ContainsKey(endpointName);
 
-    public virtual IEnumerable<string> GetCachedEndpoints()
-    {
-        lock (_cacheLock)
-            return _objectMetadataCache.Keys.ToList();
-    }
+    public virtual IEnumerable<string> GetCachedEndpoints() => _objectMetadataCache.Keys;
 
-    public virtual IEnumerable<string> GetCachedProcedureEndpoints()
-    {
-        lock (_cacheLock)
-            return _procedureMetadataCache.Keys.ToList();
-    }
+    public virtual IEnumerable<string> GetCachedProcedureEndpoints() => _procedureMetadataCache.Keys;
 
     public virtual void ClearAllMetadata()
     {
-        lock (_cacheLock)
-        {
-            _objectMetadataCache.Clear();
-            _procedureMetadataCache.Clear();
-        }
+        _objectMetadataCache.Clear();
+        _procedureMetadataCache.Clear();
         Log.Information("All SQL metadata cache cleared, will reload lazily on next request");
     }
 }

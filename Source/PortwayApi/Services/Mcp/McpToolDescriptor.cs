@@ -16,6 +16,18 @@ public sealed record McpToolDescriptor
     public string EndpointName { get; init; } = string.Empty;
     public string? Namespace { get; init; }
     public string? Version { get; init; }
+    public bool Deprecated { get; init; }
+    public DateTimeOffset? Sunset { get; init; }
+    public IReadOnlyList<string> Expandable { get; init; } = [];
+
+    /// <summary>
+    /// Lifecycle tags for tool descriptions
+    /// </summary>
+    public string LifecycleTags =>
+        (Version is null ? "" : $" [version: {Version}]")
+        + (Deprecated ? " [deprecated]" : "")
+        + (Sunset is { } sunset ? $" [sunset: {sunset.UtcDateTime:yyyy-MM-dd}]" : "")
+        + (Expandable.Count > 0 ? $" [expand: {string.Join(", ", Expandable)}]" : "");
 
     private string BasePath => string.IsNullOrEmpty(Namespace) ? EndpointName : $"{Namespace}/{EndpointName}";
 
@@ -32,7 +44,6 @@ public sealed record McpToolDescriptor
     public IReadOnlyList<string>? AllowedEnvironments { get; init; }
     public IReadOnlyList<string>? AvailableFields { get; init; }
     public IReadOnlyList<string> TenantHeaders { get; init; } = [];
-    public string Url { get; init; } = string.Empty;
     /// <summary>
     /// MIME type for Static endpoints (e.g. "text/csv"); null for SQL/Proxy
     /// </summary>
@@ -41,6 +52,7 @@ public sealed record McpToolDescriptor
     /// "api" | "static" | "file"; affects how the chat layer handles the response
     /// </summary>
     public string EndpointKind { get; init; } = "api";
+    public bool IsProxy { get; init; }
     /// <summary>
     /// Usage instruction appended to the tool description (from Mcp.Instruction)
     /// </summary>

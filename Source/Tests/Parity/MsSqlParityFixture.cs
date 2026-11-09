@@ -11,6 +11,9 @@ public sealed class MsSqlParityFixture : ParityDatabaseFixture
     public override string QualifiedProductsTable => "dbo.Products";
     public override string QualifiedWebhookTable => "dbo.WebhookData";
     public override string QualifiedCategoriesTable => "dbo.Categories";
+    public override string QualifiedGuidKeysTable => "dbo.GuidKeys";
+    public override string QualifiedTextKeysTable => "dbo.TextKeys";
+    public override string GuidKeyProcedureName => "FindGuidKey";
     public override string ProcedureSchema => "dbo";
     public override string ProcedureName => "GetProductsByPrice";
     public override string TvfName => "ProductsAbove";
@@ -37,6 +40,11 @@ public sealed class MsSqlParityFixture : ParityDatabaseFixture
         $"INSERT INTO dbo.Categories (CategoryId, CategoryName) VALUES {CategorySeedValues}",
         "UPDATE dbo.Products SET CategoryId = 10 WHERE Id IN (1, 2)",
         "UPDATE dbo.Products SET CategoryId = 20 WHERE Id = 4",
+        "CREATE TABLE dbo.GuidKeys (Id UNIQUEIDENTIFIER PRIMARY KEY, Name NVARCHAR(100) NOT NULL)",
+        $"INSERT INTO dbo.GuidKeys (Id, Name) VALUES {GuidKeySeedValues}",
+        "CREATE TABLE dbo.TextKeys (Id NVARCHAR(50) PRIMARY KEY, Name NVARCHAR(100) NOT NULL)",
+        $"INSERT INTO dbo.TextKeys (Id, Name) VALUES {TextKeySeedValues}",
+        "CREATE PROCEDURE dbo.FindGuidKey @Method NVARCHAR(10), @Id UNIQUEIDENTIFIER, @Name NVARCHAR(100) = NULL AS SELECT Name FROM dbo.GuidKeys WHERE Id = @Id",
         "CREATE PROCEDURE dbo.GetProductsByPrice @MinPrice DECIMAL(10,2) AS SELECT Id, Name, Price FROM dbo.Products WHERE Price >= @MinPrice",
         "CREATE FUNCTION dbo.ProductsAbove (@MinPrice DECIMAL(10,2)) RETURNS TABLE AS RETURN (SELECT Id, Name, Price FROM dbo.Products WHERE Price >= @MinPrice)",
         """

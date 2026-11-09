@@ -1,5 +1,6 @@
 namespace PortwayApi.Endpoints;
 
+using PortwayApi.Auth;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Builder;
@@ -62,15 +63,16 @@ public static partial class WebUiEndpointExtensions
 
             var backupPath = Services.Configuration.ConfigBackupService.Backup(globalPath);
             var model = new { Environment = new { ServerName = serverName, AllowedEnvironments = allowedEnvs } };
-            await AtomicFile.WriteAllTextAsync(globalPath, JsonSerializer.Serialize(model, new JsonSerializerOptions { WriteIndented = true }));
+            await AtomicFile.WriteAllTextAsync(globalPath, JsonSerializer.Serialize(model, SharedJsonOptions.Indented));
             envSettings.Reload();
             Audit(context, "update", "environment-settings", "environments/settings.json", null, backupPath);
             return Results.Ok(new { ok = true });
         }).AddEndpointFilter(SerializeEnvironmentListEdit).ExcludeFromDescription();
 
-        app.MapGet("/_/api/environments/{name}", (string name) =>
+        app.MapGet("/_/api/environments/{name}", (string name, HttpContext context) =>
         {
-            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            var isAdministrator = context.Items[SignedInRoleKey] as string == AdminUserRoles.Administrator;
+            if (!EnvironmentNamePattern().IsMatch(name))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
@@ -104,9 +106,9 @@ public static partial class WebUiEndpointExtensions
                     name,
                     exists = true,
                     server_name = sn,
-                    connection_string = isEncrypted ? null : cs,
+                    connection_string = isEncrypted || !isAdministrator ? null : cs,
                     connection_string_encrypted = isEncrypted,
-                    headers = hdrs,
+                    headers = isAdministrator ? hdrs : hdrs.ToDictionary(h => h.Key, _ => "Set"),
                     last_modified = lastMod
                 });
             }
@@ -116,9 +118,12 @@ public static partial class WebUiEndpointExtensions
             }
         }).ExcludeFromDescription();
 
-        app.MapGet("/_/api/environments/{name}/raw", (string name) =>
+        app.MapGet("/_/api/environments/{name}/raw", (string name, HttpContext context) =>
         {
-            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (context.Items[SignedInRoleKey] as string != AdminUserRoles.Administrator)
+                return Results.Json(new { error = "This action needs an administrator account" }, statusCode: 403);
+
+            if (!EnvironmentNamePattern().IsMatch(name))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
@@ -139,7 +144,7 @@ public static partial class WebUiEndpointExtensions
 
         app.MapPut("/_/api/environments/{name}/raw", async (string name, HttpContext context) =>
         {
-            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!EnvironmentNamePattern().IsMatch(name))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
@@ -179,7 +184,7 @@ public static partial class WebUiEndpointExtensions
                         rebuilt[k] = k == "ConnectionString"
                             ? (object?)encrypted
                             : JsonSerializer.Deserialize<object>(v.GetRawText());
-                    raw = JsonSerializer.Serialize(rebuilt, new JsonSerializerOptions { WriteIndented = true });
+                    raw = JsonSerializer.Serialize(rebuilt, SharedJsonOptions.Indented);
                 }
             }
 
@@ -194,7 +199,7 @@ public static partial class WebUiEndpointExtensions
 
         app.MapPost("/_/api/environments/{name}/test", async (string name) =>
         {
-            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!EnvironmentNamePattern().IsMatch(name))
                 return Results.Json(new { ok = false, error = "Invalid environment name" }, statusCode: 400);
 
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
@@ -233,7 +238,7 @@ public static partial class WebUiEndpointExtensions
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
             var globalPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
 
-            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!EnvironmentNamePattern().IsMatch(name))
                 return Results.Json(new { error = "Invalid environment name. Use only letters, numbers, hyphens, and underscores." }, statusCode: 400);
             if (envSettings.AllowedEnvironments.Contains(name, StringComparer.OrdinalIgnoreCase))
                 return Results.Json(new { error = "Environment already exists" }, statusCode: 409);
@@ -255,13 +260,13 @@ public static partial class WebUiEndpointExtensions
                 ? SettingsEncryptionHelper.Encrypt(connStr) : "";
             var envModel = new { ConnectionString = encryptedCs, ServerName = serverName, Headers = headers };
             await AtomicFile.WriteAllTextAsync(envSettingsPath,
-                JsonSerializer.Serialize(envModel, new JsonSerializerOptions { WriteIndented = true }));
+                JsonSerializer.Serialize(envModel, SharedJsonOptions.Indented));
 
             var newAllowed = envSettings.AllowedEnvironments;
             newAllowed.Add(name);
             var globalModel = new { Environment = new { ServerName = envSettings.ServerName, AllowedEnvironments = newAllowed } };
             await AtomicFile.WriteAllTextAsync(globalPath,
-                JsonSerializer.Serialize(globalModel, new JsonSerializerOptions { WriteIndented = true }));
+                JsonSerializer.Serialize(globalModel, SharedJsonOptions.Indented));
             envSettings.Reload();
             Audit(context, "create", "environment", name);
             return Results.Json(new { ok = true, name }, statusCode: 201);
@@ -269,7 +274,7 @@ public static partial class WebUiEndpointExtensions
 
         app.MapPut("/_/api/environments/{name}", async (string name, HttpContext context) =>
         {
-            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!EnvironmentNamePattern().IsMatch(name))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var envDir = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
@@ -319,7 +324,7 @@ public static partial class WebUiEndpointExtensions
                 envModel["Encrypt"] = false;
 
             await AtomicFile.WriteAllTextAsync(envSettingsPath,
-                JsonSerializer.Serialize(envModel, new JsonSerializerOptions { WriteIndented = true }));
+                JsonSerializer.Serialize(envModel, SharedJsonOptions.Indented));
             Audit(context, "update", "environment", name, null, backupPath);
             var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(envSettingsPath), TimeSpan.Zero).ToUnixTimeSeconds();
             return Results.Ok(new { ok = true, last_modified = lastMod });
@@ -327,12 +332,12 @@ public static partial class WebUiEndpointExtensions
 
         app.MapMethods("/_/api/environments/{name}", ["PATCH"], async (string name, HttpContext context) =>
         {
-            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!EnvironmentNamePattern().IsMatch(name))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
             var newName = body.TryGetProperty("new_name", out var nn) ? nn.GetString()?.Trim() ?? "" : "";
-            if (!Regex.IsMatch(newName, @"^[a-zA-Z0-9_-]+$"))
+            if (!EnvironmentNamePattern().IsMatch(newName))
                 return Results.Json(new { error = "Invalid new name" }, statusCode: 400);
 
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
@@ -350,7 +355,7 @@ public static partial class WebUiEndpointExtensions
             var newAllowed = envSettings.AllowedEnvironments
                 .Select(e => e.Equals(name, StringComparison.OrdinalIgnoreCase) ? newName : e).ToList();
             var globalModel = new { Environment = new { ServerName = envSettings.ServerName, AllowedEnvironments = newAllowed } };
-            await AtomicFile.WriteAllTextAsync(globalPath, JsonSerializer.Serialize(globalModel, new JsonSerializerOptions { WriteIndented = true }));
+            await AtomicFile.WriteAllTextAsync(globalPath, JsonSerializer.Serialize(globalModel, SharedJsonOptions.Indented));
             envSettings.Reload();
 
             Audit(context, "rename", "environment", $"{name} -> {newName}");
@@ -359,7 +364,7 @@ public static partial class WebUiEndpointExtensions
 
         app.MapDelete("/_/api/environments/{name}", async (string name, HttpRequest request) =>
         {
-            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!EnvironmentNamePattern().IsMatch(name))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
@@ -371,7 +376,7 @@ public static partial class WebUiEndpointExtensions
             var backupPath = Services.Configuration.ConfigBackupService.Backup(Path.Combine(envDir, "settings.json"));
             var globalModel = new { Environment = new { ServerName = envSettings.ServerName, AllowedEnvironments = newAllowed } };
             await AtomicFile.WriteAllTextAsync(globalPath,
-                JsonSerializer.Serialize(globalModel, new JsonSerializerOptions { WriteIndented = true }));
+                JsonSerializer.Serialize(globalModel, SharedJsonOptions.Indented));
             envSettings.Reload();
             if (deleteFiles && Directory.Exists(envDir))
                 Directory.Delete(envDir, true);
@@ -380,4 +385,7 @@ public static partial class WebUiEndpointExtensions
         }).AddEndpointFilter(SerializeEnvironmentListEdit).ExcludeFromDescription();
 
     }
+
+    [GeneratedRegex(@"^[a-zA-Z0-9_-]+$")]
+    private static partial Regex EnvironmentNamePattern();
 }

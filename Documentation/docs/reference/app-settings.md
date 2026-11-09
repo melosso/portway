@@ -22,6 +22,51 @@ From highest to lowest priority:
 
 The console never rewrites `appsettings.json`. An environment variable takes precedence over the same key in `appsettings.overrides.json`. The console displays a key set by an environment variable as read-only, with the variable name. `PUT /_/api/settings` returns `400` for that key.
 
+## Console editing
+
+Every key on this page is editable under **Settings** or **Trace** in the console, except the keys below:
+
+| Key | Reason |
+|---|---|
+| `Serilog:WriteTo` | Sink list keyed by position |
+| `urls`, `Kestrel`, `ASPNETCORE_HTTP_PORTS` | Bind address; a wrong value leaves the gateway unreachable |
+| `OpenApi:SecurityDefinition:Name`, `In`, `Type`, `Scheme` | The gateway accepts Bearer tokens only |
+
+Validation rules for console writes:
+
+| Value | Rule |
+|---|---|
+| Paths (`FileStorage:StorageDirectory`, `RequestTrafficLogging:LogDirectory`, `RequestTrafficLogging:SqlitePath`) | Relative to the Portway folder. Outside `endpoints`, `environments`, `tokens`, `wwwroot`, `.core` and `.backups`. File storage shares no folder with log files |
+| Routes (`Mcp:Path`, `Telemetry:Prometheus:Path`) | Lower-case path outside `/api`, `/_`, `/docs`, `/health` and `/openapi`. The two routes differ |
+| Secrets (`Caching:Redis:ConnectionString`, `RateLimiting:Redis:ConnectionString`, `Proxy:Password`) | Write-only. Stored encrypted with the deployment key. The console displays whether a value is set |
+| `Console:SeedPassword`, `Console:SeedToken`, `Console:AdminApiKey` | Removable, never set from the console |
+| `AllowedHosts`, `Console:PublicOrigins`, `ForwardedHeaders:*` | Refused when the change excludes the current console session |
+
+A list or map saved from the console replaces the `appsettings.json` value as a whole.
+
+## Deprecated keys
+
+The keys below are renamed. The deprecated name is still read, with a warning at startup. A source with higher priority wins, whichever name it uses. Within one source, the current name takes precedence. Console saves are written under the current name.
+
+| Deprecated key | Current key |
+|---|---|
+| `RateLimiting:IpWindow` | `RateLimiting:IpWindowSeconds` |
+| `RateLimiting:TokenWindow` | `RateLimiting:TokenWindowSeconds` |
+| `RateLimiting:Store` | `RateLimiting:Provider` |
+| `RateLimiting:RedisConnectionString` | `RateLimiting:Redis:ConnectionString` |
+| `SqlConnectionPooling:ConnectionTimeout` | `SqlConnectionPooling:ConnectionTimeoutSeconds` |
+| `SqlConnectionPooling:CommandTimeout` | `SqlConnectionPooling:CommandTimeoutSeconds` |
+| `Caching:ProviderType` | `Caching:Provider` |
+| `FileStorage:MemoryCacheTimeSeconds` | `FileStorage:MemoryCacheDurationSeconds` |
+| `RequestTrafficLogging:StorageType` | `RequestTrafficLogging:Provider` |
+| `RequestTrafficLogging:IncludeRequestBodies` | `RequestTrafficLogging:CaptureRequestBodies` |
+| `RequestTrafficLogging:IncludeResponseBodies` | `RequestTrafficLogging:CaptureResponseBodies` |
+| `RequestTrafficLogging:EnableInfoLogging` | `RequestTrafficLogging:InfoLoggingEnabled` |
+| `Console:Customization:EnableLandingPage` | `Console:Customization:LandingPageEnabled` |
+| `OpenApi:ScalarTheme`, `ScalarLayout`, `ScalarShowSidebar`, `ScalarHide*` | `OpenApi:Scalar:Theme`, `Layout`, `ShowSidebar`, `Hide*` |
+
+`Mcp:RequireAuthentication` has no effect. The MCP server always requires a Portway token.
+
 ## Sections
 
 | Section | Reference |
@@ -46,7 +91,7 @@ The console never rewrites `appsettings.json`. An environment variable takes pre
     "CorsOrigins": ["https://app.example.com"],
     "SecureCookies": true,
     "Customization": {
-      "EnableLandingPage": true,
+      "LandingPageEnabled": true,
       "PromoText": "Welcome to **Portway**.",
       "LoginFooter": "No account? Contact your [administrator](mailto:admin@example.com)."
     }
@@ -59,10 +104,11 @@ The console never rewrites `appsettings.json`. An environment variable takes pre
 | `Enabled` | boolean | `true` | Serves the console at `/_` |
 | `AdminApiKey` | string | `""` | Deprecated enable switch; not a password. The first account is named `admin` when set |
 | `SeedPassword` | string | `""` | Fixed password for the first account, without a forced change; demo instances only |
+| `SeedToken` | string | `""` | Fixed full-access token created on first start when no token exists; 32 or more characters; demo instances only |
 | `PublicOrigins` | string[] | `[]` | Origins allowed to reach `/_` from outside the local network; one `*` per segment |
 | `CorsOrigins` | string[] | `[]` | Browser origins allowed by CORS |
 | `SecureCookies` | boolean | `false` | Session cookies over HTTPS only |
-| `Customization.EnableLandingPage` | boolean | `true` | Landing page at `/`; `false` redirects `/` to `/docs` |
+| `Customization.LandingPageEnabled` | boolean | `true` | Landing page at `/`; `false` redirects `/` to `/docs` |
 | `Customization.PromoText` | string | `""` | Markdown banner |
 | `Customization.PromoLogin` | boolean | `false` | Shows the banner on `/login` |
 | `Customization.LoginFooter` | string | `""` | Markdown below the sign-in form |
@@ -98,8 +144,8 @@ Portway honors `X-Forwarded-For` only from a listed proxy. With both lists empty
     "ApplicationName": "Portway API - Remote integration gateway",
     "MinPoolSize": 5,
     "MaxPoolSize": 100,
-    "ConnectionTimeout": 15,
-    "CommandTimeout": 30
+    "ConnectionTimeoutSeconds": 15,
+    "CommandTimeoutSeconds": 30
   }
 }
 ```
@@ -110,8 +156,8 @@ Portway honors `X-Forwarded-For` only from a listed proxy. With both lists empty
 | `ApplicationName` | string | | Application name sent to the database |
 | `MinPoolSize` | integer | `5` | Minimum pooled connections |
 | `MaxPoolSize` | integer | `100` | Maximum pooled connections |
-| `ConnectionTimeout` | integer | `15` | Connect timeout in seconds |
-| `CommandTimeout` | integer | `30` | Query timeout in seconds |
+| `ConnectionTimeoutSeconds` | integer | `15` | Connect timeout in seconds |
+| `CommandTimeoutSeconds` | integer | `30` | Query timeout in seconds |
 
 ## FileStorage
 
@@ -121,7 +167,7 @@ Portway honors `X-Forwarded-For` only from a listed proxy. With both lists empty
     "StorageDirectory": "storage/files",
     "MaxFileSizeBytes": 52428800,
     "UseMemoryCache": true,
-    "MemoryCacheTimeSeconds": 60,
+    "MemoryCacheDurationSeconds": 60,
     "MaxTotalMemoryCacheMB": 200,
     "BlockedExtensions": [".exe", ".dll", ".bat", ".sh"]
   }
@@ -133,7 +179,7 @@ Portway honors `X-Forwarded-For` only from a listed proxy. With both lists empty
 | `StorageDirectory` | string | `storage/files` | Root for relative `BaseDirectory` values |
 | `MaxFileSizeBytes` | integer | `52428800` | Maximum upload size (50 MB) |
 | `UseMemoryCache` | boolean | `true` | Read cache for recently used files |
-| `MemoryCacheTimeSeconds` | integer | `60` | Cache entry lifetime |
+| `MemoryCacheDurationSeconds` | integer | `60` | Cache entry lifetime |
 | `MaxTotalMemoryCacheMB` | integer | `200` | Cache size limit |
 | `BlockedExtensions` | string[] | Executables, scripts, server pages, macro-enabled Office formats | Extensions refused on upload |
 
@@ -200,9 +246,9 @@ A snapshot contains password hashes, token hashes and connection strings encrypt
 | `OpenApi:Enabled` | `true` | The OpenAPI document and `/docs` |
 | `Mcp:Enabled` | `true` in `appsettings.json` | The MCP server |
 | `RequestTrafficLogging:Enabled` | `false` | Traffic logging |
-| `Console:Customization:EnableLandingPage` | `true` | The landing page |
+| `Console:Customization:LandingPageEnabled` | `true` | The landing page |
 
-Console locations: `Oidc:Enabled` under **Settings → Security → Deployment & Access**, `OpenApi:Enabled` under **Settings → OpenAPI**, `Mcp:Enabled`, `Mcp:ChatEnabled` and the chat provider under **Settings → AI**, `RequestTrafficLogging:Enabled` under **Settings → System → Logging**, `Console:Customization:EnableLandingPage` under **Settings → General**.
+Console locations: `Oidc:Enabled` under **Settings → Security → Deployment & Access**, `OpenApi:Enabled` under **Settings → OpenAPI**, `Mcp:Enabled`, `Mcp:ChatEnabled` and the chat provider under **Settings → AI**, `RequestTrafficLogging:Enabled` under **Trace**, `Console:Customization:LandingPageEnabled` under **Settings → General**.
 
 ## Environment variables
 
@@ -218,6 +264,7 @@ Any key is set with `__` as separator (e.g. `RateLimiting__IpLimit`). Portway-sp
 | `PORTWAY_OPENAPI_MARKDOWN` | `OpenApi:ServeMarkdown` | `OpenApi__ServeMarkdown` |
 | `PORTWAY_PUBLIC_ORIGINS` | `Console:PublicOrigins` (list) | `WebUi__PublicOrigins__0` |
 | `PORTWAY_SEED_PASSWORD` | `Console:SeedPassword` | `WebUi__SeedPassword` |
+| `PORTWAY_SEED_TOKEN` | `Console:SeedToken` | `WebUi__SeedToken` |
 | `PORTWAY_PROMO_TEXT` | `Console:Customization:PromoText` | `WebUi__Customization__PromoText` |
 | `PORTWAY_LOGIN_FOOTER` | `Console:Customization:LoginFooter` | `WebUi__Customization__LoginFooter` |
 | `PORTWAY_KNOWN_PROXIES` | `ForwardedHeaders:KnownProxies` (list) | `ForwardedHeaders__KnownProxies__0` |

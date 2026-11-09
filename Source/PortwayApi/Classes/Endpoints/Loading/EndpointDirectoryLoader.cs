@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using PortwayApi.Helpers;
 using Serilog;
 using System.Text.Json;
@@ -12,7 +13,10 @@ internal static class EndpointDirectoryLoader
     /// <summary>
     /// Scans the folder; a file that is not valid JSON keeps its definition from previous so a save in progress keeps the endpoint live
     /// </summary>
-    public static Dictionary<string, EndpointDefinition> Load(string endpointsDirectory, EndpointLoaderSpec spec, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
+    public static FrozenDictionary<string, EndpointDefinition> Load(string endpointsDirectory, EndpointLoaderSpec spec, IReadOnlyDictionary<string, EndpointDefinition>? previous = null) =>
+        Scan(endpointsDirectory, spec, previous).ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+
+    private static Dictionary<string, EndpointDefinition> Scan(string endpointsDirectory, EndpointLoaderSpec spec, IReadOnlyDictionary<string, EndpointDefinition>? previous)
     {
         var endpoints = new Dictionary<string, EndpointDefinition>(StringComparer.OrdinalIgnoreCase);
 
@@ -43,6 +47,15 @@ internal static class EndpointDirectoryLoader
                     {
                         Log.Warning($"Failed to load {spec.FailPrefix}endpoint from {{File}}: {{Errors}}", file, string.Join("; ", tenancyErrors));
                         continue;
+                    }
+
+                    // labels never stop an endpoint
+                    var metadataErrors = EndpointMetadataRules.Validate(definition);
+                    if (metadataErrors.Count > 0)
+                    {
+                        Log.Warning($"Ignoring Stability and Badges of {spec.FailPrefix}endpoint {{File}}: {{Errors}}", file, string.Join(" ", metadataErrors));
+                        definition.Stability = null;
+                        definition.Badges = null;
                     }
 
                     var key = spec.NamespaceAware
@@ -150,7 +163,7 @@ internal static class EndpointDirectoryLoader
         return definition.Identity;
     }
 
-    // a v1 folder holds the v1 endpoint and takes precedence over the entity.json beside it
+    // a v1 folder contains the v1 endpoint and takes precedence over the entity.json beside it
     private static bool ShadowedByV1Folder(string file)
     {
         if (!File.Exists(Path.Combine(Path.GetDirectoryName(file)!, EndpointVersion.Default, "entity.json")))

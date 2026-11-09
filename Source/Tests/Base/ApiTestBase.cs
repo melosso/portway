@@ -51,10 +51,14 @@ public class ApiTestBase : IDisposable
     protected readonly TestEnvironmentSettings _testEnvironmentSettings;
 
     // Unique per-instance SQLite paths so parallel test runs don't race on the same file
-    private readonly string _authDbPath;
+    protected readonly string _authDbPath;
     private readonly string _mcpDbPath;
 
-    public ApiTestBase()
+    public ApiTestBase() : this(connectTimeoutSeconds: 1)
+    {
+    }
+
+    protected ApiTestBase(int connectTimeoutSeconds, bool mcpEnabled = false)
     {
         var id = Guid.NewGuid().ToString("N");
         _authDbPath = Path.Combine(Path.GetTempPath(), $"portway_test_{id}_auth.db");
@@ -65,7 +69,7 @@ public class ApiTestBase : IDisposable
         _mockODataToSqlConverter = new Mock<IODataToSqlConverter>();
 
         // 1s connect timeout; no SQL Server runs under test so the default 15s wait would dominate the suite
-        var poolingOptions = new SqlPoolingOptions(5, 100, 1, true, "PortwayAPI");
+        var poolingOptions = new SqlPoolingOptions(5, 100, connectTimeoutSeconds, true, "PortwayAPI");
 
         // Real factory (this is not a mock) so the WMS SQLite demo.db resolves to SqliteProvider
         var providerFactory = new SqlProviderFactory(
@@ -120,7 +124,8 @@ public class ApiTestBase : IDisposable
                     // Disable the MCP HTTP server: its hosted service conflicts when parallel WebApplicationFactory instances start
                     config.AddInMemoryCollection(new Dictionary<string, string?>
                     {
-                        ["Mcp:Enabled"] = "false",
+                        ["Mcp:Enabled"] = mcpEnabled ? "true" : "false",
+                        ["Console:CorsOrigins:0"] = "https://console.example",
                         // pinned so a local console save cannot change the generated document
                         ["OpenApi:ShowNamespaces"] = "true",
                         ["OpenApi:DefaultGroup"] = "General"

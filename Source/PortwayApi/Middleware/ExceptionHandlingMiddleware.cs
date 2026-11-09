@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Serilog;
 
-public class ExceptionHandlingMiddleware
+public sealed class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
 

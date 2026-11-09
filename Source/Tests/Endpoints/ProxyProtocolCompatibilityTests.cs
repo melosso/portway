@@ -19,6 +19,7 @@ internal sealed class UpstreamCapture : IDisposable
 {
     private readonly WebApplication _app;
 
+    public int Hits { get; private set; }
     public string? Method { get; private set; }
     public string? PathAndQuery { get; private set; }
     public string? Body { get; private set; }
@@ -44,6 +45,7 @@ internal sealed class UpstreamCapture : IDisposable
 
     private async Task Capture(HttpContext ctx)
     {
+        Hits++;
         Method = ctx.Request.Method;
         PathAndQuery = ctx.Request.Path + ctx.Request.QueryString;
         ContentType = ctx.Request.ContentType;
@@ -188,12 +190,12 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
     // Authorization collision (basis of the Teable/AFAS auth-swap guidance)
 
     [Fact]
-    public async Task ClientAuthorization_IsForwardedUpstream()
+    public async Task AcceptedAuthorization_IsNotForwardedUpstream()
     {
         var response = await _client.GetAsync(ApiPath, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("Bearer test-token", _upstream.Headers["Authorization"]);
+        Assert.False(_upstream.Headers.ContainsKey("Authorization"));
     }
 
     [Fact]

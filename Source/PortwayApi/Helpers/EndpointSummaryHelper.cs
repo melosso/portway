@@ -10,11 +10,11 @@ public static class EndpointSummaryHelper
     /// Validates endpoint configuration for naming conflicts
     /// </summary>
     public static void ValidateAndLogDuplicateEndpoints(
-        Dictionary<string, EndpointDefinition> sqlEndpoints,
+        IReadOnlyDictionary<string, EndpointDefinition> sqlEndpoints,
         Dictionary<string, ProxyEndpointInfo> proxyEndpointMap,
-        Dictionary<string, EndpointDefinition> webhookEndpoints,
-        Dictionary<string, EndpointDefinition> fileEndpoints,
-        Dictionary<string, EndpointDefinition> staticEndpoints)
+        IReadOnlyDictionary<string, EndpointDefinition> webhookEndpoints,
+        IReadOnlyDictionary<string, EndpointDefinition> fileEndpoints,
+        IReadOnlyDictionary<string, EndpointDefinition> staticEndpoints)
     {
         // Use a registry that tracks endpoint identities to avoid dual-key false positives
         var endpointRegistry = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
@@ -52,7 +52,7 @@ public static class EndpointSummaryHelper
     /// <summary>
     /// Logs a config ERROR when a declared $expand Target is not a registered SQL endpoint; the expand is refused at runtime too
     /// </summary>
-    private static void ValidateRelationshipTargets(Dictionary<string, EndpointDefinition> sqlEndpoints)
+    private static void ValidateRelationshipTargets(IReadOnlyDictionary<string, EndpointDefinition> sqlEndpoints)
     {
         foreach (var (name, definition) in sqlEndpoints)
         {
@@ -75,7 +75,7 @@ public static class EndpointSummaryHelper
     /// <summary>
     /// Adds endpoints to registry while filtering out dual-key duplicates from namespace backward compatibility
     /// </summary>
-    private static void AddUniqueEndpoints(Dictionary<string, List<string>> registry, Dictionary<string, EndpointDefinition> endpoints, string type)
+    private static void AddUniqueEndpoints(Dictionary<string, List<string>> registry, IReadOnlyDictionary<string, EndpointDefinition> endpoints, string type)
     {
         foreach (var kvp in endpoints)
         {
@@ -146,11 +146,11 @@ public static class EndpointSummaryHelper
     }
 
     public static void LogEndpointSummary(
-        Dictionary<string, EndpointDefinition> sqlEndpoints,
+        IReadOnlyDictionary<string, EndpointDefinition> sqlEndpoints,
         Dictionary<string, ProxyEndpointInfo> proxyEndpointMap,
-        Dictionary<string, EndpointDefinition> webhookEndpoints,
-        Dictionary<string, EndpointDefinition> fileEndpoints,
-        Dictionary<string, EndpointDefinition> staticEndpoints)
+        IReadOnlyDictionary<string, EndpointDefinition> webhookEndpoints,
+        IReadOnlyDictionary<string, EndpointDefinition> fileEndpoints,
+        IReadOnlyDictionary<string, EndpointDefinition> staticEndpoints)
     {
         ValidateAndLogDuplicateEndpoints(sqlEndpoints, proxyEndpointMap, webhookEndpoints, fileEndpoints, staticEndpoints);
 
@@ -163,7 +163,7 @@ public static class EndpointSummaryHelper
                 Log.Error("Endpoint {Endpoint} has WriteMode Table but an unsafe configuration: {Error}. Writes will be refused", name, configError);
         }
 
-        // Fail closed when an $expand relationship points at an endpoint that is not a registered SQL endpoint
+        // Fail closed when an $expand relationship targets an endpoint that is not a registered SQL endpoint
         ValidateRelationshipTargets(sqlEndpoints);
 
         var documented = OpenApiEndpointCatalog.All().Select(e => e.Definition).ToList();
@@ -176,8 +176,8 @@ public static class EndpointSummaryHelper
 
         var sections = new List<SummarySection>();
         AddSection(sections, "SQL", sqlEndpoints, e => $"{e.Key}: {e.Value.DatabaseSchema}.{e.Value.DatabaseObjectName}", e => e.Value.Hidden);
-        AddSection(sections, "Proxy", proxies, e => $"{e.Key}: {e.Value.Url} [{string.Join(", ", e.Value.Methods)}]", e => e.Value.Hidden);
-        AddSection(sections, "Composite", composites, e => $"{e.Key}: {e.Value.Url} [{string.Join(", ", e.Value.Methods)}]", e => e.Value.Hidden);
+        AddSection(sections, "Proxy", proxies, e => $"{e.Key}: {UrlRedaction.Redact(e.Value.Url)} [{string.Join(", ", e.Value.Methods)}]", e => e.Value.Hidden);
+        AddSection(sections, "Composite", composites, e => $"{e.Key}: {UrlRedaction.Redact(e.Value.Url)} [{string.Join(", ", e.Value.Methods)}]", e => e.Value.Hidden);
         AddSection(sections, "Webhook", webhookEndpoints, e => $"{e.Key}: [{FormatWebhookIds(e.Value)}]", e => e.Value.Hidden);
         AddSection(sections, "File", fileEndpoints, e => $"{e.Key}{FormatBaseDir(e.Value)}", e => e.Value.Hidden);
         AddSection(sections, "Static", staticEndpoints, e => $"{e.Key} [{FormatContentType(e.Value)}]", e => e.Value.Hidden);
@@ -191,7 +191,7 @@ public static class EndpointSummaryHelper
     }
 
     private static void AddSection<T>(List<SummarySection> sections, string title,
-        Dictionary<string, T> endpoints, Func<KeyValuePair<string, T>, string> format,
+        IReadOnlyDictionary<string, T> endpoints, Func<KeyValuePair<string, T>, string> format,
         Func<KeyValuePair<string, T>, bool> isPrivate)
     {
         if (endpoints.Count == 0) return;

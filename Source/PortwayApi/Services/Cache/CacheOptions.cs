@@ -3,7 +3,7 @@ namespace PortwayApi.Services.Caching;
 /// <summary>
 /// Configuration options for caching
 /// </summary>
-public class CacheOptions
+public sealed class CacheOptions
 {
     /// <summary>
     /// Whether caching is enabled for the application
@@ -23,7 +23,7 @@ public class CacheOptions
     /// <summary>
     /// Which cache provider to use
     /// </summary>
-    public CacheProviderType ProviderType { get; set; } = CacheProviderType.Memory;
+    public CacheProviderType Provider { get; set; } = CacheProviderType.Memory;
 
     /// <summary>
     /// Redis configuration options (if Redis provider is used)

@@ -33,11 +33,9 @@ public sealed class EndpointStateDocumentFilter : IOpenApiDocumentTransformer
 
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
-        var matched = OpenApiEndpointCatalog.All()
-            .Where(e => _matches(e.Definition))
-            .ToList();
+        var endpoints = OpenApiEndpointCatalog.All().ToList();
 
-        if (matched.Count == 0 || document.Paths is null)
+        if (!endpoints.Any(e => _matches(e.Definition)) || document.Paths is null)
         {
             return Task.CompletedTask;
         }
@@ -49,7 +47,7 @@ public sealed class EndpointStateDocumentFilter : IOpenApiDocumentTransformer
                 continue;
             }
 
-            if (matched.FirstOrDefault(e => OpenApiEndpointCatalog.Covers(e.BasePath, pathKey)).Definition is not { } definition)
+            if (OpenApiEndpointCatalog.Owner(endpoints, pathKey) is not { } definition || !_matches(definition))
             {
                 continue;
             }

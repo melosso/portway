@@ -3,7 +3,7 @@ using Microsoft.OpenApi;
 
 namespace PortwayApi.Classes.OpenApi;
 
-public partial class DynamicEndpointDocumentFilter
+public sealed partial class DynamicEndpointDocumentFilter
 {
     /// <summary>
     /// Adds static endpoints to the OpenAPI document

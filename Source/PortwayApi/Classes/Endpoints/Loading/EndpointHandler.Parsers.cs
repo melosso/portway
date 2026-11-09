@@ -1,5 +1,7 @@
 namespace PortwayApi.Classes;
 
+using System.Collections.Frozen;
+using PortwayApi.Helpers;
 using System.Text.Json;
 using Serilog;
 
@@ -21,13 +23,13 @@ public static partial class EndpointHandler
     /// <summary>
     /// Internal method to load all file endpoints from the endpoints directory
     /// </summary>
-    private static Dictionary<string, EndpointDefinition> LoadFileEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
+    private static FrozenDictionary<string, EndpointDefinition> LoadFileEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
         => EndpointDirectoryLoader.Load(endpointsDirectory, FileLoaderSpec, previous);
 
     /// <summary>
     /// Internal method to load all static endpoints from the endpoints directory
     /// </summary>
-    private static Dictionary<string, EndpointDefinition> LoadStaticEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
+    private static FrozenDictionary<string, EndpointDefinition> LoadStaticEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
         => EndpointDirectoryLoader.Load(endpointsDirectory, StaticLoaderSpec, previous);
 
     /// <summary>
@@ -38,7 +40,7 @@ public static partial class EndpointHandler
         if (string.IsNullOrWhiteSpace(json))
             return null;
 
-        var entity = JsonSerializer.Deserialize<FileEndpointEntity>(json, CaseInsensitiveOptions);
+        var entity = JsonSerializer.Deserialize<FileEndpointEntity>(json, SharedJsonOptions.CaseInsensitive);
 
         if (entity == null)
             return null;
@@ -68,7 +70,7 @@ public static partial class EndpointHandler
         if (string.IsNullOrWhiteSpace(json))
             return null;
 
-        var entity = JsonSerializer.Deserialize<StaticEndpointEntity>(json, CaseInsensitiveOptions);
+        var entity = JsonSerializer.Deserialize<StaticEndpointEntity>(json, SharedJsonOptions.CaseInsensitive);
 
         if (entity == null)
             return null;
@@ -90,7 +92,7 @@ public static partial class EndpointHandler
         return definition;
     }
 
-    public static Dictionary<string, EndpointDefinition> GetFileEndpoints()
+    public static IReadOnlyDictionary<string, EndpointDefinition> GetFileEndpoints()
     {
         string fileEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Files");
         return LoadFileEndpointsIfNeeded(fileEndpointsDirectory);
@@ -99,7 +101,7 @@ public static partial class EndpointHandler
     /// <summary>
     /// Gets Static endpoints from the /endpoints/Static directory
     /// </summary>
-    public static Dictionary<string, EndpointDefinition> GetStaticEndpoints()
+    public static IReadOnlyDictionary<string, EndpointDefinition> GetStaticEndpoints()
     {
         string staticEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Static");
         return LoadStaticEndpointsIfNeeded(staticEndpointsDirectory);
@@ -113,7 +115,7 @@ public static partial class EndpointHandler
         if (string.IsNullOrWhiteSpace(json))
             return null;
 
-        var entity = JsonSerializer.Deserialize<EndpointEntity>(json, CaseInsensitiveOptions);
+        var entity = JsonSerializer.Deserialize<EndpointEntity>(json, SharedJsonOptions.CaseInsensitive);
 
         if (entity == null || string.IsNullOrWhiteSpace(entity.Url))
             return null;
@@ -128,6 +130,7 @@ public static partial class EndpointHandler
             DeletePatterns = entity.DeletePatterns,
             SupportsOData = entity.SupportsOData,
             FallbackUrls = entity.FallbackUrls,
+            ForwardAuthorization = entity.ForwardAuthorization,
             Retry = entity.Retry,
             ResponseTransforms = entity.ResponseTransforms
         };
@@ -144,7 +147,7 @@ public static partial class EndpointHandler
         if (string.IsNullOrWhiteSpace(json))
             return null;
 
-        var entity = JsonSerializer.Deserialize<EndpointEntity>(json, CaseInsensitiveOptions);
+        var entity = JsonSerializer.Deserialize<EndpointEntity>(json, SharedJsonOptions.CaseInsensitive);
 
         if (entity == null || string.IsNullOrWhiteSpace(entity.DatabaseObjectName))
             return null;
@@ -277,11 +280,11 @@ public static partial class EndpointHandler
     {
         if (definition.Hidden)
         {
-            Log.Debug("Loaded private proxy endpoint: {Name} -> {Url}", endpointName, definition.Url);
+            Log.Debug("Loaded private proxy endpoint: {Name} -> {Url}", endpointName, UrlRedaction.Redact(definition.Url));
         }
         else if (definition.IsComposite)
         {
-            Log.Debug("Loaded composite proxy endpoint: {Name} -> {Url}", endpointName, definition.Url);
+            Log.Debug("Loaded composite proxy endpoint: {Name} -> {Url}", endpointName, UrlRedaction.Redact(definition.Url));
         }
         else if (definition.IsSql)
         {
@@ -289,7 +292,7 @@ public static partial class EndpointHandler
         }
         else
         {
-            Log.Debug("Loaded proxy endpoint: {Name} -> {Url}", endpointName, definition.Url);
+            Log.Debug("Loaded proxy endpoint: {Name} -> {Url}", endpointName, UrlRedaction.Redact(definition.Url));
         }
     }
 }

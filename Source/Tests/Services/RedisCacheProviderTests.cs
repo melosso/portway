@@ -10,10 +10,10 @@ public sealed class RedisCacheProviderTests
 {
     private sealed record Item(string Name);
 
-    private static readonly RedisConnectionException ConnectionLost = new(ConnectionFailureType.SocketFailure, "connection lost");
+    private static readonly RedisConnectionException ConnectionLost = new(ConnectionFailureType.SocketFailure, CommandFlags.None, "connection lost", null, CommandStatus.Unknown);
 
     private static ConnectionFailedEventArgs NodeEvent() =>
-        new(null, new System.Net.DnsEndPoint("redis", 6379), ConnectionType.Interactive, ConnectionFailureType.None, null, "redis");
+        new(new object(), new System.Net.DnsEndPoint("redis", 6379), ConnectionType.Interactive, ConnectionFailureType.None, ConnectionLost, "redis");
 
     private static (RedisCacheProvider Provider, Mock<IDatabase> Db, Mock<IConnectionMultiplexer> Redis, MemoryCacheProvider Fallback) Create(bool fallback = true, bool connected = true)
     {
@@ -54,7 +54,7 @@ public sealed class RedisCacheProviderTests
     {
         var (provider, db, redis, _) = Create(connected: false);
         var manager = new CacheManager(
-            new PortwayApi.Tests.Support.StaticOptionsMonitor<CacheOptions>(new CacheOptions { ProviderType = CacheProviderType.Redis }),
+            new PortwayApi.Tests.Support.StaticOptionsMonitor<CacheOptions>(new CacheOptions { Provider = CacheProviderType.Redis }),
             new MemoryCacheProvider(Options.Create(new CacheOptions())),
             new PortwayApi.Services.MetricsService(),
             new PortwayApi.Services.Telemetry.PortwayMetrics(),
@@ -82,7 +82,7 @@ public sealed class RedisCacheProviderTests
     [Fact]
     public async Task LockHeldElsewhere_ReturnsNoLock_InsteadOfALocalOne()
     {
-        // the mocked lock write returns false, as when another instance holds the key
+        // the mocked lock write returns false, as when another instance has acquired the key
         var (provider, _, _, _) = Create();
 
         using var handle = await provider.AcquireLockAsync("k", TimeSpan.FromSeconds(10), TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(20), TestContext.Current.CancellationToken);

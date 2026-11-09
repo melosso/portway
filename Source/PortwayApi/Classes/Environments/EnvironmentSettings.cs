@@ -1,5 +1,6 @@
 namespace PortwayApi.Classes;
 
+using PortwayApi.Helpers;
 using System.Collections.Immutable;
 using System.Text.Json;
 using Serilog;
@@ -60,7 +61,7 @@ public class EnvironmentSettings
                     [.. defaultSettings.Environment.AllowedEnvironments],
                     defaultSettings.Environment.ServerName);
 
-                var json = JsonSerializer.Serialize(defaultSettings, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(defaultSettings, SharedJsonOptions.Indented);
                 File.WriteAllText(_settingsPath, json);
 
                 Log.Warning("settings.json not found. Created with defaults.");

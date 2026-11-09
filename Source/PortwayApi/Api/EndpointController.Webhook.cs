@@ -8,7 +8,7 @@ using Serilog;
 
 namespace PortwayApi.Api;
 
-public partial class EndpointController
+public sealed partial class EndpointController
 {
     /// <summary>
     /// Handles webhook requests
@@ -20,7 +20,7 @@ public partial class EndpointController
         JsonElement payload)
     {
         var requestUrl = $"{Request.Scheme}://{Request.Host}{Request.Path}";
-        Log.Debug("Webhook received: {Method} {Url}", Request.Method, requestUrl);
+        Log.Debug("Webhook received: {Method} {Url}", Request.Method, UrlRedaction.Redact(requestUrl));
 
         try
         {
@@ -33,8 +33,8 @@ public partial class EndpointController
             }
 
             // Load webhook endpoint configuration using the namespace-aware key
-            if (TryResolveEndpoint(EndpointType.Webhook, webhookEndpointKey, null, out var endpointConfig,
-                $"Endpoint '{webhookEndpointKey}' is not configured properly.") is { } resolveError)
+            if (!TryResolveEndpoint(EndpointType.Webhook, webhookEndpointKey, null, out var endpointConfig, out var resolveError,
+                $"Endpoint '{webhookEndpointKey}' is not configured properly."))
             {
                 return resolveError;
             }

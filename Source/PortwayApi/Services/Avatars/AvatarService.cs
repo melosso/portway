@@ -16,11 +16,8 @@ public sealed partial class AvatarService
 {
     private const int MaxCached = 512;
     private const string LegacyStyle = "shapes";
-
-    // Only CC0 styles are offered so no rendered avatar carries an attribution duty; initials renders the seed as text
     private static readonly IReadOnlyDictionary<string, string> Definitions = LoadDefinitions();
     private static readonly ConcurrentDictionary<string, Style?> Parsed = new(StringComparer.Ordinal);
-
     private readonly ConcurrentDictionary<string, string> _cache = new(StringComparer.Ordinal);
 
     /// <summary>

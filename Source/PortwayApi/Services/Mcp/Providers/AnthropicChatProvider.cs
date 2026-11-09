@@ -22,8 +22,10 @@ public sealed class AnthropicChatProvider(string apiKey, string model, IHttpClie
             ["max_tokens"] = MaxTokens,
             ["stream"] = true,
             ["tools"] = ChatPayloadFactory.Declarations(tools, "input_schema"),
-            ["messages"] = ChatPayloadFactory.Messages(history)
+            ["messages"] = ChatPayloadFactory.AnthropicMessages(history)
         };
+        if (ChatPayloadFactory.SystemText(history) is { } system)
+            body["system"] = system;
 
         var request = new HttpRequestMessage(HttpMethod.Post, BaseUrl)
         {

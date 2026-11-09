@@ -234,6 +234,34 @@ public class OpenApiDocumentTests : ApiTestBase
     }
 
     // the reference page must not reach scalar hosts so a pasted token never shares a page with third party calls
+    [Theory]
+    [InlineData("Powered by Scalar", true)]
+    [InlineData("  powered by scalar ", true)]
+    [InlineData("Powered by Portway", false)]
+    [InlineData("", false)]
+    public void FooterText_CreditsScalarOnlyAsDefault(string text, bool credits) =>
+        Assert.Equal(credits, new PortwayApi.Classes.OpenApi.FooterInfo { Text = text }.CreditsScalar);
+
+    [Fact]
+    public async Task ScalarPage_CustomFooterText_AddsScalarIcon()
+    {
+        var html = await _client.GetStringAsync("/docs", TestContext.Current.CancellationToken);
+
+        Assert.Contains("addIcon('https://github.com/scalar/scalar'", html);
+        Assert.Contains("addIcon('https://github.com/melosso/portway'", html);
+    }
+
+    [Fact]
+    public async Task VendorSourceMap_IsServed()
+    {
+        using var anonymous = _factory.CreateClient();
+        var response = await anonymous.GetAsync("/js/vendor/standalone.js.map", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var map = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(3, map.RootElement.GetProperty("version").GetInt32());
+    }
+
     [Fact]
     public async Task ScalarPage_MakesNoThirdPartyCalls()
     {
@@ -358,7 +386,7 @@ public class OpenApiDocumentTests : ApiTestBase
 
     // badges come from the endpoint file and the operation itself, and the setting turns them off
     [Fact]
-    public async Task Operations_CarryBadges_UnlessDisabled()
+    public async Task Operations_IncludeBadges_UnlessDisabled()
     {
         SetAllowedEnvironments("500", "700");
 

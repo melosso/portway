@@ -13,6 +13,8 @@ public static class OpenApiConfiguration
 {
     // framework default document name, resolved by the unversioned route
     internal const string DocumentName = "v1";
+    private const string GithubIcon = "addIcon('https://github.com/melosso/portway', 'View on GitHub', '0 0 24 24', 'M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.30.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z');";
+    private const string ScalarIcon = "addIcon('https://github.com/scalar/scalar', 'API reference by Scalar', '0 0 593 593', 'M347 0c6 0 12 5 12 12v134l94-95c5-5 13-5 17 0l72 72c4 4 5 12 0 16v1l-95 94h134c7 0 12 5 12 12v101c0 7-5 12-12 12H447l95 94c4 5 5 13 0 17l-72 72c-4 4-12 5-16 0h-1l-94-95v134c0 7-5 12-12 12H246c-7 0-12-5-12-12v-70c0-22 9-43 24-59l130-130c14-14 14-37 0-51L259 142a84 84 0 0 1-25-59V12c0-7 5-12 12-12zM138 52h1l219 219c14 14 14 37 0 51L139 542c-4 5-12 5-17 0l-71-70c-4-5-5-12 0-17l95-96H12c-7 0-12-5-12-12V246c0-7 5-12 12-12h134l-95-94c-4-5-4-12 0-17l71-71c4-5 12-5 16 0');";
 
     public static void ConfigureOpenApi(WebApplicationBuilder builder)
     {
@@ -41,11 +43,11 @@ public static class OpenApiConfiguration
             if (string.IsNullOrWhiteSpace(openApiSettings.SecurityDefinition.Scheme))
                 openApiSettings.SecurityDefinition.Scheme = "Bearer";
 
-            if (string.IsNullOrWhiteSpace(openApiSettings.ScalarTheme))
-                openApiSettings.ScalarTheme = "purple";
+            if (string.IsNullOrWhiteSpace(openApiSettings.Scalar.Theme))
+                openApiSettings.Scalar.Theme = "purple";
 
-            if (string.IsNullOrWhiteSpace(openApiSettings.ScalarLayout))
-                openApiSettings.ScalarLayout = "modern";
+            if (string.IsNullOrWhiteSpace(openApiSettings.Scalar.Layout))
+                openApiSettings.Scalar.Layout = "modern";
         });
 
         // Get initial settings to register OpenAPI services
@@ -169,7 +171,7 @@ public static class OpenApiConfiguration
                 options.AddDocumentTransformer<TenancyDocumentFilter>();
                 options.AddDocumentTransformer<TableValuedFunctionDocumentFilter>();
                 options.AddDocumentTransformer<ConfigExampleDocumentFilter>();
-                options.AddDocumentTransformer<EndpointBadgeDocumentFilter>();
+                options.AddDocumentTransformer<ScalarExtensionDocumentFilter>();
                 options.AddDocumentTransformer<EndpointVersionDocumentFilter>();
                 options.AddDocumentTransformer<GroupTitleDocumentFilter>();
                 options.AddDocumentTransformer<TagSorterDocumentFilter>();
@@ -190,10 +192,6 @@ public static class OpenApiConfiguration
 
             Log.Debug("OpenAPI services registered successfully");
         }
-        else
-        {
-            Log.Information("OpenAPI documentation is disabled in configuration");
-        }
     }
 
     public static void ConfigureDocs(WebApplication app, IOptionsMonitor<OpenApiSettings> openApiMonitor)
@@ -201,10 +199,7 @@ public static class OpenApiConfiguration
         // Check if OpenAPI is enabled at startup
         var initialSettings = openApiMonitor.CurrentValue;
         if (!initialSettings.Enabled)
-        {
-            Log.Information("OpenAPI documentation is disabled in configuration");
             return;
-        }
 
         // Configure OpenAPI JSON endpoint (server URL is handled by document transformer in ConfigureOpenApi)
         app.MapOpenApi("/docs/openapi.json");
@@ -247,13 +242,13 @@ public static class OpenApiConfiguration
             return Results.Text(OpenApiMarkdownRenderer.Render(document), "text/markdown; charset=utf-8");
         }).ExcludeFromDescription();
 
-        // Warn in production if unauthenticated OpenAPI docs expose endpoint topology
-        if (app.Environment.IsProduction())
-            Log.Warning("Unauthenticated OpenAPI specification active at '/docs'. Restrict access via proxy/network rule or set OpenApi:Enabled=false. You can dismiss this warning if you are intentionally exposing the OpenAPI spec for public consumption.");
-
         // Serve minimal source maps for Scalar vendor JS to prevent DevTools 404 warnings
         app.MapGet("/sm/{*path}", () => Results.Json(new { version = 3, sources = Array.Empty<string>(), mappings = "" }))
            .ExcludeFromDescription();
+        // the scalar bundle names its map relative to js/vendor
+        app.MapGet("/js/vendor/{name}.map", () => Results.Json(new { version = 3, sources = Array.Empty<string>(), mappings = "" }))
+           .ExcludeFromDescription();
+
         // Configure unified documentation interface at /docs using Scalar
         IResult DocsPage(HttpContext context)
         {
@@ -262,7 +257,7 @@ public static class OpenApiConfiguration
 
             // Get the base path for URL construction
             var pathBase = context.Request.PathBase.HasValue ? context.Request.PathBase.Value : "";
-            var sidebarConfig = openApiSettings.ScalarShowSidebar ? "true" : "false";
+            var sidebarConfig = openApiSettings.Scalar.ShowSidebar ? "true" : "false";
 
             // Preselect the only scheme Portway publishes, so the auth panel opens ready to paste a token
             var securitySchemeName = JsonEncodedText.Encode(
@@ -273,26 +268,39 @@ public static class OpenApiConfiguration
             string Js(string? value) => JsonSerializer.Serialize(value ?? "");
 
             // scalar fonts stay off so the console onest files are served from this origin instead
-            var portwayTheme = string.Equals(openApiSettings.ScalarTheme, "portway", StringComparison.OrdinalIgnoreCase);
+            var portwayTheme = string.Equals(openApiSettings.Scalar.Theme, "portway", StringComparison.OrdinalIgnoreCase);
             var customCss = JsonEncodedText.Encode(DocsCss.Replace("{pathBase}", pathBase) + (portwayTheme ? PortwayThemeCss : ""));
             var docsBase = JsonEncodedText.Encode(pathBase + "/docs");
             var versions = OpenApiVersionSelector.Versions();
-            var sources = versions.Count < 2 ? "" : $@"""sources"": {JsonSerializer.Serialize(
-                versions.Select(v => new { title = v, slug = v, url = $"{pathBase}/docs/openapi/{v}/openapi.json" })
-                    .Prepend(new { title = "All versions", slug = "all", url = $"{pathBase}/docs/openapi.json" }))},";
+            var documents = versions
+                .Select(v => new
+                {
+                    title = v,
+                    slug = v,
+                    url = $"{pathBase}/docs/openapi/{v}/openapi.json",
+                    @default = v == versions[^1]
+                })
+                .Prepend(new
+                {
+                    title = "All versions",
+                    slug = "all",
+                    url = $"{pathBase}/docs/openapi.json",
+                    @default = false
+                });
+            var sources = versions.Count < 2 ? "" : $@"""sources"": {JsonSerializer.Serialize(documents)},";
 
             // Debug logging
             Log.Debug("Scalar configuration: Theme={Theme}, Layout={Layout}",
-                openApiSettings.ScalarTheme, openApiSettings.ScalarLayout);
+                openApiSettings.Scalar.Theme, openApiSettings.Scalar.Layout);
 
             var configJson = $@"{{
-                    ""theme"": ""{GetScalarThemeName(openApiSettings.ScalarTheme)}"",
-                    ""layout"": ""{GetScalarLayoutName(openApiSettings.ScalarLayout)}"",
+                    ""theme"": ""{GetScalarThemeName(openApiSettings.Scalar.Theme)}"",
+                    ""layout"": ""{GetScalarLayoutName(openApiSettings.Scalar.Layout)}"",
                     ""sidebar"": {sidebarConfig},
-                    ""documentDownloadType"": ""{(openApiSettings.ScalarHideDownloadButton ? "none" : "both")}"",
-                    ""hideModels"": {(openApiSettings.ScalarHideModels ? "true" : "false")},
-                    ""hideClientButton"": {(openApiSettings.ScalarHideClientButton ? "true" : "false")},
-                    ""hideTestRequestButton"": {(openApiSettings.ScalarHideTestRequestButton ? "true" : "false")},
+                    ""documentDownloadType"": ""{(openApiSettings.Scalar.HideDownloadButton ? "none" : "both")}"",
+                    ""hideModels"": {(openApiSettings.Scalar.HideModels ? "true" : "false")},
+                    ""hideClientButton"": {(openApiSettings.Scalar.HideClientButton ? "true" : "false")},
+                    ""hideTestRequestButton"": {(openApiSettings.Scalar.HideTestRequestButton ? "true" : "false")},
                     ""authentication"": {{ ""preferredSecurityScheme"": ""{securitySchemeName}"" }},
                     ""hiddenClients"": {HiddenClients},
                     ""defaultHttpClient"": {{ ""targetKey"": ""shell"", ""clientKey"": ""curl"" }},
@@ -372,8 +380,10 @@ public static class OpenApiConfiguration
         {openapiAttr}=""""
         >
         console.log(
-            '%c@melosso/portway%c. OpenAPI URL: %c{pathBase}/docs/openapi.json',
+            '%c@melosso/portway%c. OpenAPI URL: %c{pathBase}/docs/openapi.json%c. Latest version: %c{pathBase}/docs/openapi/{versions[^1]}/openapi.json',
             'color: #6f42c1; font-weight: bold; font-size: 12px;',
+            'color: #333; font-size: 12px;',
+            'color: #dcaf34ff; font-weight: bold; font-size: 12px;',
             'color: #333; font-size: 12px;',
             'color: #dcaf34ff; font-weight: bold; font-size: 12px;'
         );
@@ -419,82 +429,33 @@ public static class OpenApiConfiguration
                 z-index: 9999;
             `;
 
-            // GitHub
-            const githubContainer = document.createElement('div');
-            githubContainer.style.position = 'relative';
+            function addIcon(href, title, viewBox, path) {{
+                const container = document.createElement('div');
+                container.style.position = 'relative';
+                const link = document.createElement('a');
+                link.href = href;
+                link.target = '_blank';
+                link.style.cssText = 'background: transparent; border: none; padding: 0; cursor: pointer; text-decoration: none; display: block;';
+                link.innerHTML = `<svg viewBox=""${{viewBox}}"" width=""20"" height=""20"" style=""fill: #666; opacity: 0.7; transition: opacity 0.2s ease;""><path d=""${{path}}""/></svg>`;
+                const tooltip = createTooltip(title);
+                container.appendChild(link);
+                container.appendChild(tooltip);
+                container.addEventListener('mouseenter', function() {{
+                    link.querySelector('svg').style.opacity = '1';
+                    tooltip.style.opacity = '1';
+                    tooltip.style.transform = 'translateY(0)';
+                }});
+                container.addEventListener('mouseleave', function() {{
+                    link.querySelector('svg').style.opacity = '0.7';
+                    tooltip.style.opacity = '0';
+                    tooltip.style.transform = 'translateY(5px)';
+                }});
+                iconsContainer.appendChild(container);
+            }}
 
-            const githubLink = document.createElement('a');
-            githubLink.href = 'https://github.com/melosso/portway';
-            githubLink.target = '_blank';
-            githubLink.innerHTML = `
-                <svg viewBox=""0 0 24 24"" width=""20"" height=""20"" style=""fill: #666; opacity: 0.7; transition: opacity 0.2s ease;"">
-                    <path d=""M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.30.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z""/>
-                </svg>
-            `;
-            githubLink.style.cssText = `
-                background: transparent;
-                border: none;
-                padding: 0;
-                cursor: pointer;
-                text-decoration: none;
-                display: block;
-            `;
-
-            const githubTooltip = createTooltip('View on GitHub');
-            githubContainer.appendChild(githubLink);
-            githubContainer.appendChild(githubTooltip);
-
-            // License
-            const licenseContainer = document.createElement('div');
-            licenseContainer.style.position = 'relative';
-
-            const licenseLink = document.createElement('a');
-            licenseLink.href = 'https://github.com/melosso/portway/blob/main/LICENSE';
-            licenseLink.target = '_blank';
-            licenseLink.innerHTML = `
-                <svg viewBox=""0 0 24 24"" width=""20"" height=""20"" style=""fill: #666; opacity: 0.7; transition: opacity 0.2s ease;"">
-                    <path d=""M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M10,17L6,13L7.41,11.59L10,14.17L16.59,7.58L18,9L10,17Z""/>
-                </svg>
-            `;
-            licenseLink.style.cssText = `
-                background: transparent;
-                border: none;
-                padding: 0;
-                cursor: pointer;
-                text-decoration: none;
-                display: block;
-            `;
-
-            const licenseTooltip = createTooltip('Licensed under EUPL 1.2');
-            licenseContainer.appendChild(licenseLink);
-            licenseContainer.appendChild(licenseTooltip);
-
-            // Hover events
-            githubContainer.addEventListener('mouseenter', function() {{
-                githubLink.querySelector('svg').style.opacity = '1';
-                githubTooltip.style.opacity = '1';
-                githubTooltip.style.transform = 'translateY(0)';
-            }});
-            githubContainer.addEventListener('mouseleave', function() {{
-                githubLink.querySelector('svg').style.opacity = '0.7';
-                githubTooltip.style.opacity = '0';
-                githubTooltip.style.transform = 'translateY(5px)';
-            }});
-            licenseContainer.addEventListener('mouseenter', function() {{
-                licenseLink.querySelector('svg').style.opacity = '1';
-                licenseTooltip.style.opacity = '1';
-                licenseTooltip.style.transform = 'translateY(0)';
-            }});
-            licenseContainer.addEventListener('mouseleave', function() {{
-                licenseLink.querySelector('svg').style.opacity = '0.7';
-                licenseTooltip.style.opacity = '0';
-                licenseTooltip.style.transform = 'translateY(5px)';
-            }});
-
-            {(openApiSettings.Footer.ShowSourceIcon ? "// Conditionally add GitHub icon" : "")}
-            {(openApiSettings.Footer.ShowSourceIcon ? "iconsContainer.appendChild(githubContainer);" : "")}
-
-            iconsContainer.appendChild(licenseContainer);
+            {(openApiSettings.Footer.ShowSourceIcon ? GithubIcon : "")}
+            {(openApiSettings.Footer.CreditsScalar ? "" : ScalarIcon)}
+            addIcon('https://github.com/melosso/portway/blob/main/LICENSE', 'Licensed under EUPL 1.2', '0 0 24 24', 'M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M10,17L6,13L7.41,11.59L10,14.17L16.59,7.58L18,9L10,17Z');
             document.body.appendChild(iconsContainer);
         }});
     </script>
@@ -506,7 +467,7 @@ public static class OpenApiConfiguration
             const link = document.querySelector('a[href^=""https://scalar.com/?utm_source=powered-by""]');
             if (link) {{
                 link.textContent = {Js(openApiSettings.Footer.Text)};
-                link.href = {Js(PortwayApi.Services.Configuration.SettingsWriteService.IsSafeLink(openApiSettings.Footer.Url) ? openApiSettings.Footer.Url : "#")};
+                link.href = {Js(Services.Configuration.SettingsWriteService.IsSafeLink(openApiSettings.Footer.Url) ? openApiSettings.Footer.Url : "#")};
                 link.target = {Js(openApiSettings.Footer.Target)};
                 observer.disconnect();
             }}
@@ -521,16 +482,30 @@ public static class OpenApiConfiguration
         // every operation has its own url under /docs, the more specific document route still wins
         app.MapGet("/docs", DocsPage);
         app.MapGet("/docs/{**slug}", DocsPage).ExcludeFromDescription();
+    }
 
-        Log.Information("OpenAPI documentation is enabled and available at '/docs'.");
+    /// <summary>
+    /// Logs whether /docs is served.
+    /// </summary>
+    public static void LogDocsStatus(WebApplication app, OpenApiSettings settings)
+    {
+        if (!settings.Enabled)
+            Log.Information("OpenAPI documentation: Disabled");
+        // Unauthenticated docs expose endpoint topology
+        else if (app.Environment.IsProduction())
+            Log.Warning("Unauthenticated OpenAPI documentation is enabled at '/docs'. Restrict access via proxy/network rule or set OpenApi:Enabled=false. Dismiss this warning if the documentation is public by intent.");
+        else
+            Log.Information("OpenAPI documentation: Enabled at '/docs'");
     }
 
     // To-do: drop the scalar 1.72.4 nested tag workarounds once upstream handles parent tags
+    // To-do: drop badge colors after upstream fix
     private const string DocsCss = """
         @font-face { font-family: "Onest"; font-weight: 400 700; font-display: swap; src: url("{pathBase}/fonts/onest-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
         @font-face { font-family: "Onest"; font-weight: 400 700; font-display: swap; src: url("{pathBase}/fonts/onest-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
         :root, .light-mode, .dark-mode { --scalar-font: "Onest", ui-sans-serif, system-ui, sans-serif; }
         .scalar-app nav.context-bar { display: none; }
+        .scalar-app .badge.badge-colored { background-color: var(--badge-color); border-color: transparent; color: lch(from var(--badge-color) calc((50 - l) * infinity) 0 0 / 1); }
         .scalar-app .endpoints-card:not(:has(li)) { display: none; }
         .scalar-app .peer\/button.cursor-auto.font-bold { margin-top: 0.75rem; }
         .scalar-app .darklight-reference { padding-top: 0.75rem; }

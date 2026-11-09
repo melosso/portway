@@ -1,5 +1,6 @@
 namespace PortwayApi.Services;
 
+using System.Diagnostics.CodeAnalysis;
 using PortwayApi.Classes;
 
 /// <summary>
@@ -7,7 +8,7 @@ using PortwayApi.Classes;
 /// </summary>
 public sealed class EndpointResolver
 {
-    public bool TryResolve(EndpointType type, string? namespaceName, string endpointName, out EndpointDefinition? endpoint)
+    public bool TryResolve(EndpointType type, string? namespaceName, string endpointName, [NotNullWhen(true)] out EndpointDefinition? endpoint)
     {
         endpoint = null;
 

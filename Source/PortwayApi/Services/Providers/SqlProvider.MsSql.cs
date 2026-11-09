@@ -5,7 +5,7 @@ using Microsoft.Data.SqlClient;
 using PortwayApi.Services.Database;
 using SqlKata.Compilers;
 
-public class MsSqlProvider : SqlProviderBase
+public sealed class MsSqlProvider : SqlProviderBase
 {
     public override SqlProviderType ProviderType => SqlProviderType.SqlServer;
     public override bool SupportsTvf => true;

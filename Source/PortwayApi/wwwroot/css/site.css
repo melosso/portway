@@ -491,6 +491,20 @@ aside {
 .nav-item:hover svg {
     color: hsl(var(--sidebar-fg));
 }
+.nav-dot {
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    margin-left: auto;
+    border-radius: 50%;
+    background: hsl(var(--warning));
+}
+.sidebar-collapsed .nav-dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    margin: 0;
+}
 .nav-item.active {
     background-color: hsl(var(--sidebar-active));
     color: hsl(var(--brand));
@@ -1201,6 +1215,84 @@ h1 {
 .setting-row:has(> .switch),
 .setting-row:has(> .btn) {
     grid-template-columns: minmax(0, 1fr) auto;
+}
+
+/* Shared settings form rows */
+.settings-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+/* Markdown fields need the full card width, not the 22rem control column */
+.setting-row-stacked {
+    grid-template-columns: minmax(0, 1fr);
+}
+.setting-row-stacked textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 3.5rem;
+    font-family: inherit;
+    line-height: 1.5;
+}
+
+.setting-unit {
+    position: relative;
+}
+.setting-unit .input {
+    width: 100%;
+    padding-right: 3.5rem;
+}
+.setting-unit span {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.8125rem;
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
+}
+.setting-label label {
+    display: inline;
+}
+.setting-link {
+    margin-left: 0.25rem;
+    color: hsl(var(--muted-foreground));
+}
+.setting-link:hover {
+    color: hsl(var(--foreground));
+}
+.card-footer-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+.setting-value .card-footer-actions {
+    justify-content: flex-end;
+}
+.card-doc {
+    align-self: center;
+    width: 1rem;
+    height: 1rem;
+    background-color: hsl(var(--muted-foreground));
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/%3E%3Cpath d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/%3E%3Cpath d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.card-doc:hover {
+    background-color: hsl(var(--foreground));
+}
+
+.setting-on {
+    color: hsl(var(--success));
+    font-weight: 600;
+}
+.setting-off {
+    color: hsl(var(--muted-foreground));
+}
+.setting-bad {
+    color: hsl(var(--destructive));
+}
+.setting-warn {
+    color: hsl(var(--warning, var(--destructive)));
+    font-weight: 600;
 }
 
 .setting-label label {
@@ -1947,6 +2039,11 @@ input[type='radio'] {
 
 .signin-panel .field + .field {
     margin-top: 1rem;
+}
+
+.signin-remember {
+    margin-top: 1rem;
+    font-size: 0.8125rem;
 }
 
 .field-label {
@@ -3135,6 +3232,20 @@ th.sortable.sort-desc .sort-icon {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.ep-badge-row select.input {
+    flex: 0 0 5.5rem;
+}
+
+@media (max-width: 640px) {
+    .ep-badge-row {
+        flex-wrap: wrap;
+    }
+
+    .ep-badge-row [data-badge="name"] {
+        flex: 1 1 100%;
+    }
 }
 
 /* Allowed columns list */

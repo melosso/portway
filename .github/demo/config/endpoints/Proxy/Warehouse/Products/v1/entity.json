@@ -11,6 +11,45 @@
             "POST": "Add a new product",
             "PUT": "Update product details",
             "DELETE": "Remove a product"
+        },
+        "MethodDocumentation": {
+            "GET": "Returns every product with price and stock.",
+            "POST": "Creates a product. Returns `201` with the product id.",
+            "PUT": "Replaces the product with the request body.",
+            "DELETE": "Deletes the product."
+        },
+        "Examples": {
+            "GET": [
+                {
+                    "id": "01JJ2X71S0SJ41J3YJJ2YJERM3",
+                    "sku": "EP-1208",
+                    "name": "Euro pallet 1200 x 800 mm (EPAL)",
+                    "unit": "pcs",
+                    "price": 14.5,
+                    "currency": "EUR",
+                    "stock": 1840
+                },
+                {
+                    "id": "01JJACP0M000346E13R40TXBRJ",
+                    "sku": "PB-2700",
+                    "name": "Pallet rack beam 2700 mm",
+                    "unit": "pcs",
+                    "price": 42.9,
+                    "currency": "EUR",
+                    "stock": 312
+                }
+            ],
+            "POST": {
+                "id": "01JMZHD5T0GJZ9D1DDCV7N79CM",
+                "message": "Product created successfully"
+            },
+            "PUT": {
+                "id": "01JJ2X71S0SJ41J3YJJ2YJERM3",
+                "message": "Product updated successfully"
+            },
+            "DELETE": {
+                "message": "Product deleted successfully"
+            }
         }
     },
     "Mcp": {
