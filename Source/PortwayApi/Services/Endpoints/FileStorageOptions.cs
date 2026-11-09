@@ -3,7 +3,7 @@ namespace PortwayApi.Services.Files;
 /// <summary>
 /// Configuration options for file storage
 /// </summary>
-public class FileStorageOptions
+public sealed class FileStorageOptions
 {
     /// <summary>
     /// Root directory for file storage

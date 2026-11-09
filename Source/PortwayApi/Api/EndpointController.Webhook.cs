@@ -8,7 +8,7 @@ using Serilog;
 
 namespace PortwayApi.Api;
 
-public partial class EndpointController
+public sealed partial class EndpointController
 {
     /// <summary>
     /// Handles webhook requests

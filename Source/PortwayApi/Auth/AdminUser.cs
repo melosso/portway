@@ -3,7 +3,7 @@ namespace PortwayApi.Auth;
 /// <summary>
 /// A console account. Local accounts have a password hash; federated ones have a provider and subject instead.
 /// </summary>
-public class AdminUser
+public sealed class AdminUser
 {
     public int Id { get; set; }
 

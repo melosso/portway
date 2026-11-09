@@ -3,7 +3,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// Unified endpoint definition that handles all endpoint types
 /// </summary>
-public class EndpointDefinition
+public sealed class EndpointDefinition
 {
     public string Url { get; set; } = string.Empty;
     public List<string>? FallbackUrls { get; set; }

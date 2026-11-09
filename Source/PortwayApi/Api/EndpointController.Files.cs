@@ -5,7 +5,7 @@ using PortwayApi.Helpers;
 
 namespace PortwayApi.Api;
 
-public partial class EndpointController
+public sealed partial class EndpointController
 {
     /// <summary>
     /// Handle file uploads

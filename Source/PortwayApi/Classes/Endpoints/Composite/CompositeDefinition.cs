@@ -2,7 +2,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// Defines a composite endpoint that represents a multi-step API process
 /// </summary>
-public class CompositeDefinition
+public sealed class CompositeDefinition
 {
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;

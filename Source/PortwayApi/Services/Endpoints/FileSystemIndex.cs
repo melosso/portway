@@ -3,7 +3,7 @@ using PortwayApi.Services.Caching;
 
 namespace PortwayApi.Services.Files;
 
-public class FileSystemIndex
+public sealed class FileSystemIndex
 {
     private readonly string _baseDirectory;
     private readonly ICacheProvider _cacheProvider;
@@ -28,7 +28,7 @@ public class FileSystemIndex
     }
 
     // File metadata stored in cache
-    public class FileMetadata
+    public sealed class FileMetadata
     {
         public string FileId { get; set; } = string.Empty;
         public string FileName { get; set; } = string.Empty;

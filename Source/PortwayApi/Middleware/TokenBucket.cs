@@ -3,7 +3,7 @@ namespace PortwayApi.Middleware;
 /// <summary>
 /// Continuous-refill token bucket, thread-safe via a short lock
 /// </summary>
-public class TokenBucket
+public sealed class TokenBucket
 {
     private readonly int _capacity;
     private readonly TimeSpan _refillTime;

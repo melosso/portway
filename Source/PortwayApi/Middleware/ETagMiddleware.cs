@@ -5,7 +5,7 @@ namespace PortwayApi.Middleware;
 /// <summary>
 /// Strong ETags for GET /api responses; matching If-None-Match returns 304 without a body
 /// </summary>
-public class ETagMiddleware
+public sealed class ETagMiddleware
 {
     private readonly RequestDelegate _next;
 

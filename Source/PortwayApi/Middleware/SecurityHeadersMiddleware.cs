@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 
-public class SecurityHeadersMiddleware
+public sealed class SecurityHeadersMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly HashSet<string> _unsafeResponseHeaders;

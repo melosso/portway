@@ -3,7 +3,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// OpenAPI documentation settings for an endpoint
 /// </summary>
-public class Documentation
+public sealed class Documentation
 {
     /// <summary>
     /// Brief summary of what this endpoint does (e.g. "Get product details")

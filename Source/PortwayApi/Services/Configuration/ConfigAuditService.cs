@@ -6,7 +6,7 @@ namespace PortwayApi.Services.Configuration;
 /// <summary>
 /// Persists an audit trail of configuration changes made through the Web UI
 /// </summary>
-public class ConfigAuditService
+public sealed class ConfigAuditService
 {
     private readonly string _connectionString;
     private readonly object _initLock = new();

@@ -4,7 +4,7 @@ using PortwayApi.Helpers;
 
 namespace PortwayApi.Classes.OpenApi;
 
-public partial class DynamicEndpointDocumentFilter
+public sealed partial class DynamicEndpointDocumentFilter
 {
 
     private void AddSqlEndpoints(OpenApiDocument document)

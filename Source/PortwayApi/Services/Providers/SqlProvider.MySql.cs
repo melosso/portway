@@ -7,7 +7,7 @@ using MySqlConnector;
 using PortwayApi.Services.Database;
 using SqlKata.Compilers;
 
-public class MySqlProvider : SqlProviderBase
+public sealed class MySqlProvider : SqlProviderBase
 {
     public override SqlProviderType ProviderType => SqlProviderType.MySql;
     public override bool CoercesTextKeys => true;

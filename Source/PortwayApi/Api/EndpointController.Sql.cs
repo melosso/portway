@@ -6,7 +6,7 @@ using PortwayApi.Services;
 
 namespace PortwayApi.Api;
 
-public partial class EndpointController
+public sealed partial class EndpointController
 {
     private async Task<IActionResult> HandleSqlGetRequest(
         string env,

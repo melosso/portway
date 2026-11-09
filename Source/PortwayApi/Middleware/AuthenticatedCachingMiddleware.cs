@@ -3,7 +3,7 @@ using Microsoft.Net.Http.Headers;
 
 namespace PortwayApi.Middleware
 {
-    public class AuthenticatedCachingMiddleware
+    public sealed class AuthenticatedCachingMiddleware
     {
         /// <summary>
         /// HttpContext item that contains the request header names the response depends on, e.g. tenant headers

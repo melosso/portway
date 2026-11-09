@@ -7,7 +7,7 @@ namespace PortwayApi.Services.Caching;
 /// <summary>
 /// Manages caching operations using the configured provider
 /// </summary>
-public class CacheManager : ICacheProvider
+public sealed class CacheManager : ICacheProvider
 {
     private readonly ICacheProvider _provider;
     private readonly IOptionsMonitor<CacheOptions> _optionsMonitor;

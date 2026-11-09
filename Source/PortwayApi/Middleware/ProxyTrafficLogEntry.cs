@@ -6,7 +6,7 @@ using System.Collections.Generic;
 /// <summary>
 /// Enhanced log entry
 /// </summary>
-public class ProxyTrafficLogEntry
+public sealed class ProxyTrafficLogEntry
 {
     public long Id { get; set; }
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;

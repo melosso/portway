@@ -1,6 +1,6 @@
 namespace PortwayApi.Classes.OpenApi;
 
-public class OpenApiSettings
+public sealed class OpenApiSettings
 {
     public bool Enabled { get; set; } = true;
     public string Title { get; set; } = "API Documentation";

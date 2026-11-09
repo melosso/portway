@@ -1,6 +1,6 @@
 namespace PortwayApi.Classes.OpenApi;
 
-public class SecurityDefinitionInfo
+public sealed class SecurityDefinitionInfo
 {
     public string Name { get; set; } = "Bearer";
     public string Description { get; set; } = "Bearer token issued by Portway. Send it as: Authorization: Bearer {token}";

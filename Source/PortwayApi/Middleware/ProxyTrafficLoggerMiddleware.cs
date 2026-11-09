@@ -15,7 +15,7 @@ using Serilog;
 /// <summary>
 /// Middleware for logging proxy traffic
 /// </summary>
-public class ProxyTrafficLoggerMiddleware
+public sealed class ProxyTrafficLoggerMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly RequestTrafficLoggingOptions _options;

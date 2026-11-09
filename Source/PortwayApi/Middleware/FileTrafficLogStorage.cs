@@ -12,7 +12,7 @@ using Serilog;
 /// <summary>
 /// File-based implementation of log storage
 /// </summary>
-public class FileTrafficLogStorage : ITrafficLogStorage
+public sealed class FileTrafficLogStorage : ITrafficLogStorage
 {
     private readonly RequestTrafficLoggingOptions _options;
     private string _currentLogFile;

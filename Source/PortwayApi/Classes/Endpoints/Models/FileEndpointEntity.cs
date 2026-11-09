@@ -3,7 +3,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// Represents a File endpoint entity for local file handling
 /// </summary>
-public class FileEndpointEntity : EndpointEntityBase
+public sealed class FileEndpointEntity : EndpointEntityBase
 {
     /// <summary>
     /// Type of storage (Local, S3, etc.)

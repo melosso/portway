@@ -1,6 +1,6 @@
 namespace PortwayApi.Services.Database;
 
-public class ColumnMetadata
+public sealed class ColumnMetadata
 {
     public string ColumnName { get; set; } = string.Empty;
     public string DatabaseColumnName { get; set; } = string.Empty;

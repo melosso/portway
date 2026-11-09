@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Http;
 using PortwayApi.Helpers;
 using Serilog;
 
-public class CompositeEndpointHandler
+public sealed class CompositeEndpointHandler
 {
     private static readonly JsonSerializerOptions CaseInsensitiveIndentedOptions = new() { PropertyNameCaseInsensitive = true, WriteIndented = true };
 

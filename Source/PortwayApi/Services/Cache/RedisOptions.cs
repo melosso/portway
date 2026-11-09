@@ -3,7 +3,7 @@ namespace PortwayApi.Services.Caching;
 /// <summary>
 /// Options specific to Redis caching
 /// </summary>
-public class RedisOptions
+public sealed class RedisOptions
 {
     /// <summary>
     /// Redis connection string

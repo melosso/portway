@@ -6,7 +6,7 @@ namespace PortwayApi.Auth;
 /// <summary>
 /// Represents an authentication token in the system with enhanced security features
 /// </summary>
-public class AuthToken
+public sealed class AuthToken
 {
     public int Id { get; set; }
     public required string Username { get; set; } = $"user_{Guid.NewGuid().ToString("N").Substring(0, 8)}";

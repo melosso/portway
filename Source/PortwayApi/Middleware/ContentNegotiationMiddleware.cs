@@ -6,7 +6,7 @@ using Serilog;
 /// <summary>
 /// Middleware for handling content negotiation and request validation. Ensures consistent Content-Type validation on requests and proper Accept header handling
 /// </summary>
-public class ContentNegotiationMiddleware
+public sealed class ContentNegotiationMiddleware
 {
     private readonly RequestDelegate _next;
 

@@ -3,7 +3,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// Represents a single authentication method (e.g., ApiKey, JWT, Basic)
 /// </summary>
-public class AuthenticationMethod
+public sealed class AuthenticationMethod
 {
     /// <summary>
     /// Common types: ApiKey, Basic, Bearer, JWT, HMAC

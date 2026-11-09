@@ -8,7 +8,7 @@ using NpgsqlTypes;
 using PortwayApi.Services.Database;
 using SqlKata.Compilers;
 
-public class PostgreSqlProvider : SqlProviderBase
+public sealed class PostgreSqlProvider : SqlProviderBase
 {
     // Function argument names are spliced into SQL text as identifiers, so they must be strictly validated
     private static readonly System.Text.RegularExpressions.Regex SafeIdentifier =

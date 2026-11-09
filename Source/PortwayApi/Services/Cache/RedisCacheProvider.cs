@@ -9,7 +9,7 @@ namespace PortwayApi.Services.Caching;
 /// <summary>
 /// Redis implementation of the cache provider
 /// </summary>
-public class RedisCacheProvider : ICacheProvider, IDisposable
+public sealed class RedisCacheProvider : ICacheProvider, IDisposable
 {
     private readonly CacheOptions _options;
     private readonly RedisOptions _redisOptions;
@@ -677,7 +677,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     /// <summary>
     /// Redis-based lock handle implementation
     /// </summary>
-    private class RedisLockHandle : ILockHandle
+    private sealed class RedisLockHandle : ILockHandle
     {
         private readonly RedisCacheProvider _provider;
         private readonly string _lockKey;

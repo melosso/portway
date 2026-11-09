@@ -1,6 +1,6 @@
 namespace PortwayApi.Middleware;
 
-public class RateLimitSettings
+public sealed class RateLimitSettings
 {
     public bool Enabled { get; set; } = true;
     public int IpLimit { get; set; } = 100;

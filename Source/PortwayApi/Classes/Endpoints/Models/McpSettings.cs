@@ -3,7 +3,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// MCP exposure settings for an endpoint
 /// </summary>
-public class McpSettings
+public sealed class McpSettings
 {
     /// <summary>
     /// Whether this endpoint is exposed in MCP

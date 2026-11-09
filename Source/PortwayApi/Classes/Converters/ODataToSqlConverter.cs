@@ -9,7 +9,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// Implements IODataToSqlConverter, routing OData queries to the correct SQL dialect based on the connection string provider type
 /// </summary>
-public class ODataToSqlConverter : IODataToSqlConverter
+public sealed class ODataToSqlConverter : IODataToSqlConverter
 {
     private readonly IReadOnlyDictionary<SqlProviderType, Compiler> _compilers;
     private readonly IReadOnlyDictionary<SqlProviderType, ISqlProvider> _providers;

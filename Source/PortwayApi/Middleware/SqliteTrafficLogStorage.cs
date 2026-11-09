@@ -12,7 +12,7 @@ using Serilog;
 /// <summary>
 /// SQLite implementation of log storage
 /// </summary>
-public class SqliteTrafficLogStorage : ITrafficLogStorage
+public sealed class SqliteTrafficLogStorage : ITrafficLogStorage
 {
     private readonly RequestTrafficLoggingOptions _options;
     private readonly string _connectionString;

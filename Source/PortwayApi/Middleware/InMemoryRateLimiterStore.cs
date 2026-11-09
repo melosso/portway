@@ -6,7 +6,7 @@ using Serilog;
 /// <summary>
 /// Default single-instance store, one TokenBucket per key with idle eviction
 /// </summary>
-public class InMemoryRateLimiterStore : IRateLimiterStore, IDisposable
+public sealed class InMemoryRateLimiterStore : IRateLimiterStore, IDisposable
 {
     private readonly ConcurrentDictionary<string, TokenBucket> _buckets = new();
     private readonly TimeProvider _timeProvider;

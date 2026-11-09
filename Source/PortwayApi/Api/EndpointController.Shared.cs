@@ -7,7 +7,7 @@ using Serilog;
 
 namespace PortwayApi.Api;
 
-public partial class EndpointController
+public sealed partial class EndpointController
 {
     /// <summary>
     /// Resolves an endpoint via the central resolver; returns an error result when not found

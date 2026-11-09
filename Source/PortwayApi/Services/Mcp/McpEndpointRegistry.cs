@@ -2,7 +2,7 @@ namespace PortwayApi.Services.Mcp;
 
 using System.Collections.Immutable;
 
-public class McpEndpointRegistry
+public sealed class McpEndpointRegistry
 {
     /// <summary>
     /// Tools, name index and the chat tool-definition cache, swapped as one reference so readers never mix two registrations

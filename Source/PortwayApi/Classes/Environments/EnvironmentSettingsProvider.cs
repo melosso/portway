@@ -8,7 +8,7 @@ using PortwayApi.Helpers;
 
 namespace PortwayApi.Classes;
 
-public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
+public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 {
     private static readonly JsonSerializerOptions SettingsFileJsonOptions = new()
     {

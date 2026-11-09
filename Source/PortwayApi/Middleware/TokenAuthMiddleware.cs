@@ -8,7 +8,7 @@ using PortwayApi.Helpers;
 using PortwayApi.Interfaces;
 using Serilog;
 
-public class TokenAuthMiddleware
+public sealed class TokenAuthMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly string? _metricsPath;

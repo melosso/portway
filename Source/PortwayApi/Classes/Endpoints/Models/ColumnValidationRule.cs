@@ -3,7 +3,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// Column validation rule configuration for input validation
 /// </summary>
-public class ColumnValidationRule
+public sealed class ColumnValidationRule
 {
     /// <summary>
     /// Regular expression pattern to validate against

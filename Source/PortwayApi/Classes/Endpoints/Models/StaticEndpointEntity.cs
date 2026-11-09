@@ -3,7 +3,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// Represents a Static endpoint entity for serving predefined content
 /// </summary>
-public class StaticEndpointEntity : EndpointEntityBase
+public sealed class StaticEndpointEntity : EndpointEntityBase
 {
     /// <summary>
     /// MIME type for the response (application/json, text/plain, image/png, etc.)

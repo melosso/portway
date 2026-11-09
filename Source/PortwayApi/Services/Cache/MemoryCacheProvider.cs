@@ -8,7 +8,7 @@ namespace PortwayApi.Services.Caching;
 /// <summary>
 /// In-memory implementation of the cache provider
 /// </summary>
-public class MemoryCacheProvider : ICacheProvider
+public sealed class MemoryCacheProvider : ICacheProvider
 {
     private readonly IMemoryCache _cache;
     private readonly CacheOptions _options;
@@ -204,7 +204,7 @@ public class MemoryCacheProvider : ICacheProvider
     /// <summary>
     /// Memory-based lock handle implementation
     /// </summary>
-    private class MemoryLockHandle : ILockHandle
+    private sealed class MemoryLockHandle : ILockHandle
     {
         private readonly SemaphoreSlim _semaphore;
         private readonly string _lockKey;

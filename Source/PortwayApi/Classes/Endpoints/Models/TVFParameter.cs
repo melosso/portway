@@ -3,7 +3,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// Represents a parameter for a Table Valued Function
 /// </summary>
-public class TVFParameter
+public sealed class TVFParameter
 {
     /// <summary>
     /// Name of the parameter in the function (without @)

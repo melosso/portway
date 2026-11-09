@@ -3,7 +3,7 @@ namespace PortwayApi.Services.Caching;
 /// <summary>
 /// Configuration options for caching
 /// </summary>
-public class CacheOptions
+public sealed class CacheOptions
 {
     /// <summary>
     /// Whether caching is enabled for the application

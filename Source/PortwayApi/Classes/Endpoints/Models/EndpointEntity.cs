@@ -3,7 +3,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// Represents an endpoint entity with support for both proxy and SQL endpoints
 /// </summary>
-public class EndpointEntity : EndpointEntityBase
+public sealed class EndpointEntity : EndpointEntityBase
 {
     // SQL endpoint properties
     public string? DatabaseObjectName { get; set; }

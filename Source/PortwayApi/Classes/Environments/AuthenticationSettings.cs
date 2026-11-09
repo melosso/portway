@@ -3,7 +3,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// Settings for custom environment-level authentication
 /// </summary>
-public class AuthenticationSettings
+public sealed class AuthenticationSettings
 {
     public static readonly (HashSet<string> Headers, HashSet<string> Query, HashSet<string> Cookies) NoCredentialNames = ([], [], []);
 

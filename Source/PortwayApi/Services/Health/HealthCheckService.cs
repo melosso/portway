@@ -12,7 +12,7 @@ namespace PortwayApi.Services;
 /// <summary>
 /// Service that caches health check results to avoid frequent executions
 /// </summary>
-public class HealthCheckService
+public sealed class HealthCheckService
 {
     private readonly Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService _healthCheckService;
     private readonly TimeSpan _cacheTime;

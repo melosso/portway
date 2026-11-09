@@ -3,7 +3,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// Execution context to maintain state between composite step executions
 /// </summary>
-public class ExecutionContext
+public sealed class ExecutionContext
 {
     public string RequestId { get; set; } = Guid.NewGuid().ToString();
     public Dictionary<string, object> Variables { get; set; } = new();

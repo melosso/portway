@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 /// <summary>
 /// Result of a composite endpoint execution with enhanced error details
 /// </summary>
-public class CompositeResult
+public sealed class CompositeResult
 {
     /// <summary>
     /// Indicates whether the composite operation was successful

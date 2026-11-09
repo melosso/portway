@@ -10,7 +10,7 @@ namespace PortwayApi.Auth;
 /// <summary>
 /// Service to perform environment-specific authentication validation
 /// </summary>
-public class EnvironmentAuthService
+public sealed class EnvironmentAuthService
 {
     private readonly Serilog.ILogger _logger;
 
@@ -53,10 +53,10 @@ public class EnvironmentAuthService
                 if (success)
                 {
                     _logger.Debug("Successfully authenticated using environment method: {Type}", method.Type);
-                    
+
                     if (method.Type.ToLowerInvariant() is "basic" or "bearer" or "jwt")
                         context.Items[Middleware.TokenAuthMiddleware.AuthorizationAcceptedKey] = true;
-                    
+
                     return true;
                 }
             }

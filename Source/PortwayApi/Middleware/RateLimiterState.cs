@@ -5,7 +5,7 @@ using System.Collections.Concurrent;
 /// <summary>
 /// Shared penalty box state, singleton so the diagnostics endpoint can observe the middleware
 /// </summary>
-public class RateLimiterState
+public sealed class RateLimiterState
 {
     /// <summary>
     /// IPs in the penalty box with block expiry and last log time

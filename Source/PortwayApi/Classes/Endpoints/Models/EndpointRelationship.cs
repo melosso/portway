@@ -3,7 +3,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// To-one $expand navigation to another SQL endpoint, resolved from the target
 /// </summary>
-public class EndpointRelationship
+public sealed class EndpointRelationship
 {
     /// <summary>
     /// Navigation name used in $expand and as the nested response key (e.g. "Category")

@@ -2,7 +2,7 @@ namespace PortwayApi.Classes;
 /// <summary>
 /// Represents a step within a composite endpoint process
 /// </summary>
-public class CompositeStep
+public sealed class CompositeStep
 {
     public string Name { get; set; } = string.Empty;
     public string Endpoint { get; set; } = string.Empty;

@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PortwayApi.Auth;
 using PortwayApi.Helpers;
 
-public class RateLimiter
+public sealed class RateLimiter
 {
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {

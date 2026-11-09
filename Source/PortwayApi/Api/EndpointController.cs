@@ -14,7 +14,7 @@ namespace PortwayApi.Api;
 /// </summary>
 [ApiController]
 [Route("api")] // Base route only, we'll use action-level routing
-public partial class EndpointController : ControllerBase
+public sealed partial class EndpointController : ControllerBase
 {
     private readonly EnvironmentSettings _environmentSettings;
     private readonly IEnvironmentSettingsProvider _environmentSettingsProvider;
