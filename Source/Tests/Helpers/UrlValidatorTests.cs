@@ -37,53 +37,44 @@ public class UrlValidatorTests : IDisposable
     }
 
     [Fact]
-    public void IsHostAllowed_WildcardPattern_MatchesSingleSegment()
+    public void IsUrlSafe_HostWildcardPattern_MatchesSingleSegment()
     {
         var validator = CreateValidator(["*.internal.test", "_noop1_", "_noop2_"]);
-        Assert.True(validator.IsHostAllowed("svc.internal.test"));
+        Assert.True(validator.IsUrlSafe("https://svc.internal.test/"));
     }
 
     [Fact]
-    public void IsHostAllowed_ExactMatch_ReturnsTrue()
+    public void IsUrlSafe_HostExactMatch_ReturnsTrue()
     {
         var validator = CreateValidator(["myhost.test", "_noop1_", "_noop2_"]);
-        Assert.True(validator.IsHostAllowed("myhost.test"));
+        Assert.True(validator.IsUrlSafe("https://myhost.test/"));
     }
 
     [Fact]
-    public void IsHostAllowed_CaseInsensitive_ReturnsTrue()
+    public void IsUrlSafe_HostCaseInsensitive_ReturnsTrue()
     {
         var validator = CreateValidator(["MyHost.Test", "_noop1_", "_noop2_"]);
-        Assert.True(validator.IsHostAllowed("myhost.test"));
-        Assert.True(validator.IsHostAllowed("MYHOST.TEST"));
+        Assert.True(validator.IsUrlSafe("https://myhost.test/"));
+        Assert.True(validator.IsUrlSafe("https://MYHOST.TEST/"));
     }
 
     [Fact]
-    public void IsHostAllowed_SameHostCalledTwice_ConsistentResult()
-    {
-        var validator = CreateValidator(["*.internal.test", "_noop1_", "_noop2_"]);
-        var first = validator.IsHostAllowed("svc.internal.test");
-        var second = validator.IsHostAllowed("svc.internal.test");
-        Assert.Equal(first, second);
-    }
-
-    [Fact]
-    public void IsHostAllowed_MultipleWildcardPatterns_EachMatchesCorrectly()
+    public void IsUrlSafe_HostMultipleWildcardPatterns_EachMatchesCorrectly()
     {
         var validator = CreateValidator(["*.prod.test", "*.dev.test", "local.test"]);
-        Assert.True(validator.IsHostAllowed("app.prod.test"));
-        Assert.True(validator.IsHostAllowed("api.prod.test"));
-        Assert.True(validator.IsHostAllowed("app.dev.test"));
-        Assert.True(validator.IsHostAllowed("local.test"));
+        Assert.True(validator.IsUrlSafe("https://app.prod.test/"));
+        Assert.True(validator.IsUrlSafe("https://api.prod.test/"));
+        Assert.True(validator.IsUrlSafe("https://app.dev.test/"));
+        Assert.True(validator.IsUrlSafe("https://local.test/"));
     }
 
     [Fact]
-    public void IsHostAllowed_WildcardPattern_DifferentPrefixesAllMatch()
+    public void IsUrlSafe_HostWildcardPattern_DifferentPrefixesAllMatch()
     {
         var validator = CreateValidator(["*.internal.test", "_noop1_", "_noop2_"]);
-        Assert.True(validator.IsHostAllowed("svc-a.internal.test"));
-        Assert.True(validator.IsHostAllowed("svc-b.internal.test"));
-        Assert.True(validator.IsHostAllowed("api.internal.test"));
+        Assert.True(validator.IsUrlSafe("https://svc-a.internal.test/"));
+        Assert.True(validator.IsUrlSafe("https://svc-b.internal.test/"));
+        Assert.True(validator.IsUrlSafe("https://api.internal.test/"));
     }
 
     [Fact]

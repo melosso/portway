@@ -12,14 +12,10 @@ public class UrlValidator
 {
     private readonly List<string> _allowedHosts;
     private readonly List<string> _blockedRanges;
-    private readonly ConcurrentDictionary<string, bool> _hostCache;
-    private readonly ConcurrentDictionary<string, IPAddress[]> _dnsCache = new();
     private readonly ConcurrentDictionary<string, Regex> _regexCache = new();
 
     public UrlValidator(string configPath)
     {
-        _hostCache = new ConcurrentDictionary<string, bool>();
-
         EnsureConfigFileExists(configPath);
 
         var config = JsonSerializer.Deserialize<HostConfig>(
@@ -258,25 +254,6 @@ public class UrlValidator
     }
 
     /// <summary>
-    /// Validates if the given host is allowed based on the configuration
-    /// </summary>
-    public virtual bool IsHostAllowed(string host)
-    {
-        if (_hostCache.TryGetValue(host, out bool isAllowed))
-            return isAllowed;
-
-        if (IsHostPatternAllowed(host))
-        {
-            _hostCache[host] = true;
-            return true;
-        }
-
-        bool isValid = ValidateHost(host);
-        _hostCache[host] = isValid;
-        return isValid;
-    }
-
-    /// <summary>
     /// Creates a default configuration file if one is not already present at configPath
     /// </summary>
     private void EnsureConfigFileExists(string configPath)
@@ -295,25 +272,6 @@ public class UrlValidator
     }
 
     /// <summary>
-    /// Validates the host against the allowed hosts and blocked IP ranges
-    /// </summary>
-    private bool ValidateHost(string host)
-    {
-        // Resolve DNS and check IP ranges
-        var addresses = ResolveDnsWithCache(host);
-        return addresses.All(IsIpAllowed);
-    }
-
-    /// <summary>
-    /// Checks if the host matches any of the allowed patterns
-    /// </summary>
-    private bool IsHostPatternAllowed(string host)
-    {
-        return _allowedHosts.Any(pattern =>
-            MatchHostPattern(host, pattern));
-    }
-
-    /// <summary>
     /// Matches host against a wildcard pattern
     /// </summary>
     private bool MatchHostPattern(string host, string pattern)
@@ -322,24 +280,6 @@ public class UrlValidator
             "^" + Regex.Escape(p).Replace(@"\*", "[^.]*") + "$",
             RegexOptions.Compiled | RegexOptions.IgnoreCase));
         return regex.IsMatch(host);
-    }
-
-    /// <summary>
-    /// Resolves the DNS for the given host and caches the result
-    /// </summary>
-    private IPAddress[] ResolveDnsWithCache(string host)
-    {
-        return _dnsCache.GetOrAdd(host, key =>
-        {
-            try
-            {
-                return Dns.GetHostAddresses(key) ?? Array.Empty<IPAddress>();
-            }
-            catch
-            {
-                return Array.Empty<IPAddress>();
-            }
-        });
     }
 
     /// <summary>
