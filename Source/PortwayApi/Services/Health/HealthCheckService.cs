@@ -69,9 +69,9 @@ public class HealthCheckService
                 ["Diskspace"] = CheckDiskSpace()
             };
 
-            if (_httpClientFactory != null)
+            if (_httpClientFactory is { } httpClientFactory)
             {
-                entries["ProxyEndpoints"] = await CheckProxyEndpointsAsync(cancellationToken);
+                entries["ProxyEndpoints"] = await CheckProxyEndpointsAsync(httpClientFactory, cancellationToken);
             }
 
             if (_environmentSettingsProvider != null && _environmentSettings != null)
@@ -174,23 +174,14 @@ public class HealthCheckService
         }
     }
 
-    private async Task<HealthReportEntry> CheckProxyEndpointsAsync(CancellationToken cancellationToken)
+    private async Task<HealthReportEntry> CheckProxyEndpointsAsync(IHttpClientFactory httpClientFactory, CancellationToken cancellationToken)
     {
         var startTime = DateTime.UtcNow;
         var results = new ConcurrentDictionary<string, object>();
         var status = HealthStatus.Healthy;
 
-        var handler = new HttpClientHandler
-        {
-            UseDefaultCredentials = true,
-            PreAuthenticate = true
-        };
-        if (_httpClientFactory != null)
-        {
-            handler.UseProxy = true;
-            handler.UseCookies = false;
-        }
-        using var client = new HttpClient(handler);
+        // ProxyClient applies the network access policy at connect time
+        using var client = httpClientFactory.CreateClient("ProxyClient");
         var unhealthyEndpoints = new ConcurrentBag<string>();
 
         try
@@ -246,6 +237,15 @@ public class HealthCheckService
         }
     }
 
+    private static async Task<string> ReadPrefixAsync(HttpContent content, CancellationToken cancellationToken)
+    {
+        await using var stream = await content.ReadAsStreamAsync(cancellationToken);
+        using var reader = new StreamReader(stream);
+        var buffer = new char[4096];
+        var read = await reader.ReadBlockAsync(buffer, cancellationToken);
+        return new string(buffer, 0, read);
+    }
+
     private async Task CheckEndpointAsync(
         HttpClient client,
         KeyValuePair<string, (string Url, HashSet<string> Methods, bool Hidden, string Type)> endpoint,
@@ -256,18 +256,15 @@ public class HealthCheckService
         try
         {
             var url = endpoint.Value.Url;
-            var request = new HttpRequestMessage(HttpMethod.Get, url);
-
-            // Add headers
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 
             Log.Debug("Sending request to endpoint {Endpoint} with URL: {Url}", endpoint.Key, UrlRedaction.Redact(url));
 
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            linkedCts.CancelAfter(TimeSpan.FromSeconds(10));
 
-            // Send the request and capture the first response
-            var response = await client.SendAsync(request, linkedCts.Token);
+            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, linkedCts.Token);
 
             Log.Debug("Received response from endpoint {Endpoint}. StatusCode: {StatusCode}, ReasonPhrase: {ReasonPhrase}",
                 endpoint.Key, (int)response.StatusCode, response.ReasonPhrase);
@@ -284,18 +281,12 @@ public class HealthCheckService
                 return;
             }
 
-            // Process subsequent responses if the first response is not 401
-            var content = await response.Content.ReadAsStringAsync();
+            var content = await ReadPrefixAsync(response.Content, linkedCts.Token);
             var isHealthy = (int)response.StatusCode >= 200 && (int)response.StatusCode <= 299
                             || content.Contains("Failed to login to Globe");
 
             if (!isHealthy)
             {
-                if (response.Content.Headers.ContentType?.MediaType == "application/xml" && content.Contains("<m:error"))
-                {
-                    Log.Warning("Endpoint {Endpoint} returned an XML error response: {Content}", endpoint.Key, content);
-                }
-
                 Log.Warning("Endpoint {Endpoint} returned status code {StatusCode} ({ReasonPhrase})",
                     endpoint.Key, (int)response.StatusCode, response.ReasonPhrase);
                 unhealthyEndpoints.Add(endpoint.Key);
