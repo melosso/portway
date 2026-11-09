@@ -136,6 +136,23 @@ public class SqlInputValidatorTests
         Assert.Equal("Invalid email", err.Message);
     }
 
+    [Theory]
+    [InlineData(@"^(a+)+$", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!")]
+    [InlineData(@"(", "anything")]
+    public void Validate_BrokenOrSlowPattern_RejectsValue(string pattern, string value)
+    {
+        var ep = new EndpointDefinition
+        {
+            ColumnValidation = new Dictionary<string, ColumnValidationRule>
+            {
+                ["Code"] = new ColumnValidationRule { Regex = pattern }
+            }
+        };
+        var (isValid, _, errors) = SqlInputValidator.Validate(Parse(JsonSerializer.Serialize(new { Code = value })), ep, "POST");
+        Assert.False(isValid);
+        Assert.Contains(errors!, e => e.Field == "Code");
+    }
+
     [Fact]
     public void Validate_RegexNoMatch_DefaultMessage_Used()
     {

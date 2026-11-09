@@ -255,4 +255,18 @@ public class SqlTableValuedFunctionHelperTests
         Assert.NotNull(result.SqlParameters["@param0"]);
         Assert.NotNull(result.SqlParameters["@param1"]);
     }
+
+    [Theory]
+    [InlineData(@"^(a+)+$", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!")]
+    [InlineData(@"(", "anything")]
+    public void ExtractParameterValues_BrokenOrSlowPattern_RejectsValue(string pattern, string value)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.QueryString = QueryString.Create("code", value);
+        var parameters = new List<TVFParameter> { new() { Name = "code", SqlType = "nvarchar", Source = "Query", ValidationPattern = pattern } };
+
+        var (_, errors) = SqlTableValuedFunctionHelper.ExtractParameterValues(parameters, context.Request, []);
+
+        Assert.NotEmpty(errors);
+    }
 }

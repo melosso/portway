@@ -217,22 +217,8 @@ public static class SqlTableValuedFunctionHelper
     private static (bool IsValid, string? Error) ValidateParameterValue(TVFParameter param, string value)
     {
         // Check validation pattern if specified
-        if (!string.IsNullOrEmpty(param.ValidationPattern))
-        {
-            try
-            {
-                // timeout bounds ReDoS from operator-supplied patterns
-                if (!Regex.IsMatch(value, param.ValidationPattern, RegexOptions.None, TimeSpan.FromSeconds(1)))
-                {
-                    return (false, $"Parameter '{param.Name}' does not match required pattern");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Warning("Invalid regex pattern for parameter '{Parameter}': {Pattern}. Error: {Error}",
-                    param.Name, param.ValidationPattern, ex.Message);
-            }
-        }
+        if (!string.IsNullOrEmpty(param.ValidationPattern) && !ConfigPattern.IsMatch(value, param.ValidationPattern, param.Name))
+            return (false, $"Parameter '{param.Name}' does not match required pattern");
 
         // Basic type validation
         return ValidateSqlType(value, param.SqlType);
