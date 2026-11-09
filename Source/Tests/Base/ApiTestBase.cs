@@ -51,7 +51,7 @@ public class ApiTestBase : IDisposable
     protected readonly TestEnvironmentSettings _testEnvironmentSettings;
 
     // Unique per-instance SQLite paths so parallel test runs don't race on the same file
-    private readonly string _authDbPath;
+    protected readonly string _authDbPath;
     private readonly string _mcpDbPath;
 
     public ApiTestBase() : this(connectTimeoutSeconds: 1)
