@@ -358,7 +358,7 @@ public class OpenApiDocumentTests : ApiTestBase
 
     // badges come from the endpoint file and the operation itself, and the setting turns them off
     [Fact]
-    public async Task Operations_CarryBadges_UnlessDisabled()
+    public async Task Operations_IncludeBadges_UnlessDisabled()
     {
         SetAllowedEnvironments("500", "700");
 

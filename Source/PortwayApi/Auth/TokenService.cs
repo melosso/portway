@@ -315,7 +315,7 @@ public class TokenService
     }
 
     /// <summary>
-    /// Returns null if the token can be revoked, or an error message if it is protected. A token is protected when it is the last active token, or the last active token that holds full wildcard (*/*)  permissions
+    /// Returns null if the token can be revoked, or an error message if it is protected. A token is protected when it is the last active token, or the last active token that has full wildcard (*/*)  permissions
     /// </summary>
     public async Task<string?> GetRevokeBlockReasonAsync(int tokenId)
     {

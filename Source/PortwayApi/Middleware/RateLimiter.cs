@@ -166,7 +166,7 @@ public class RateLimiter
             }
             else
             {
-                // removes the entry if it still holds the expired block
+                // removes the entry if it still contains the expired block
                 _state.BlockedIps.TryRemove(KeyValuePair.Create(clientIp, blockInfo));
                 Log.Information("Rate limit for IP {IP} has expired, allowing traffic", clientIp);
             }

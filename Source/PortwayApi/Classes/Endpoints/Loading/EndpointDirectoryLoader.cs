@@ -159,7 +159,7 @@ internal static class EndpointDirectoryLoader
         return definition.Identity;
     }
 
-    // a v1 folder holds the v1 endpoint and takes precedence over the entity.json beside it
+    // a v1 folder contains the v1 endpoint and takes precedence over the entity.json beside it
     private static bool ShadowedByV1Folder(string file)
     {
         if (!File.Exists(Path.Combine(Path.GetDirectoryName(file)!, EndpointVersion.Default, "entity.json")))

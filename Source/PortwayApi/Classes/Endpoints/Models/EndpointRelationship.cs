@@ -11,7 +11,7 @@ public class EndpointRelationship
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Name of the registered SQL endpoint this relationship points at (may be namespaced, e.g. "Product/Assortments")
+    /// Name of the registered SQL endpoint this relationship targets (may be namespaced, e.g. "Product/Assortments")
     /// </summary>
     public string Target { get; set; } = string.Empty;
 

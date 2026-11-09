@@ -82,7 +82,7 @@ public sealed class RedisCacheProviderTests
     [Fact]
     public async Task LockHeldElsewhere_ReturnsNoLock_InsteadOfALocalOne()
     {
-        // the mocked lock write returns false, as when another instance holds the key
+        // the mocked lock write returns false, as when another instance has acquired the key
         var (provider, _, _, _) = Create();
 
         using var handle = await provider.AcquireLockAsync("k", TimeSpan.FromSeconds(10), TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(20), TestContext.Current.CancellationToken);

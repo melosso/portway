@@ -9,7 +9,7 @@ using Xunit;
 namespace PortwayApi.Tests.Middleware;
 
 /// <summary>
-/// Auth failures answer in the shared error envelope, carry a Bearer challenge on 401 and do not reveal which endpoints exist
+/// Auth failures answer in the shared error envelope, include a Bearer challenge on 401 and do not reveal which endpoints exist
 /// </summary>
 public class TokenAuthErrorTests : ApiTestBase
 {

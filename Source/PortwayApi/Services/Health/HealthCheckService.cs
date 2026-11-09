@@ -50,7 +50,7 @@ public class HealthCheckService
             return _cachedReport!;
         }
 
-        // Return the stale cache while a refresh holds the lock
+        // Return the stale cache while another refresh has acquired the lock
         if (!await _lock.WaitAsync(0, cancellationToken))
         {
             return _cachedReport ?? CreateCheckingReport();

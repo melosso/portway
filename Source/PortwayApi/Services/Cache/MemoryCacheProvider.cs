@@ -49,7 +49,7 @@ public class MemoryCacheProvider : ICacheProvider
                 }
                 catch (Exception ex)
                 {
-                    // Unserializable payloads still need a non-zero size or the budget cannot hold them back
+                    // Unserializable payloads still need a non-zero size or the budget cannot limit them
                     Log.Debug(ex, "Unable to measure cache entry size, charging 4 KB");
                     return 4096;
                 }

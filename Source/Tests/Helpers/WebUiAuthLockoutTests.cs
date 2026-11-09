@@ -4,7 +4,7 @@ using Xunit;
 namespace PortwayApi.Tests.Helpers;
 
 /// <summary>
-/// The console sign-in lockout holds under parallel attempts and is scoped per client and account
+/// The console sign-in lockout applies under parallel attempts and is scoped per client and account
 /// </summary>
 public class WebUiAuthLockoutTests
 {

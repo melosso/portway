@@ -29,6 +29,35 @@ internal static class OpenApiVersionSelector
             .Select(e => e.BasePath)
             .ToList();
 
+        if (!Keep(document, bases))
+        {
+            return false;
+        }
+
+        foreach (var operation in document.Paths!.Values.SelectMany(p => p.Operations?.Values ?? Enumerable.Empty<OpenApiOperation>()))
+        {
+            EndpointVersionDocumentFilter.RemoveVersionLabels(operation, version);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Keeps the newest version of each endpoint; false when the document has no operations
+    /// </summary>
+    public static bool SelectLatest(OpenApiDocument document)
+    {
+        var bases = OpenApiEndpointCatalog.All()
+            .GroupBy(e => (e.Definition.Type, e.Definition.FullPath))
+            .SelectMany(g => g.Where(e => EndpointVersion.Number(e.Definition.Version) == g.Max(n => EndpointVersion.Number(n.Definition.Version))))
+            .Select(e => e.BasePath)
+            .ToList();
+
+        return Keep(document, bases);
+    }
+
+    private static bool Keep(OpenApiDocument document, IReadOnlyList<string> bases)
+    {
         foreach (var pathKey in (document.Paths?.Keys ?? Enumerable.Empty<string>()).ToList())
         {
             if (!bases.Any(b => OpenApiEndpointCatalog.Covers(b, pathKey)))
@@ -40,11 +69,6 @@ internal static class OpenApiVersionSelector
         if (document.Paths is not { Count: > 0 })
         {
             return false;
-        }
-
-        foreach (var operation in document.Paths.Values.SelectMany(p => p.Operations?.Values ?? Enumerable.Empty<OpenApiOperation>()))
-        {
-            EndpointVersionDocumentFilter.RemoveVersionLabels(operation, version);
         }
 
         var tags = document.Tags?.ToList() ?? [];

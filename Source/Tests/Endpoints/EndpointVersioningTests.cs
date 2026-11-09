@@ -298,7 +298,7 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
     }
 
     [Fact]
-    public async Task VersionDocument_HoldsOnlyThatVersion()
+    public async Task VersionDocument_ContainsOnlyThatVersion()
     {
         using var v2 = await Document("/docs/openapi/v2/openapi.json");
         var v2Paths = v2.RootElement.GetProperty("paths").EnumerateObject().Select(p => p.Name).ToList();
@@ -321,6 +321,21 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
     }
 
     [Fact]
+    public async Task LatestDocument_ContainsNewestVersionOfEachEndpoint()
+    {
+        using var latest = await Document("/docs/openapi/latest/openapi.json");
+        var paths = latest.RootElement.GetProperty("paths");
+        var names = paths.EnumerateObject().Select(p => p.Name).ToList();
+
+        Assert.Contains("/api/{env}/v2/VerTest/Items", names);
+        Assert.DoesNotContain("/api/{env}/VerTest/Items", names);
+        Assert.Contains("/api/{env}/VerTest/Legacy", names);
+        Assert.Contains("/api/{env}/v3/Things", names);
+        Assert.EndsWith("/docs/openapi/latest/openapi.json", latest.RootElement.GetProperty("$self").GetString());
+        Assert.Contains("(v2)", paths.GetProperty("/api/{env}/v2/VerTest/Items").GetProperty("get").GetProperty("summary").GetString());
+    }
+
+    [Fact]
     public async Task DocsPage_OffersAVersionSwitch()
     {
         var html = await _client.GetStringAsync("/docs", TestContext.Current.CancellationToken);
@@ -328,10 +343,10 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
         using var json = JsonDocument.Parse(config);
 
         var slugs = json.RootElement.GetProperty("sources").EnumerateArray().Select(s => s.GetProperty("slug").GetString()).ToList();
-        Assert.Equal(["all", "v1", "v2"], slugs);
+        Assert.Equal(["all", "latest", "v1", "v2"], slugs);
         var defaults = json.RootElement.GetProperty("sources").EnumerateArray()
             .Where(s => s.GetProperty("default").GetBoolean()).Select(s => s.GetProperty("slug").GetString());
-        Assert.Equal(["v2"], defaults);
+        Assert.Equal(["latest"], defaults);
         Assert.DoesNotContain("data-url=", html);
     }
 

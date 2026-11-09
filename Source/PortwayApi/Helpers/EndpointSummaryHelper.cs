@@ -163,7 +163,7 @@ public static class EndpointSummaryHelper
                 Log.Error("Endpoint {Endpoint} has WriteMode Table but an unsafe configuration: {Error}. Writes will be refused", name, configError);
         }
 
-        // Fail closed when an $expand relationship points at an endpoint that is not a registered SQL endpoint
+        // Fail closed when an $expand relationship targets an endpoint that is not a registered SQL endpoint
         ValidateRelationshipTargets(sqlEndpoints);
 
         var documented = OpenApiEndpointCatalog.All().Select(e => e.Definition).ToList();

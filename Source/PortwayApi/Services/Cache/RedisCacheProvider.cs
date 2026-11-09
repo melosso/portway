@@ -417,7 +417,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                 await Task.Delay(retryTime, cancellationToken);
             }
 
-            // another instance holds the lock; a local lock would not exclude it
+            // another instance has acquired the lock; a local lock would not exclude it
             Log.Warning("Timed out waiting for Redis lock: {LockKey}", redisLockKey);
             return null;
         }
@@ -572,7 +572,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                 }
             }
 
-            // Atomic compare-and-delete: releases the lock only if it still holds our token, never one acquired after ours expired
+            // Atomic compare-and-delete: releases the lock only if it still contains our token, never one acquired after ours expired
             string script = @"
                 if redis.call('get', KEYS[1]) == ARGV[1] then
                     return redis.call('del', KEYS[1])

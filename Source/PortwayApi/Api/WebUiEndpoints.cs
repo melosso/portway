@@ -151,7 +151,7 @@ public static partial class WebUiEndpointExtensions
     /// </summary>
     internal static bool IsPublicOriginAllowed(HttpRequest request, string[] patterns)
     {
-        // navigation requests carry no origin header, fall back to scheme and host
+        // navigation requests include no origin header, fall back to scheme and host
         var origin = request.Headers.Origin.FirstOrDefault();
         if (string.IsNullOrEmpty(origin))
         {

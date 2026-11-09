@@ -162,7 +162,7 @@ public class EndpointDefinition
     public string? FolderName { get; set; }
 
     /// <summary>
-    /// Folder holding this endpoint's entity.json, set by the loader
+    /// Folder that contains this endpoint's entity.json, set by the loader
     /// </summary>
     public string? ConfigDirectory { get; set; }
 

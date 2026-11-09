@@ -150,7 +150,7 @@ public sealed class ProxyCredentialForwardingTests : ApiTestBase, IDisposable
     }
 
     [Fact]
-    public async Task DebugLog_HoldsNoQueryValue()
+    public async Task DebugLog_ContainsNoQueryValue()
     {
         var sink = new CollectingSink();
         var previous = Log.Logger;

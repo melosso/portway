@@ -6,7 +6,7 @@ namespace PortwayApi.Middleware
     public class AuthenticatedCachingMiddleware
     {
         /// <summary>
-        /// HttpContext item holding request header names the response depends on, e.g. tenant headers
+        /// HttpContext item that contains the request header names the response depends on, e.g. tenant headers
         /// </summary>
         public const string VaryHeadersItem = "Portway.VaryHeaders";
 

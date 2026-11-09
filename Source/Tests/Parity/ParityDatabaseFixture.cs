@@ -32,7 +32,7 @@ public abstract class ParityDatabaseFixture : IAsyncLifetime
     public abstract string QualifiedGuidKeysTable { get; }
 
     /// <summary>
-    /// Schema-qualified table keyed by text, holding GUID and non-GUID keys
+    /// Schema-qualified table keyed by text, containing GUID and non-GUID keys
     /// </summary>
     public abstract string QualifiedTextKeysTable { get; }
 

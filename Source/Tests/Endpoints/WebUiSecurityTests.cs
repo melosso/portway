@@ -494,7 +494,7 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
-    public async Task SettingsPage_SecuritySectionHoldsOnlySecurityCards()
+    public async Task SettingsPage_SecuritySectionContainsOnlySecurityCards()
     {
         var client = CreateClient();
         var (authCookie, _) = await LoginAsync(client);
@@ -512,7 +512,7 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
-    public async Task TokensPage_RotateLivesInEditSheetNotTableRow()
+    public async Task TokensPage_RotateIsInEditSheetNotTableRow()
     {
         var client = CreateClient();
         var (authCookie, _) = await LoginAsync(client);

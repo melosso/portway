@@ -33,7 +33,7 @@ public class SqlEndpointTests : ApiTestBase
         // Act
         var response = await _client.GetAsync($"/api/{testEnv}/{endpointName}?$filter=ItemCode eq 'TEST001'", TestContext.Current.CancellationToken);
 
-        // The converter runs before any database access, so this holds even when SQL is unreachable
+        // The converter runs before any database access; SQL availability does not change the result
         _mockODataToSqlConverter.Verify(
             c => c.ConvertToSQL(
                 It.Is<string>(s => s.Contains("Items")),

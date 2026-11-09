@@ -29,7 +29,7 @@ public class McpDiscoveryTests
         Assert.Equal("", new McpToolDescriptor { EndpointName = "Items", Method = "GET" }.LifecycleTags);
 
     [Fact]
-    public void Describe_CarriesLifecycleAndExpandable()
+    public void Describe_IncludesLifecycleAndExpandable()
     {
         var info = PortwayMcpTools.Describe("warehouse_warehouses_v2", Versioned, ["GET"], ["WMS"]);
 

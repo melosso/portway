@@ -168,7 +168,7 @@ public class McpToolExecutionTests
     [InlineData("$filter=A eq 1#", "$filter=A eq 1&$top=50")]
     [InlineData("$top=5", "$top=5")]
     [InlineData("", "$top=50")]
-    public void EnforceTopLimit_HoldsForEveryEncoding(string query, string expected)
+    public void EnforceTopLimit_AppliesToEveryEncoding(string query, string expected)
     {
         Assert.Equal(expected, McpChatService.EnforceTopLimit(query, 50, 200));
     }

@@ -142,7 +142,7 @@ public static class OidcFlow
 
         if (!response.IsSuccessStatusCode)
         {
-            // The body holds the provider's own error code, the only thing separating a misconfigured client from a stale code
+            // The body contains the provider's own error code, the only thing separating a misconfigured client from a stale code
             var how = provider.ClientSecret.Length == 0 ? "no secret (public client)"
                     : basic ? "client_secret_basic" : "client_secret_post";
             Log.Warning("Token exchange with {Provider} failed with {Status} using {Method}: {Body}",
