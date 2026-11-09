@@ -36,6 +36,9 @@ public sealed class ProxyCacheKeyTests : ApiTestBase, IDisposable
         base.Dispose();
     }
 
+    // the startup health check requests the bare url
+    private int Hits => _upstream.Requests.Count(r => r.Contains("$top="));
+
     private async Task Get(string suffix)
     {
         var response = await _client.GetAsync($"/api/{Env}/CacheKeyTest/Accounts{suffix}", TestContext.Current.CancellationToken);
@@ -47,12 +50,12 @@ public sealed class ProxyCacheKeyTests : ApiTestBase, IDisposable
     {
         await Get("('KEYC3')?$top=8");
         await Get("('KEYC3')?$top=8");
-        Assert.Equal(1, _upstream.Hits);
+        Assert.Equal(1, Hits);
 
         await Get("('KEYD4')?$top=8");
 
-        Assert.Equal(2, _upstream.Hits);
-        Assert.StartsWith("/accounts/KEYD4", _upstream.PathAndQuery);
+        Assert.Equal(2, Hits);
+        Assert.Contains(_upstream.Requests, r => r.StartsWith("/accounts/KEYD4"));
     }
 
     [Fact]
@@ -61,7 +64,7 @@ public sealed class ProxyCacheKeyTests : ApiTestBase, IDisposable
         await Get("?$top=50");
         await Get("('ZZ9')?$top=50");
 
-        Assert.Equal(2, _upstream.Hits);
-        Assert.StartsWith("/accounts/ZZ9", _upstream.PathAndQuery);
+        Assert.Equal(2, Hits);
+        Assert.Contains(_upstream.Requests, r => r.StartsWith("/accounts/ZZ9"));
     }
 }
