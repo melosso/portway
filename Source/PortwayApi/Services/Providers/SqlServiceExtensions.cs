@@ -23,8 +23,8 @@ public static class SqlServiceExtensions
 
         // OData/SQL services
         services.AddSingleton<IODataToSqlConverter, ODataToSqlConverter>();
-        services.AddSingleton<PortwayApi.Services.SqlMetadataService>();
-        services.AddHostedService<PortwayApi.Services.MetadataInitializationService>();
+        services.AddSingleton<SqlMetadataService>();
+        services.AddHostedService<MetadataInitializationService>();
         services.AddSingleton<FileHandlerService>();
 
         // Connection pooling
