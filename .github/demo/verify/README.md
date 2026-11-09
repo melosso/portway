@@ -8,6 +8,7 @@ The test instance will attempt to spawn on `127.0.0.1:8081`. Builds on container
 
 - `podman` or `docker`
 - `python3` and `curl`
+- `stressanapi` 1.0.3 for `stress.py` (`pip install stressanapi==1.0.3`, or set `STRESSANAPI` to its path)
 
 ## Scripts
 
@@ -17,6 +18,7 @@ The test instance will attempt to spawn on `127.0.0.1:8081`. Builds on container
 | `verify.py` | Runs the functional checks. Exit code `1` if a check fails. |
 | `load.py limit` | Sends a burst of 300 requests to the rate limiter. |
 | `load.py SCENARIO REQUESTS THREADS` | Runs a load scenario: `sql`, `sqlvary`, `proxy`, `proxyvary`, `mcp` or `bad`. |
+| `stress.py [SECONDS] [THREADS] [BURST] [FILTER]` | Runs 52 StressAnAPI scenarios with expected status codes and body text. Exit code `1` if a response differs. Use with `start.sh --no-limit`. |
 | `console.sh METHOD PATH [JSON]` | Calls the console API from inside `test-portway`. |
 
 `start.sh` copies `.github/demo` to `$PORTWAY_VERIFY_DIR` (default `/tmp/portway-verify`) and adds `$expand` fixtures to the copy. It creates the console account `tester` and the tokens `TOKEN`, `SCOPED` (`CRM/Accounts`), `TENANT` (`X-Country: NL`) and `STOCK` (`Inventory/StockLevels`) in `tokens.env`.
