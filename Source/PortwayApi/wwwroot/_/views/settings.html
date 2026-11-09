@@ -574,6 +574,8 @@ const CARDS = {
       field('DatabaseMaintenance:Schedule', 'Run at', 'Server local time of the daily run.'),
       field('DatabaseMaintenance:RunOnStartup', 'Run on start', 'Also runs once when Portway starts.'),
       field('DatabaseMaintenance:FreePageRatioThreshold', 'Compact above', 'Share of free pages that triggers compaction.', { placeholder: '0.25' }),
+      field('DatabaseMaintenance:AuditRetention:Days', 'Token audit retention', 'Maintenance deletes FailedAuth and AuthorizationFailed entries older than this. Use 0 to disable.', { unit: 'days' }),
+      field('DatabaseMaintenance:AuditRetention:MaxSizeMb', 'Token audit size limit', 'Maintenance deletes the oldest FailedAuth and AuthorizationFailed entries above this size. Use 0 to disable.', { unit: 'MB' }),
       settingItem('Last run', dbm.last_run_utc ? new Date(dbm.last_run_utc).toLocaleString() : 'Not yet', 'Most recent completed run.'),
       ...(dbm.last_results ?? []).map(r => statusItem(esc(r.database),
         r.integrity === 'ok' ? 'ok' : r.integrity ? 'bad' : 'warn',

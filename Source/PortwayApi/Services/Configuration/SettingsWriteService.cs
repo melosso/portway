@@ -146,6 +146,8 @@ public sealed partial class SettingsWriteService
         new("DatabaseMaintenance:FreePageRatioThreshold", SettingKind.Number, false, 0.01, 0.99),
         new("DatabaseMaintenance:Backup:Enabled", SettingKind.Bool, false),
         new("DatabaseMaintenance:Backup:Retention", SettingKind.Int, false, 1, 100),
+        new("DatabaseMaintenance:AuditRetention:Days", SettingKind.Int, false, 0, 3650),
+        new("DatabaseMaintenance:AuditRetention:MaxSizeMb", SettingKind.Int, false, 0, 100_000),
 
         new("Mcp:Enabled", SettingKind.Bool, true),
         new("Mcp:Path", SettingKind.Route, true),

@@ -42,6 +42,8 @@ public class SettingValuesTests
         Assert.Equal(true, values["DatabaseMaintenance:Enabled"]);
         Assert.Equal("03:00", values["DatabaseMaintenance:Schedule"]);
         Assert.Equal(7, values["DatabaseMaintenance:Backup:Retention"]);
+        Assert.Equal(180, values["DatabaseMaintenance:AuditRetention:Days"]);
+        Assert.Equal(0, values["DatabaseMaintenance:AuditRetention:MaxSizeMb"]);
         Assert.Equal("Information", values["Serilog:MinimumLevel:Default"]);
         Assert.Equal("None", values["Telemetry:Provider"]);
     }

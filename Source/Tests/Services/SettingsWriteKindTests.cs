@@ -225,4 +225,14 @@ public sealed class SettingsWriteKindTests
 
         Assert.All(ConfigAliases.RenamedKeys, r => Assert.DoesNotContain(r.Deprecated, keys));
     }
+
+    [Theory]
+    [InlineData("DatabaseMaintenance:AuditRetention:Days")]
+    [InlineData("DatabaseMaintenance:AuditRetention:MaxSizeMb")]
+    public void AuditRetention_AcceptsZero_AndRefusesNegatives(string key)
+    {
+        Assert.Null(Error(key, "0"));
+        Assert.Null(Error(key, "180"));
+        Assert.NotNull(Error(key, "-1"));
+    }
 }

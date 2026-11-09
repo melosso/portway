@@ -20,6 +20,18 @@ public class DatabaseMaintenanceOptions
     public bool RunOnStartup { get; set; } = false;
 
     public DatabaseBackupOptions Backup { get; set; } = new();
+
+    public AuditRetentionOptions AuditRetention { get; set; } = new();
+}
+
+/// <summary>
+/// Auth failure audit limits.
+/// </summary>
+public class AuditRetentionOptions
+{
+    public int Days { get; set; } = 180;
+
+    public int MaxSizeMb { get; set; }
 }
 
 /// <summary>

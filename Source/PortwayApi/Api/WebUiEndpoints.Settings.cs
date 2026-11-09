@@ -77,6 +77,8 @@ public static partial class WebUiEndpointExtensions
             ["DatabaseMaintenance:FreePageRatioThreshold"] = config.GetValue("DatabaseMaintenance:FreePageRatioThreshold", 0.25),
             ["DatabaseMaintenance:Backup:Enabled"] = config.GetValue("DatabaseMaintenance:Backup:Enabled", true),
             ["DatabaseMaintenance:Backup:Retention"] = config.GetValue("DatabaseMaintenance:Backup:Retention", 7),
+            ["DatabaseMaintenance:AuditRetention:Days"] = config.GetValue("DatabaseMaintenance:AuditRetention:Days", 180),
+            ["DatabaseMaintenance:AuditRetention:MaxSizeMb"] = config.GetValue("DatabaseMaintenance:AuditRetention:MaxSizeMb", 0),
             ["Mcp:Enabled"] = config.GetValue<bool>("Mcp:Enabled"),
             ["Mcp:Path"] = Text("Mcp:Path", "/mcp"),
             ["Mcp:ChatEnabled"] = config.GetValue<bool>("Mcp:ChatEnabled"),
