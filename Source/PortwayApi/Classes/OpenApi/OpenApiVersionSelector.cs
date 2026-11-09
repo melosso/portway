@@ -47,13 +47,27 @@ internal static class OpenApiVersionSelector
     /// </summary>
     public static bool SelectLatest(OpenApiDocument document)
     {
-        var bases = OpenApiEndpointCatalog.All()
+        var newest = OpenApiEndpointCatalog.All()
             .GroupBy(e => (e.Definition.Type, e.Definition.FullPath))
             .SelectMany(g => g.Where(e => EndpointVersion.Number(e.Definition.Version) == g.Max(n => EndpointVersion.Number(n.Definition.Version))))
-            .Select(e => e.BasePath)
             .ToList();
 
-        return Keep(document, bases);
+        if (!Keep(document, newest.Select(e => e.BasePath).ToList()))
+        {
+            return false;
+        }
+
+        // one version per endpoint, as in a v{n} document
+        foreach (var (pathKey, pathItem) in document.Paths!)
+        {
+            var version = OpenApiEndpointCatalog.Owner(newest, pathKey)?.Version ?? EndpointVersion.Default;
+            foreach (var operation in pathItem.Operations?.Values ?? Enumerable.Empty<OpenApiOperation>())
+            {
+                EndpointVersionDocumentFilter.RemoveVersionLabels(operation, version);
+            }
+        }
+
+        return true;
     }
 
     private static bool Keep(OpenApiDocument document, IReadOnlyList<string> bases)

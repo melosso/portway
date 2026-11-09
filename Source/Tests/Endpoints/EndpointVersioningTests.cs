@@ -332,7 +332,10 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
         Assert.Contains("/api/{env}/VerTest/Legacy", names);
         Assert.Contains("/api/{env}/v3/Things", names);
         Assert.EndsWith("/docs/openapi/latest/openapi.json", latest.RootElement.GetProperty("$self").GetString());
-        Assert.Contains("(v2)", paths.GetProperty("/api/{env}/v2/VerTest/Items").GetProperty("get").GetProperty("summary").GetString());
+        using var v2 = await Document("/docs/openapi/v2/openapi.json");
+        var latestOperation = paths.GetProperty("/api/{env}/v2/VerTest/Items").GetProperty("get");
+        var v2Operation = v2.RootElement.GetProperty("paths").GetProperty("/api/{env}/v2/VerTest/Items").GetProperty("get");
+        Assert.Equal(v2Operation.GetRawText(), latestOperation.GetRawText());
     }
 
     [Fact]
