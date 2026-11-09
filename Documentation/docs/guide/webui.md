@@ -81,7 +81,7 @@ Retention: 31 days in `metrics.db`; 31 days and at most 500,000 requests in memo
 
 ## Trace
 
-**Trace** (`/_/trace`) holds the [request traffic logging](/reference/audit) settings:
+**Trace** (`/_/trace`) contains the [request traffic logging](/reference/audit) settings:
 
 | Card | Settings |
 |---|---|

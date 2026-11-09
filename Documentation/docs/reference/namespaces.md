@@ -56,7 +56,7 @@ Endpoints without a namespace use `/api/{env}/{endpoint}` and `/api/{env}/{endpo
 
 ## Versions
 
-A `v{n}` folder (`v1` to `v999`) below an endpoint folder holds that version of the endpoint. Without a `v1` folder, the endpoint folder's own `entity.json` is `v1`.
+A `v{n}` folder (`v1` to `v999`) below an endpoint folder contains that version of the endpoint. Without a `v1` folder, the endpoint folder's own `entity.json` is `v1`.
 
 ```
 endpoints/SQL/Inventory/Products/

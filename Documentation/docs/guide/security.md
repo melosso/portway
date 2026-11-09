@@ -109,7 +109,7 @@ Invalid tokens are logged at `Debug`, rate limit blocks at `Warning`. Per-reques
 - [ ] Service account or Application Pool identity with minimum privileges
 - [ ] Console account with a strong password; legacy `PORTWAY_ADMIN_KEY` removed
 - [ ] `PORTWAY_KNOWN_PROXIES` set to the reverse proxy (client addresses for rate limiting, sign-in lockout and the console network gate)
-- [ ] Read-only console users hold `viewer`
+- [ ] Read-only console users have the `viewer` role
 - [ ] `portway.key` kept with the deployment and out of shared backups
 - [ ] Azure Key Vault configured (if applicable)
 - [ ] Initial token file removed from disk
