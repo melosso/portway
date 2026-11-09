@@ -19,6 +19,7 @@ internal sealed class UpstreamCapture : IDisposable
 {
     private readonly WebApplication _app;
 
+    public int Hits { get; private set; }
     public string? Method { get; private set; }
     public string? PathAndQuery { get; private set; }
     public string? Body { get; private set; }
@@ -44,6 +45,7 @@ internal sealed class UpstreamCapture : IDisposable
 
     private async Task Capture(HttpContext ctx)
     {
+        Hits++;
         Method = ctx.Request.Method;
         PathAndQuery = ctx.Request.Path + ctx.Request.QueryString;
         ContentType = ctx.Request.ContentType;

@@ -220,7 +220,7 @@ public sealed class ProxyRequestHandler
             {
                 // Create a cache key based on the request details
                 var headers = context.Request.Headers ?? new Microsoft.AspNetCore.Http.HeaderDictionary();
-                string cacheKey = CreateCacheKey(env, endpointName, remainingPath ?? string.Empty, queryString, headers, tenants);
+                string cacheKey = CreateCacheKey(env, endpointName, fullUrl, headers, tenants);
 
                 // RFC 10008: the cache key for a QUERY request MUST incorporate the request content
                 if (originalMethod.Equals("QUERY", StringComparison.OrdinalIgnoreCase))
@@ -477,12 +477,12 @@ public sealed class ProxyRequestHandler
     /// <summary>
     /// Creates a cache key based on request details
     /// </summary>
-    private string CreateCacheKey(string env, string endpointName, string path, string queryString, IHeaderDictionary headers, IReadOnlyDictionary<string, string> tenants)
+    private string CreateCacheKey(string env, string endpointName, string upstreamUrl, IHeaderDictionary headers, IReadOnlyDictionary<string, string> tenants)
     {
         var keyBuilder = new StringBuilder();
-        // query may hold credentials
-        var queryHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(queryString)));
-        keyBuilder.Append($"proxy:{env}:{endpointName}:{path}:{queryHash}");
+        // url contains key, query and credentials
+        var urlHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(upstreamUrl)));
+        keyBuilder.Append($"proxy:{env}:{endpointName}:{urlHash}");
 
         // Include authorization to differentiate between users if needed
         if (headers.TryGetValue("Authorization", out var authValues))
