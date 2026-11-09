@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using PortwayApi.Helpers;
 using Serilog;
 
 /// <summary>
@@ -67,18 +68,11 @@ public class ProxyTrafficLoggerMiddleware
         logEntry.Environment = env ?? string.Empty;
         logEntry.EndpointName = endpoint ?? string.Empty;
 
-        // Get environment-specific sensitive header and query param names for redaction
-        var (extraHeaderNames, queryParamNames) = await GetEnvironmentAuthNamesAsync(env);
-        logEntry.QueryString = RedactQueryString(context, queryParamNames);
+        var extraHeaderNames = await GetEnvironmentAuthHeaderNamesAsync(env);
+        logEntry.QueryString = UrlRedaction.Redact(context.Request.QueryString.Value);
 
         // Log at debug level only
         Log.Debug($"[Trace: {traceId}] Processing {context.Request.Method} request to {context.Request.Path}");
-
-        // Extract target URL if available in Items
-        if (context.Items.TryGetValue("TargetUrl", out var targetUrl) && targetUrl != null)
-        {
-            logEntry.TargetUrl = targetUrl.ToString() ?? string.Empty;
-        }
 
         // Capture request headers if enabled
         if (_options.CaptureHeaders)
@@ -159,6 +153,10 @@ public class ProxyTrafficLoggerMiddleware
 
             // Call the next middleware in the pipeline
             await _next(context);
+
+            // set by the handler
+            if (context.Items.TryGetValue("TargetUrl", out var targetUrl) && targetUrl is not null)
+                logEntry.TargetUrl = targetUrl.ToString() ?? string.Empty;
 
             // Record duration
             stopwatch.Stop();
@@ -342,15 +340,14 @@ public class ProxyTrafficLoggerMiddleware
     }
 
     /// <summary>
-    /// Header and query-param names the environment's own auth config uses, so a custom credential name still gets redacted
+    /// Credential header names from environment auth
     /// </summary>
-    private async Task<(HashSet<string> HeaderNames, HashSet<string> QueryParamNames)> GetEnvironmentAuthNamesAsync(string? env)
+    private async Task<HashSet<string>> GetEnvironmentAuthHeaderNamesAsync(string? env)
     {
         var headerNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var queryParamNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         if (string.IsNullOrEmpty(env))
-            return (headerNames, queryParamNames);
+            return headerNames;
 
         try
         {
@@ -363,10 +360,9 @@ public class ProxyTrafficLoggerMiddleware
                 if (string.IsNullOrWhiteSpace(method.Name))
                     continue;
 
-                // cookie credentials are already covered since the whole Cookie header is always redacted
-                if (string.Equals(method.In, "Query", StringComparison.OrdinalIgnoreCase))
-                    queryParamNames.Add(method.Name);
-                else if (!string.Equals(method.In, "Cookie", StringComparison.OrdinalIgnoreCase))
+                // query values and Cookie always redacted
+                if (!string.Equals(method.In, "Query", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(method.In, "Cookie", StringComparison.OrdinalIgnoreCase))
                     headerNames.Add(method.Name);
             }
         }
@@ -375,28 +371,7 @@ public class ProxyTrafficLoggerMiddleware
             Log.Debug(ex, "Could not resolve environment auth config for traffic-log redaction of {Environment}", env);
         }
 
-        return (headerNames, queryParamNames);
-    }
-
-    /// <summary>
-    /// Rebuilds the query string with any sensitive parameter's value replaced, instead of logging it raw
-    /// </summary>
-    private static string RedactQueryString(HttpContext context, ISet<string> queryParamNamesToRedact)
-    {
-        var raw = context.Request.QueryString.Value ?? string.Empty;
-        if (raw.Length == 0 || queryParamNamesToRedact.Count == 0)
-            return raw;
-
-        var query = context.Request.Query;
-        if (!query.Keys.Any(queryParamNamesToRedact.Contains))
-            return raw;
-
-        var rebuilt = QueryString.Create(
-            query.Select(kv => new KeyValuePair<string, Microsoft.Extensions.Primitives.StringValues>(
-                kv.Key,
-                queryParamNamesToRedact.Contains(kv.Key) ? "[REDACTED]" : kv.Value)));
-
-        return rebuilt.Value ?? string.Empty;
+        return headerNames;
     }
 
     private string GetClientIpAddress(HttpContext context)

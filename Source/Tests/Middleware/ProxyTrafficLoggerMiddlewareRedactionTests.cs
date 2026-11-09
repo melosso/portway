@@ -16,7 +16,7 @@ namespace PortwayApi.Tests.Middleware;
 public class ProxyTrafficLoggerMiddlewareRedactionTests
 {
     private static (ProxyTrafficLoggerMiddleware Middleware, ChannelReader<ProxyTrafficLogEntry> Reader) BuildMiddleware(
-        AuthenticationSettings? auth)
+        AuthenticationSettings? auth, RequestDelegate? next = null)
     {
         var channel = Channel.CreateUnbounded<ProxyTrafficLogEntry>();
 
@@ -29,7 +29,7 @@ public class ProxyTrafficLoggerMiddlewareRedactionTests
         var provider = services.BuildServiceProvider();
 
         var options = Options.Create(new RequestTrafficLoggingOptions { Enabled = true, CaptureHeaders = true });
-        var middleware = new ProxyTrafficLoggerMiddleware(_ => Task.CompletedTask, options, channel, provider);
+        var middleware = new ProxyTrafficLoggerMiddleware(next ?? (_ => Task.CompletedTask), options, channel, provider);
 
         return (middleware, channel.Reader);
     }
@@ -59,8 +59,7 @@ public class ProxyTrafficLoggerMiddlewareRedactionTests
         await middleware.InvokeAsync(ctx);
 
         Assert.True(reader.TryRead(out var entry));
-        Assert.DoesNotContain("sk_live_abc123", entry!.QueryString);
-        Assert.Contains("REDACTED", entry.QueryString);
+        Assert.Equal("?apikey=***", entry!.QueryString);
     }
 
     [Fact]
@@ -81,15 +80,30 @@ public class ProxyTrafficLoggerMiddlewareRedactionTests
     }
 
     [Fact]
-    public async Task UnrelatedQueryParam_IsLoggedUnredacted()
+    public async Task EveryQueryValue_IsRedactedNamesKept()
     {
         var (middleware, reader) = BuildMiddleware(auth: null);
-        var ctx = BuildContext("/api/prod/orders", "?top=10");
+        var ctx = BuildContext("/api/prod/orders", "?$filter=code%20eq%20%27SECRETCODE%27&apikey=querysecret123&$top=10");
 
         await middleware.InvokeAsync(ctx);
 
         Assert.True(reader.TryRead(out var entry));
-        Assert.Equal("?top=10", entry!.QueryString);
+        Assert.Equal("?$filter=***&apikey=***&$top=***", entry!.QueryString);
+    }
+
+    [Fact]
+    public async Task TargetUrl_SetByHandler_IsLogged()
+    {
+        var (middleware, reader) = BuildMiddleware(null, next: ctx =>
+        {
+            ctx.Items["TargetUrl"] = "https://upstream.example/accounts?id=***";
+            return Task.CompletedTask;
+        });
+
+        await middleware.InvokeAsync(BuildContext("/api/prod/orders", "?id=7"));
+
+        Assert.True(reader.TryRead(out var entry));
+        Assert.Equal("https://upstream.example/accounts?id=***", entry!.TargetUrl);
     }
 
     [Fact]
