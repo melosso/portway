@@ -20,12 +20,15 @@ internal static class OpenApiVersionSelector
             .ToList();
 
     /// <summary>
-    /// Removes the paths and tags of other versions; false when the version has no operations
+    /// Removes the paths and tags of other versions; the highest version also keeps endpoints without a version folder. False when the version has no operations
     /// </summary>
     public static bool Select(OpenApiDocument document, string version)
     {
-        var bases = OpenApiEndpointCatalog.All()
-            .Where(e => EndpointVersion.Number(e.Definition.Version) == EndpointVersion.Number(version))
+        var endpoints = OpenApiEndpointCatalog.All().ToList();
+        var number = EndpointVersion.Number(version);
+        var highest = number == EndpointVersion.Number(Versions()[^1]);
+        var bases = endpoints
+            .Where(e => EndpointVersion.Number(e.Definition.Version) == number || (highest && IsUnversioned(e.Definition, endpoints)))
             .Select(e => e.BasePath)
             .ToList();
 
@@ -42,33 +45,11 @@ internal static class OpenApiVersionSelector
         return true;
     }
 
-    /// <summary>
-    /// Keeps the newest version of each endpoint; false when the document has no operations
-    /// </summary>
-    public static bool SelectLatest(OpenApiDocument document)
-    {
-        var newest = OpenApiEndpointCatalog.All()
-            .GroupBy(e => (e.Definition.Type, e.Definition.FullPath))
-            .SelectMany(g => g.Where(e => EndpointVersion.Number(e.Definition.Version) == g.Max(n => EndpointVersion.Number(n.Definition.Version))))
-            .ToList();
-
-        if (!Keep(document, newest.Select(e => e.BasePath).ToList()))
-        {
-            return false;
-        }
-
-        // one version per endpoint, as in a v{n} document
-        foreach (var (pathKey, pathItem) in document.Paths!)
-        {
-            var version = OpenApiEndpointCatalog.Owner(newest, pathKey)?.Version ?? EndpointVersion.Default;
-            foreach (var operation in pathItem.Operations?.Values ?? Enumerable.Empty<OpenApiOperation>())
-            {
-                EndpointVersionDocumentFilter.RemoveVersionLabels(operation, version);
-            }
-        }
-
-        return true;
-    }
+    // no v{n} folder and no other version of the same endpoint
+    private static bool IsUnversioned(EndpointDefinition definition, IEnumerable<(string BasePath, EndpointDefinition Definition)> endpoints) =>
+        definition.Version is null
+        && !endpoints.Any(e => e.Definition.Version is not null && e.Definition.Type == definition.Type
+            && string.Equals(e.Definition.FullPath, definition.FullPath, StringComparison.OrdinalIgnoreCase));
 
     private static bool Keep(OpenApiDocument document, IReadOnlyList<string> bases)
     {

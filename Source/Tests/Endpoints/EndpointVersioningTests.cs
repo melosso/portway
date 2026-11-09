@@ -31,6 +31,7 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
         WriteStatic(Path.Combine(EndpointDirs[0], "Items", "v2"), "two");
         WriteStatic(Path.Combine(EndpointDirs[0], "Legacy"), "root");
         WriteStatic(Path.Combine(EndpointDirs[0], "Legacy", "v1"), "v1-folder");
+        WriteStatic(Path.Combine(EndpointDirs[0], "Plain"), "plain");
         WriteStatic(EndpointDirs[1], "flat-one");
         WriteStatic(Path.Combine(EndpointDirs[1], "v2"), "flat-two");
         WriteStatic(Path.Combine(EndpointDirs[2], "Things"), "namespace-v3");
@@ -303,7 +304,7 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
         using var v2 = await Document("/docs/openapi/v2/openapi.json");
         var v2Paths = v2.RootElement.GetProperty("paths").EnumerateObject().Select(p => p.Name).ToList();
         Assert.Contains("/api/{env}/v2/VerTest/Items", v2Paths);
-        Assert.All(v2Paths, p => Assert.StartsWith("/api/{env}/v2/", p));
+        Assert.DoesNotContain("/api/{env}/VerTest/Items", v2Paths);
         Assert.EndsWith("/docs/openapi/v2/openapi.json", v2.RootElement.GetProperty("$self").GetString());
         Assert.Equal("v2", v2.RootElement.GetProperty("info").GetProperty("version").GetString());
 
@@ -321,21 +322,16 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
     }
 
     [Fact]
-    public async Task LatestDocument_ContainsNewestVersionOfEachEndpoint()
+    public async Task HighestVersionDocument_IncludesUnversionedEndpoints()
     {
-        using var latest = await Document("/docs/openapi/latest/openapi.json");
-        var paths = latest.RootElement.GetProperty("paths");
-        var names = paths.EnumerateObject().Select(p => p.Name).ToList();
-
-        Assert.Contains("/api/{env}/v2/VerTest/Items", names);
-        Assert.DoesNotContain("/api/{env}/VerTest/Items", names);
-        Assert.Contains("/api/{env}/VerTest/Legacy", names);
-        Assert.Contains("/api/{env}/v3/Things", names);
-        Assert.EndsWith("/docs/openapi/latest/openapi.json", latest.RootElement.GetProperty("$self").GetString());
         using var v2 = await Document("/docs/openapi/v2/openapi.json");
-        var latestOperation = paths.GetProperty("/api/{env}/v2/VerTest/Items").GetProperty("get");
-        var v2Operation = v2.RootElement.GetProperty("paths").GetProperty("/api/{env}/v2/VerTest/Items").GetProperty("get");
-        Assert.Equal(v2Operation.GetRawText(), latestOperation.GetRawText());
+        var v2Paths = v2.RootElement.GetProperty("paths").EnumerateObject().Select(p => p.Name).ToList();
+        Assert.Contains("/api/{env}/VerTest/Plain", v2Paths);
+        Assert.DoesNotContain("/api/{env}/VerTest/Items", v2Paths);
+        Assert.DoesNotContain("/api/{env}/VerTest/Legacy", v2Paths);
+
+        using var v1 = await Document("/docs/openapi/v1/openapi.json");
+        Assert.Contains("/api/{env}/VerTest/Plain", v1.RootElement.GetProperty("paths").EnumerateObject().Select(p => p.Name));
     }
 
     [Fact]
@@ -346,10 +342,10 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
         using var json = JsonDocument.Parse(config);
 
         var slugs = json.RootElement.GetProperty("sources").EnumerateArray().Select(s => s.GetProperty("slug").GetString()).ToList();
-        Assert.Equal(["all", "latest", "v1", "v2"], slugs);
+        Assert.Equal(["all", "v1", "v2"], slugs);
         var defaults = json.RootElement.GetProperty("sources").EnumerateArray()
             .Where(s => s.GetProperty("default").GetBoolean()).Select(s => s.GetProperty("slug").GetString());
-        Assert.Equal(["latest"], defaults);
+        Assert.Equal(["v2"], defaults);
         Assert.DoesNotContain("data-url=", html);
     }
 

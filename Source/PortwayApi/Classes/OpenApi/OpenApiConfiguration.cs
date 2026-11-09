@@ -13,7 +13,6 @@ public static class OpenApiConfiguration
 {
     // framework default document name, resolved by the unversioned route
     internal const string DocumentName = "v1";
-    private const string LatestDocument = "latest";
 
     public static void ConfigureOpenApi(WebApplicationBuilder builder)
     {
@@ -203,32 +202,27 @@ public static class OpenApiConfiguration
         // Configure OpenAPI JSON endpoint (server URL is handled by document transformer in ConfigureOpenApi)
         app.MapOpenApi("/docs/openapi.json");
 
-        // one document per endpoint version plus latest; any other name is the pre 0.8 versioned url of the full document
+        // one document per endpoint version; any other name is the pre 0.8 versioned url of the full document
         app.MapGet("/docs/openapi/{documentName}/openapi.json", async (string documentName, HttpContext context) =>
         {
-            string? version = null;
-            var latest = documentName.Equals(LatestDocument, StringComparison.OrdinalIgnoreCase);
-            if (!latest && !EndpointVersion.TryParse(documentName, out version))
+            if (!EndpointVersion.TryParse(documentName, out var version))
             {
                 return Results.Redirect($"{context.Request.PathBase}/docs/openapi.json", permanent: true, preserveMethod: true);
             }
 
             var provider = context.RequestServices.GetRequiredKeyedService<IOpenApiDocumentProvider>(DocumentName);
             var document = await provider.GetOpenApiDocumentAsync(context.RequestAborted);
-            if (!(version is null ? OpenApiVersionSelector.SelectLatest(document) : OpenApiVersionSelector.Select(document, version)))
+            if (!OpenApiVersionSelector.Select(document, version))
             {
                 return Results.Json(ErrorResponse.Of("Not found"), statusCode: StatusCodes.Status404NotFound);
             }
 
             if (document.Self is { } self)
             {
-                document.Self = new Uri(self, $"openapi/{version ?? LatestDocument}/openapi.json");
+                document.Self = new Uri(self, $"openapi/{version}/openapi.json");
             }
 
-            if (version is not null)
-            {
-                document.Info.Version = version;
-            }
+            document.Info.Version = version;
 
             return Results.Text(await document.SerializeAsJsonAsync(OpenApiSpecVersion.OpenApi3_2, context.RequestAborted), "application/json; charset=utf-8");
         }).ExcludeFromDescription();
@@ -279,14 +273,7 @@ public static class OpenApiConfiguration
                     title = v,
                     slug = v,
                     url = $"{pathBase}/docs/openapi/{v}/openapi.json",
-                    @default = false
-                })
-                .Prepend(new
-                {
-                    title = "Latest",
-                    slug = LatestDocument,
-                    url = $"{pathBase}/docs/openapi/{LatestDocument}/openapi.json",
-                    @default = true
+                    @default = v == versions[^1]
                 })
                 .Prepend(new
                 {
@@ -388,8 +375,10 @@ public static class OpenApiConfiguration
         {openapiAttr}=""""
         >
         console.log(
-            '%c@melosso/portway%c. OpenAPI URL: %c{pathBase}/docs/openapi.json',
+            '%c@melosso/portway%c. OpenAPI URL: %c{pathBase}/docs/openapi.json%c. Latest version: %c{pathBase}/docs/openapi/{versions[^1]}/openapi.json',
             'color: #6f42c1; font-weight: bold; font-size: 12px;',
+            'color: #333; font-size: 12px;',
+            'color: #dcaf34ff; font-weight: bold; font-size: 12px;',
             'color: #333; font-size: 12px;',
             'color: #dcaf34ff; font-weight: bold; font-size: 12px;'
         );
