@@ -299,7 +299,7 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
     }
 
     [Fact]
-    public async Task VersionDocument_ContainsOnlyThatVersion()
+    public async Task VersionDocument_ContainsThatVersionOfEachEndpoint()
     {
         using var v2 = await Document("/docs/openapi/v2/openapi.json");
         var v2Paths = v2.RootElement.GetProperty("paths").EnumerateObject().Select(p => p.Name).ToList();

@@ -39,6 +39,7 @@ public class TokenAuthMiddleware
             context.Request.Path == pathBase + "/health" ||
             context.Request.Path.StartsWithSegments("/_") ||
             context.Request.Path.StartsWithSegments("/sm") ||
+            (context.Request.Path.StartsWithSegments("/js/vendor") && context.Request.Path.Value!.EndsWith(".map", StringComparison.OrdinalIgnoreCase)) ||
             context.Request.Path == "/" ||
             context.Request.Path == "/index.html" ||
             context.Request.Path.StartsWithSegments("/favicon.ico") ||
