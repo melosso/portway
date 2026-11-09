@@ -36,12 +36,17 @@ public sealed class SqliteParityFixture : ParityDatabaseFixture
         $"INSERT INTO Products (Id, Name, Price, ReleasedAt) VALUES {SeedValues}",
         "CREATE TABLE Categories (CategoryId INTEGER PRIMARY KEY, CategoryName TEXT NOT NULL)",
         $"INSERT INTO Categories (CategoryId, CategoryName) VALUES {CategorySeedValues}",
+        "UPDATE Products SET CategoryId = 10 WHERE Id IN (1, 2)",
+        "UPDATE Products SET CategoryId = 20 WHERE Id = 4",
         "CREATE TABLE GuidKeys (Id TEXT PRIMARY KEY, Name TEXT NOT NULL)",
         $"INSERT INTO GuidKeys (Id, Name) VALUES {GuidKeySeedValues}",
         "CREATE TABLE TextKeys (Id TEXT PRIMARY KEY, Name TEXT NOT NULL)",
         $"INSERT INTO TextKeys (Id, Name) VALUES {TextKeySeedValues}"
     ];
 }
+
+public sealed class SqliteProviderParityTests(SqliteParityFixture fixture)
+    : ProviderParityTests<SqliteParityFixture>(fixture);
 
 public sealed class SqliteProviderHttpParityTests(SqliteParityFixture fixture)
     : ProviderHttpParityTests<SqliteParityFixture>(fixture)
