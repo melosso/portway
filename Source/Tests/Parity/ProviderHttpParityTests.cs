@@ -44,6 +44,10 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
         var readOnly = TableEndpoint(fixture.QualifiedProductsTable, "Id", "Name");
         readOnly["AllowedMethods"] = new[] { "GET" };
         WriteEndpoint("IntReadOnly", readOnly);
+        var hiddenKey = TableEndpoint(fixture.QualifiedProductsTable, "Name", "Price");
+        hiddenKey.Remove("PrimaryKey");
+        hiddenKey["AllowedMethods"] = new[] { "GET" };
+        WriteEndpoint("HiddenKey", hiddenKey);
 
         var procedure = TableEndpoint(fixture.QualifiedGuidKeysTable, "Id", "Name");
         procedure.Remove("WriteMode");
@@ -228,6 +232,15 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
 
         Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, Url("Int", "(9002)"))).Status);
         Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Get, Url("Int", "(9002)"))).Status);
+    }
+
+    [DockerFact]
+    public async Task RecordKey_OnHiddenKeyColumn_IsRefused()
+    {
+        var (status, body) = await Send(HttpMethod.Get, Url("HiddenKey", "(1)"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+        Assert.DoesNotContain("Price", body);
     }
 
     [DockerFact]

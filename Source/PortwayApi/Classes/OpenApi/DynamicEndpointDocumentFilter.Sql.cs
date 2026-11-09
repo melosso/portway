@@ -97,6 +97,7 @@ public partial class DynamicEndpointDocumentFilter
             }
 
             if (definition.Methods.Contains("GET", StringComparer.OrdinalIgnoreCase) &&
+                definition.RecordKeyColumn is not null &&
                 !SqlTableValuedFunctionHelper.IsTableValuedFunction(definition))
             {
                 var byIdPath = $"{OpenApiEndpointCatalog.BasePath(definition)}({{id}})";

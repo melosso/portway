@@ -276,6 +276,30 @@ public sealed class SqlKeyDisclosureTests : ApiTestBase, IDisposable
         Assert.Equal("Returns the record with the given ID.", paths.GetProperty("/api/{env}/KeyTest/Catalog({id})").GetProperty("get").GetProperty("description").GetString());
     }
 
+    [Fact]
+    public async Task HiddenKeyColumn_ReturnsBadRequest_AndIsNotDocumented()
+    {
+        var target = Path.Combine(EndpointDir, "Shelf");
+        Directory.CreateDirectory(target);
+        File.WriteAllText(Path.Combine(target, "entity.json"), JsonSerializer.Serialize(new
+        {
+            DatabaseObjectName = "Items",
+            DatabaseObjectType = "Table",
+            AllowedEnvironments = new[] { Env },
+            AllowedMethods = new[] { "GET" },
+            AllowedColumns = new[] { "ItemCode", "Description" }
+        }));
+        EndpointHandler.ReloadAllEndpoints();
+
+        var (status, body) = await Send(HttpMethod.Get, $"/api/{Env}/KeyTest/Shelf('A1')");
+        var (_, document) = await Send(HttpMethod.Get, "/docs/openapi.json");
+
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+        Assert.DoesNotContain("First", body);
+        Assert.Contains("\"/api/{env}/KeyTest/Shelf\"", document);
+        Assert.DoesNotContain("/api/{env}/KeyTest/Shelf({id})", document);
+    }
+
     private async Task<string?> ByIdTitle()
     {
         var (_, body) = await Send(HttpMethod.Get, "/docs/openapi.json");

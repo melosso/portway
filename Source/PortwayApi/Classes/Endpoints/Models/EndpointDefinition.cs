@@ -111,6 +111,22 @@ public class EndpointDefinition
 
     public Dictionary<string, string> DatabaseToAlias => GetColumnMappings().DatabaseToAlias;
 
+    /// <summary>
+    /// Exposed record key column.
+    /// </summary>
+    public string? RecordKeyColumn
+    {
+        get
+        {
+            var key = PrimaryKey ?? "Id";
+            if (AllowedColumns is not { Count: > 0 })
+                return key;
+            if (AliasToDatabase.TryGetValue(key, out var column))
+                return column;
+            return DatabaseToAlias.ContainsKey(key) ? key : null;
+        }
+    }
+
     // Environment restrictions
     public List<string>? AllowedEnvironments { get; set; }
 

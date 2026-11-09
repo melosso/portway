@@ -200,7 +200,6 @@ public sealed partial class SqlRequestHandler
             var objectName = endpoint.DatabaseObjectName;
             var allowedColumns = endpoint.AllowedColumns ?? new List<string>();
             var allowedMethods = endpoint.Methods ?? new List<string> { "GET" };
-            var primaryKey = endpoint.PrimaryKey ?? "Id";
 
             // Check if the incoming read method (GET or QUERY) is allowed
             if (!allowedMethods.Contains(httpMethod, StringComparer.OrdinalIgnoreCase))
@@ -211,17 +210,9 @@ public sealed partial class SqlRequestHandler
             // Step 4: Handle ID-based filtering
             if (!string.IsNullOrEmpty(id))
             {
-                // primaryKey may be an alias; resolve it to the real database column name
-                string actualPrimaryKey = primaryKey;
-
-                if (allowedColumns.Count > 0)
+                if (endpoint.RecordKeyColumn is not { } actualPrimaryKey)
                 {
-                    var aliasToDatabase = endpoint.AliasToDatabase;
-                    if (aliasToDatabase.TryGetValue(primaryKey, out var databasePrimaryKey))
-                    {
-                        actualPrimaryKey = databasePrimaryKey;
-                        Log.Debug("Converted primary key alias '{Alias}' to database column '{DatabaseColumn}'", primaryKey, actualPrimaryKey);
-                    }
+                    return PortwayResults.BadRequest("This endpoint does not support record keys");
                 }
 
                 var keyCoerces = _providerFactory.GetProvider(connectionString).CoercesTextKeys;
