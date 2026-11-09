@@ -1,0 +1,54 @@
+{
+  "DatabaseObjectName": "Contacts",
+  "Namespace": "CRM",
+  "NamespaceDisplayName": "CRM",
+  "AllowedEnvironments": ["WMS"],
+  "AllowedMethods": ["GET", "QUERY"],
+  "PrimaryKey": "Id",
+  "AllowedColumns": [
+    "Id;id",
+    "AccountId;accountId",
+    "FirstName;firstName",
+    "LastName;lastName",
+    "Title;title",
+    "Department;department",
+    "RoleCode;roleCode",
+    "Email;email",
+    "Phone;phone",
+    "Language;language",
+    "IsPrimary;isPrimary"
+  ],
+  "Relationships": [
+    {
+      "Name": "Account",
+      "Target": "CRM/Accounts",
+      "LocalColumn": "AccountId",
+      "TargetColumn": "Id"
+    },
+    {
+      "Name": "Role",
+      "Target": "CRM/ContactRoles",
+      "LocalColumn": "RoleCode",
+      "TargetColumn": "Code"
+    }
+  ],
+  "Properties": {
+    "MaxPageSize": 50,
+    "DefaultSort": "LastName ASC"
+  },
+  "Documentation": {
+    "TagDescription": "Contact persons of CRM accounts with their buying role.",
+    "MethodDescriptions": {
+      "GET": "List contacts",
+      "QUERY": "Search contacts"
+    },
+    "MethodDocumentation": {
+      "GET": "Returns contacts with account, role and the primary contact flag. `$expand` accepts `Account` and `Role`.",
+      "QUERY": "Same query as `GET` with the OData options in a JSON request body, e.g. `{\"filter\": \"status eq 'Open'\", \"top\": 5}`."
+    }
+  },
+  "Mcp": {
+    "Exposed": true,
+    "Instruction": ""
+  }
+}

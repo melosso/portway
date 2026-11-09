@@ -1,0 +1,70 @@
+{
+    "Url": "http://nginx/api/v2/divisions",
+    "Methods": ["GET", "POST", "PUT", "DELETE"],
+    "Documentation": {
+        "TagDescription": "Manage the divisions and branch locations of your organisation. Version 2 returns a `count` and `value` collection.",
+        "MethodDescriptions": {
+            "GET": "List divisions",
+            "POST": "Create a division",
+            "PUT": "Update a division",
+            "DELETE": "Delete a division"
+        },
+        "MethodDocumentation": {
+            "GET": "Returns a `count` and a `value` array of divisions.",
+            "POST": "Creates a division. Returns `201` with the division.",
+            "PUT": "Replaces the division with the request body. Returns the division.",
+            "DELETE": "Deletes the division. Returns `204`."
+        },
+        "Examples": {
+            "GET": {
+                "count": 2,
+                "value": [
+                    {
+                        "id": "01JCZ92WX0CH9MDSEQSXFB9NNB",
+                        "code": "HQ-AMS",
+                        "name": "Head office Amsterdam",
+                        "street": "Herengracht 182",
+                        "postalCode": "1016 BR",
+                        "city": "Amsterdam",
+                        "country": "NL",
+                        "isHeadOffice": true
+                    },
+                    {
+                        "id": "01JD74GHV0Z1YPYEW6MKJTQYX1",
+                        "code": "BR-RTM",
+                        "name": "Branch Rotterdam",
+                        "street": "Waalhaven Oostzijde 87",
+                        "postalCode": "3087 BM",
+                        "city": "Rotterdam",
+                        "country": "NL",
+                        "isHeadOffice": false
+                    }
+                ]
+            },
+            "POST": {
+                "id": "01JEX4XCN0PYQRM868YNF9DWK6",
+                "code": "BR-VIE",
+                "name": "Branch Vienna",
+                "street": "Mariahilfer Straße 47",
+                "postalCode": "1060",
+                "city": "Wien",
+                "country": "AT",
+                "isHeadOffice": false
+            },
+            "PUT": {
+                "id": "01JCZ92WX0CH9MDSEQSXFB9NNB",
+                "code": "HQ-AMS",
+                "name": "Head office Amsterdam",
+                "street": "Herengracht 182",
+                "postalCode": "1016 BR",
+                "city": "Amsterdam",
+                "country": "NL",
+                "isHeadOffice": true
+            }
+        }
+    },
+    "Mcp": {
+        "Exposed": true,
+        "Instruction": ""
+    }
+}

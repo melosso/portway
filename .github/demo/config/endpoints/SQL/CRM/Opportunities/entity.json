@@ -1,0 +1,66 @@
+{
+  "DatabaseObjectName": "Opportunities",
+  "Namespace": "CRM",
+  "NamespaceDisplayName": "CRM",
+  "AllowedEnvironments": ["WMS"],
+  "AllowedMethods": ["GET", "QUERY"],
+  "PrimaryKey": "Id",
+  "AllowedColumns": [
+    "Id;id",
+    "Number;number",
+    "Name;name",
+    "AccountId;accountId",
+    "ContactId;contactId",
+    "StageCode;stageCode",
+    "Status;status",
+    "Type;type",
+    "LeadSource;leadSource",
+    "Amount;amount",
+    "Currency;currency",
+    "Probability;probability",
+    "ExpectedRevenue;expectedRevenue",
+    "CloseDate;closeDate",
+    "CreatedAt;createdAt",
+    "Owner;owner",
+    "NextStep;nextStep"
+  ],
+  "Relationships": [
+    {
+      "Name": "Account",
+      "Target": "CRM/Accounts",
+      "LocalColumn": "AccountId",
+      "TargetColumn": "Id"
+    },
+    {
+      "Name": "Contact",
+      "Target": "CRM/Contacts",
+      "LocalColumn": "ContactId",
+      "TargetColumn": "Id"
+    },
+    {
+      "Name": "Stage",
+      "Target": "CRM/OpportunityStages",
+      "LocalColumn": "StageCode",
+      "TargetColumn": "Code"
+    }
+  ],
+  "Properties": {
+    "MaxPageSize": 50,
+    "DefaultSort": "CloseDate ASC"
+  },
+  "Documentation": {
+    "TagDescription": "Sales opportunities with stage, amount and expected close date.",
+    "MethodDescriptions": {
+      "GET": "List opportunities",
+      "QUERY": "Search opportunities"
+    },
+    "MethodDocumentation": {
+      "GET": "Returns opportunities. `status` is `Open`, `Won` or `Lost`. `expectedRevenue` is `amount` times `probability`. `$expand` accepts `Account`, `Contact` and `Stage`.",
+      "QUERY": "Same query as `GET` with the OData options in a JSON request body, e.g. `{\"filter\": \"status eq 'Open'\", \"top\": 5}`."
+    }
+  },
+  "Mcp": {
+    "Exposed": true,
+    "Instruction": ""
+  }
+}

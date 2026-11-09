@@ -1,0 +1,61 @@
+{
+    "Deprecated": true,
+    "DeprecatedSince": "2026-10-01T00:00:00Z",
+    "Sunset": "2027-04-01T00:00:00Z",
+    "Url": "http://nginx/api/divisions",
+    "Methods": ["GET", "POST", "PUT", "DELETE"],
+    "Documentation": {
+        "TagDescription": "Manage the divisions and branch locations of your organisation.",
+        "MethodDescriptions": {
+            "GET": "List divisions",
+            "POST": "Create a division",
+            "PUT": "Update a division",
+            "DELETE": "Delete a division"
+        },
+        "MethodDocumentation": {
+            "GET": "Returns every division with its address.",
+            "POST": "Creates a division. Returns `201` with the division id.",
+            "PUT": "Replaces the division with the request body.",
+            "DELETE": "Deletes the division."
+        },
+        "Examples": {
+            "GET": [
+                {
+                    "id": "01JCZ92WX0CH9MDSEQSXFB9NNB",
+                    "code": "HQ-AMS",
+                    "name": "Head office Amsterdam",
+                    "street": "Herengracht 182",
+                    "postalCode": "1016 BR",
+                    "city": "Amsterdam",
+                    "country": "NL",
+                    "isHeadOffice": true
+                },
+                {
+                    "id": "01JD74GHV0Z1YPYEW6MKJTQYX1",
+                    "code": "BR-RTM",
+                    "name": "Branch Rotterdam",
+                    "street": "Waalhaven Oostzijde 87",
+                    "postalCode": "3087 BM",
+                    "city": "Rotterdam",
+                    "country": "NL",
+                    "isHeadOffice": false
+                }
+            ],
+            "POST": {
+                "id": "01JEX4XCN0PYQRM868YNF9DWK6",
+                "message": "Division created successfully"
+            },
+            "PUT": {
+                "id": "01JCZ92WX0CH9MDSEQSXFB9NNB",
+                "message": "Division updated successfully"
+            },
+            "DELETE": {
+                "message": "Division deleted successfully"
+            }
+        }
+    },
+    "Mcp": {
+        "Exposed": true,
+        "Instruction": ""
+    }
+}

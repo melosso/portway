@@ -1,0 +1,31 @@
+{
+  "DatabaseObjectName": "AccountTypes",
+  "Namespace": "CRM",
+  "NamespaceDisplayName": "CRM",
+  "AllowedEnvironments": ["WMS"],
+  "AllowedMethods": ["GET"],
+  "PrimaryKey": "Code",
+  "AllowedColumns": [
+    "Code;code",
+    "Name;name",
+    "Description;description",
+    "SortOrder;sortOrder"
+  ],
+  "Properties": {
+    "MaxPageSize": 50,
+    "DefaultSort": "SortOrder ASC"
+  },
+  "Documentation": {
+    "TagDescription": "Account type master data.",
+    "MethodDescriptions": {
+      "GET": "List account types"
+    },
+    "MethodDocumentation": {
+      "GET": "Returns the account types in display order."
+    }
+  },
+  "Mcp": {
+    "Exposed": true,
+    "Instruction": ""
+  }
+}
