@@ -19,11 +19,11 @@ public class OdataExpandJoinBuilderTests
     }
 
     [Fact]
-    public void SqlServer_EmitsInnerJoinOnKeys()
+    public void SqlServer_EmitsLeftJoinOnKeys()
     {
         var sql = Compile(new SqlServerCompiler(), "dbo.Items", Category());
 
-        Assert.Contains("INNER JOIN [dbo].[Assortments] AS [Category]", sql);
+        Assert.Contains("LEFT JOIN [dbo].[Assortments] AS [Category]", sql);
         Assert.Contains("[Category].[AssortmentID] = [dbo].[Items].[Assortment]", sql);
     }
 

@@ -13,11 +13,7 @@ public partial class EndpointController
         string endpointName,
         string? id,
         string? remainingPath,
-        string? select,
-        string? filter,
-        string? orderby,
-        int top,
-        int skip,
+        ODataReadOptions options,
         string httpMethod = "GET")
     {
         if (TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint) is { } resolveError)
@@ -35,7 +31,7 @@ public partial class EndpointController
         if (refusal is not null)
             return refusal;
 
-        return await _sqlRequestHandler.HandleSqlGetRequest(HttpContext, endpoint, env, endpointName, id, remainingPath, select, filter, orderby, top, skip, httpMethod, tenants.Values);
+        return await _sqlRequestHandler.HandleSqlGetRequest(HttpContext, endpoint, env, endpointName, id, remainingPath, options, httpMethod, tenants.Values);
     }
 
     private async Task<IActionResult> HandleSqlPostRequest(

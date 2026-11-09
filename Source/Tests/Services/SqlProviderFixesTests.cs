@@ -94,7 +94,7 @@ public class ODataColumnAllowlistTests
     [InlineData("not (Salary gt 1)", "Salary")]
     [InlineData("contains(tolower(Salary),'x')", "Salary")]
     [InlineData("Salary in ('a','b')", "Salary")]
-    [InlineData("Category/Salary eq 1", "Category")]
+    [InlineData("Category/Salary eq 1", "Category/Salary")]
     public void HiddenFilterColumns_AreRefused(string expression, string refused)
     {
         Assert.Equal([refused], ColumnMappingHelper.FindDisallowedFilterColumns(expression, Aliases));

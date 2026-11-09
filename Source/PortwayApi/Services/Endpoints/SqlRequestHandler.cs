@@ -54,6 +54,8 @@ public sealed partial class SqlRequestHandler
         return rows.ToList();
     }
 
+    private const string InvalidODataMessage = "Invalid OData query. Check $filter, $select, $orderby and $expand syntax.";
+
     /// <summary>
     /// Handles SQL GET requests
     /// </summary>
@@ -64,14 +66,14 @@ public sealed partial class SqlRequestHandler
         string endpointName,
         string? id,
         string? remainingPath,
-        string? select,
-        string? filter,
-        string? orderby,
-        int top,
-        int skip,
+        ODataReadOptions options,
         string httpMethod = "GET",
         IReadOnlyDictionary<string, string>? tenants = null)
     {
+        if (options.Top < 0 || options.Skip < 0)
+            return PortwayResults.BadRequest("$top and $skip must be zero or greater");
+
+        var (select, filter, orderby, expandRaw, countRequested, top, skip) = options;
         var tenantPredicates = TenantSql.Predicates(endpoint, tenants ?? FrozenDictionary<string, string>.Empty);
         if (endpoint.HasTenancy && tenantPredicates.Count == 0)
             return PortwayResults.Forbidden("This endpoint requires tenant access");
@@ -95,20 +97,21 @@ public sealed partial class SqlRequestHandler
                     .Concat(ColumnMappingHelper.FindDisallowedOrderByColumns(orderby, endpoint.AliasToDatabase))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
+                if (refused.Contains(ColumnMappingHelper.InvalidExpression))
+                    return PortwayResults.BadRequest(InvalidODataMessage);
                 if (refused.Count > 0)
                     return PortwayResults.BadRequest($"Columns not allowed: {string.Join(", ", refused)}");
             }
 
             // Step 2.1: Apply endpoint-specific property overrides
-            top = ApplyMaxPageSizeLimit(top, endpoint);
-            var requestedOrderby = orderby;
+            top = Math.Min(ApplyMaxPageSizeLimit(top, endpoint), int.MaxValue - 1);
             orderby = ApplyDefaultSorting(orderby, endpoint);
 
             // Check if this is a Table Valued Function endpoint
             if (SqlTableValuedFunctionHelper.IsTableValuedFunction(endpoint))
             {
                 // Fail closed: the TVF hybrid splice cannot include a JOIN, so $expand would be silently dropped
-                if (!string.IsNullOrWhiteSpace(context.Request.Query["$expand"].FirstOrDefault()))
+                if (!string.IsNullOrWhiteSpace(expandRaw))
                     return PortwayResults.BadRequest("$expand is not supported on table-valued function endpoints");
 
                 Log.Debug("Detected Table Valued Function endpoint: {FunctionName}", endpoint.DatabaseObjectName);
@@ -189,7 +192,7 @@ public sealed partial class SqlRequestHandler
 
                 Log.Debug("Successfully processed TVF query for {FunctionName}", endpoint.DatabaseObjectName);
                 return PortwayResults.Collection(tvfResultList,
-                    tvfIsLastPage ? null : BuildNextLink(env, endpointName, select, filter, requestedOrderby, top, skip, pathSegments));
+                    tvfIsLastPage ? null : BuildNextLink(env, endpointName, options, top, skip, pathSegments));
             }
 
             // Step 3: Extract endpoint details
@@ -273,7 +276,6 @@ public sealed partial class SqlRequestHandler
 
             // Step 6b: $expand to-one navigations. SQL read path only, gated and capability-checked
             List<(string NavName, IReadOnlyDictionary<string, string> DbToAlias)>? expandNavMaps = null;
-            var expandRaw = context.Request.Query["$expand"].FirstOrDefault();
             if (!string.IsNullOrWhiteSpace(expandRaw))
             {
                 // TVF $expand is rejected earlier, in the TVF branch; only Table/View endpoints reach here
@@ -286,25 +288,31 @@ public sealed partial class SqlRequestHandler
                 if (!odataParams.ContainsKey("select"))
                     return PortwayResults.BadRequest("$expand requires the endpoint to declare AllowedColumns");
 
-                var configured = endpoint.Relationships ?? new List<EndpointRelationship>();
-                var requestedNavs = expandRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                var unknownNavs = requestedNavs
-                    .Where(n => !configured.Any(r => string.Equals(r.Name, n, StringComparison.OrdinalIgnoreCase)))
+                var configured = endpoint.Relationships ?? [];
+                var requestedNavs = expandRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
+                var allSqlEndpoints = EndpointHandler.GetSqlEndpoints();
+                var caller = context.Features.Get<PortwayApi.Auth.AuthToken>();
+                var resolved = new List<(EndpointRelationship Rel, EndpointDefinition Target)>();
+                var unknownNavs = new List<string>();
+                foreach (var nav in requestedNavs)
+                {
+                    // unreadable targets return unknown navigation
+                    if (configured.FirstOrDefault(r => string.Equals(r.Name, nav, StringComparison.OrdinalIgnoreCase)) is { } rel
+                        && ODataToSqlConverter.ResolveRelationshipTarget(rel.Target, allSqlEndpoints) is { Enabled: true } target
+                        && target.AllowsEnvironment(env)
+                        && caller?.HasAccessToEndpoint(target.Identity) == true)
+                        resolved.Add((rel, target));
+                    else
+                        unknownNavs.Add(nav);
+                }
                 if (unknownNavs.Count > 0)
                     return PortwayResults.BadRequest($"Unknown $expand navigation(s): {string.Join(", ", unknownNavs)}");
 
-                // Resolve each nav's target endpoint now so the response can be nested and aliased
-                var allSqlEndpoints = EndpointHandler.GetSqlEndpoints();
-                expandNavMaps = new List<(string, IReadOnlyDictionary<string, string>)>();
-                foreach (var nav in requestedNavs)
+                expandNavMaps = [];
+                foreach (var (rel, target) in resolved)
                 {
-                    var rel = configured.First(r => string.Equals(r.Name, nav, StringComparison.OrdinalIgnoreCase));
-                    var target = allSqlEndpoints.FirstOrDefault(kv =>
-                        string.Equals(kv.Key, rel.Target, StringComparison.OrdinalIgnoreCase)
-                        || kv.Key.EndsWith($"/{rel.Target}", StringComparison.OrdinalIgnoreCase)).Value;
-                    if (target == null)
-                        return PortwayResults.BadRequest($"$expand navigation '{rel.Name}' targets unregistered endpoint '{rel.Target}'");
                     if (target.HasTenancy)
                         return PortwayResults.BadRequest($"$expand navigation '{rel.Name}' targets a tenant endpoint, which cannot be expanded");
                     expandNavMaps.Add((rel.Name, target.DatabaseToAlias));
@@ -327,11 +335,9 @@ public sealed partial class SqlRequestHandler
             {
                 // Malformed OData is a client error, not a server fault
                 Log.Warning("Invalid OData query for endpoint {Endpoint}: {Message}", endpointName, odataEx.Message);
-                return PortwayResults.BadRequest("Invalid OData query. Check $filter, $select, $orderby and $expand syntax.");
+                return PortwayResults.BadRequest(InvalidODataMessage);
             }
 
-            // $count=true adds the unpaged total
-            bool countRequested = string.Equals(context.Request.Query["$count"].FirstOrDefault(), "true", StringComparison.OrdinalIgnoreCase);
             object? cachedResponse = null;
             string? cacheKey = null;
             bool cacheEnabled = IsCacheEnabled(endpoint);
@@ -436,7 +442,7 @@ public sealed partial class SqlRequestHandler
                 totalCount = await connection.ExecuteScalarAsync<long>(new CommandDefinition(countQuery, countParameters, cancellationToken: aborted));
             }
 
-            var nextLink = isLastPage ? null : BuildNextLink(env, endpointName, select, filter, requestedOrderby, top, skip);
+            var nextLink = isLastPage ? null : BuildNextLink(env, endpointName, options, top, skip);
             var response = CollectionResponse<object>.Of(transformedResults, nextLink, totalCount);
 
             Log.Debug("Successfully processed query for {Endpoint}", endpointName);
@@ -1124,12 +1130,10 @@ public sealed partial class SqlRequestHandler
     /// <summary>
     /// Builds the OData $skip/$top next-page link
     /// </summary>
-    private string BuildNextLink(
+    private static string BuildNextLink(
         string env,
         string endpointPath,
-        string? select,
-        string? filter,
-        string? orderby,
+        ODataReadOptions options,
         int top,
         int skip,
         string[]? pathSegments = null)
@@ -1137,14 +1141,20 @@ public sealed partial class SqlRequestHandler
         var path = string.Concat((pathSegments ?? []).Select(segment => "/" + Uri.EscapeDataString(segment)));
         var nextLink = $"/api/{env}/{EndpointVersion.RoutePath(endpointPath)}{path}?$top={top}&$skip={skip + top}";
 
-        if (!string.IsNullOrWhiteSpace(select))
-            nextLink += $"&$select={Uri.EscapeDataString(select)}";
+        if (!string.IsNullOrWhiteSpace(options.Select))
+            nextLink += $"&$select={Uri.EscapeDataString(options.Select)}";
 
-        if (!string.IsNullOrWhiteSpace(filter))
-            nextLink += $"&$filter={Uri.EscapeDataString(filter)}";
+        if (!string.IsNullOrWhiteSpace(options.Filter))
+            nextLink += $"&$filter={Uri.EscapeDataString(options.Filter)}";
 
-        if (!string.IsNullOrWhiteSpace(orderby))
-            nextLink += $"&$orderby={Uri.EscapeDataString(orderby)}";
+        if (!string.IsNullOrWhiteSpace(options.OrderBy))
+            nextLink += $"&$orderby={Uri.EscapeDataString(options.OrderBy)}";
+
+        if (!string.IsNullOrWhiteSpace(options.Expand))
+            nextLink += $"&$expand={Uri.EscapeDataString(options.Expand)}";
+
+        if (options.Count)
+            nextLink += "&$count=true";
 
         return nextLink;
     }

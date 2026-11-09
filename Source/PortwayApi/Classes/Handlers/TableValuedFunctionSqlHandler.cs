@@ -176,6 +176,11 @@ public static class TableValuedFunctionSqlHandler
             })
             { StatusCode = 500 }, null);
         }
+        catch (Exception ex) when (ex is Microsoft.OData.ODataException or NotSupportedException)
+        {
+            Log.Warning("Invalid OData query for TVF {FunctionName}: {Message}", endpoint.DatabaseObjectName, ex.Message);
+            return (false, PortwayResults.BadRequest("Invalid OData query. Check $filter, $select and $orderby syntax."), null);
+        }
         catch (Exception ex)
         {
             Log.Error(ex, "Unexpected error executing TVF {FunctionName}", endpoint.DatabaseObjectName);

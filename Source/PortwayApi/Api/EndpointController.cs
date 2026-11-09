@@ -44,13 +44,9 @@ public partial class EndpointController : ControllerBase
         }
 
         // Then check endpoint-specific environment restrictions
-        var allowedEnvironments = _endpointResolver.TryResolve(endpointType, namespaceName, endpointName, out var endpoint)
-            ? endpoint?.AllowedEnvironments
-            : null;
+        _endpointResolver.TryResolve(endpointType, namespaceName, endpointName, out var endpoint);
 
-        if (allowedEnvironments != null &&
-            allowedEnvironments.Count > 0 &&
-            !allowedEnvironments.Contains(env, StringComparer.OrdinalIgnoreCase))
+        if (endpoint is not null && !endpoint.AllowsEnvironment(env))
         {
             Log.Warning("Environment '{Env}' is not allowed for endpoint '{Endpoint}'.", env, endpointName);
             return (false, PortwayResults.BadRequest($"Environment '{env}' is not allowed for this endpoint."));

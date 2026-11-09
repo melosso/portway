@@ -11,7 +11,7 @@ namespace PortwayApi.Helpers;
 /// </summary>
 public static class ColumnMappingHelper
 {
-    private const string InvalidExpression = "invalid expression";
+    public const string InvalidExpression = "invalid expression";
 
     /// <summary>
     /// Names in a $filter outside the columns of the endpoint, by alias or database name. Anything the parser cannot prove to be an allowed column is refused
@@ -58,6 +58,9 @@ public static class ColumnMappingHelper
                 break;
             case EndPathToken path when path.NextToken is null:
                 names.Add(path.Identifier);
+                break;
+            case EndPathToken { NextToken: InnerPathToken { NextToken: null } navigation } path:
+                names.Add($"{navigation.Identifier}/{path.Identifier}");
                 break;
             case EndPathToken path:
                 CollectColumns(path.NextToken, names);

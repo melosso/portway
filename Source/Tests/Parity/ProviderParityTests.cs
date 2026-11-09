@@ -155,6 +155,7 @@ public abstract class ProviderParityTests<TFixture>(TFixture fixture) : IClassFi
     [DockerFact]
     public async Task WriteProcedure_InsertsAndReturnsRow_WithDialectInvocation()
     {
+        Assert.SkipUnless(_fixture.Provider.SupportsProcedures, "provider has no stored procedures");
         // Mirrors SqlRequestHandler's write path: DynamicParameters plus BuildProcedureInvocation
         var parameters = new DynamicParameters();
         parameters.Add("@Method", "INSERT");
@@ -378,9 +379,9 @@ public abstract class ProviderParityTests<TFixture>(TFixture fixture) : IClassFi
         new[] { "CategoryId", "CategoryName" });
 
     [DockerFact]
-    public async Task Expand_InnerJoin_ReturnsMatchedRowsWithTargetColumns()
+    public async Task Expand_LeftJoin_KeepsRowsWithoutMatch()
     {
-        // Products 1, 2 and 4 have a category; 3 and 5 do not, so the inner join drops them
+        // 3 and 5 lack a category
         var query = new Query(_fixture.QualifiedProductsTable)
             .Select($"{_fixture.QualifiedProductsTable}.Id", $"{_fixture.QualifiedProductsTable}.Name");
         query = OdataExpandJoinBuilder.Apply(query, _fixture.QualifiedProductsTable, new[] { CategorySpec() });
@@ -392,8 +393,9 @@ public abstract class ProviderParityTests<TFixture>(TFixture fixture) : IClassFi
             .Cast<IDictionary<string, object>>()
             .ToList();
 
-        Assert.Equal(3, rows.Count);
+        Assert.Equal(5, rows.Count);
         Assert.All(rows, r => Assert.True(r.ContainsKey("Category.CategoryName")));
+        Assert.Equal([3, 5], rows.Where(r => r["Category.CategoryName"] is null).Select(r => Convert.ToInt32(r["Id"])).Order());
     }
 
     [DockerFact]
@@ -421,6 +423,7 @@ public abstract class ProviderParityTests<TFixture>(TFixture fixture) : IClassFi
     [DockerFact]
     public async Task ProcedureParameters_AreDiscovered()
     {
+        Assert.SkipUnless(_fixture.Provider.SupportsProcedures, "provider has no stored procedures");
         await using var connection = _fixture.Provider.CreateConnection(_fixture.ConnectionString);
         await connection.OpenAsync();
 

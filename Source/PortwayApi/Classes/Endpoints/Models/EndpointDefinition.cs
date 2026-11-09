@@ -121,6 +121,9 @@ public class EndpointDefinition
 
     public bool HasTenancy => Tenancy is { Count: > 0 };
 
+    public bool AllowsEnvironment(string env) =>
+        AllowedEnvironments is not { Count: > 0 } || AllowedEnvironments.Contains(env, StringComparer.OrdinalIgnoreCase);
+
     // File endpoint properties (optional, only for file endpoints)
     public Dictionary<string, object>? Properties { get; set; }
 
