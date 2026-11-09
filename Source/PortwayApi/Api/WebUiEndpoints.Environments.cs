@@ -72,7 +72,7 @@ public static partial class WebUiEndpointExtensions
         app.MapGet("/_/api/environments/{name}", (string name, HttpContext context) =>
         {
             var isAdministrator = context.Items[SignedInRoleKey] as string == AdminUserRoles.Administrator;
-            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!EnvironmentNamePattern().IsMatch(name))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
@@ -123,7 +123,7 @@ public static partial class WebUiEndpointExtensions
             if (context.Items[SignedInRoleKey] as string != AdminUserRoles.Administrator)
                 return Results.Json(new { error = "This action needs an administrator account" }, statusCode: 403);
 
-            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!EnvironmentNamePattern().IsMatch(name))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
@@ -144,7 +144,7 @@ public static partial class WebUiEndpointExtensions
 
         app.MapPut("/_/api/environments/{name}/raw", async (string name, HttpContext context) =>
         {
-            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!EnvironmentNamePattern().IsMatch(name))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
@@ -199,7 +199,7 @@ public static partial class WebUiEndpointExtensions
 
         app.MapPost("/_/api/environments/{name}/test", async (string name) =>
         {
-            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!EnvironmentNamePattern().IsMatch(name))
                 return Results.Json(new { ok = false, error = "Invalid environment name" }, statusCode: 400);
 
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
@@ -238,7 +238,7 @@ public static partial class WebUiEndpointExtensions
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
             var globalPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
 
-            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!EnvironmentNamePattern().IsMatch(name))
                 return Results.Json(new { error = "Invalid environment name. Use only letters, numbers, hyphens, and underscores." }, statusCode: 400);
             if (envSettings.AllowedEnvironments.Contains(name, StringComparer.OrdinalIgnoreCase))
                 return Results.Json(new { error = "Environment already exists" }, statusCode: 409);
@@ -274,7 +274,7 @@ public static partial class WebUiEndpointExtensions
 
         app.MapPut("/_/api/environments/{name}", async (string name, HttpContext context) =>
         {
-            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!EnvironmentNamePattern().IsMatch(name))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var envDir = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
@@ -332,12 +332,12 @@ public static partial class WebUiEndpointExtensions
 
         app.MapMethods("/_/api/environments/{name}", ["PATCH"], async (string name, HttpContext context) =>
         {
-            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!EnvironmentNamePattern().IsMatch(name))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
             var newName = body.TryGetProperty("new_name", out var nn) ? nn.GetString()?.Trim() ?? "" : "";
-            if (!Regex.IsMatch(newName, @"^[a-zA-Z0-9_-]+$"))
+            if (!EnvironmentNamePattern().IsMatch(newName))
                 return Results.Json(new { error = "Invalid new name" }, statusCode: 400);
 
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
@@ -364,7 +364,7 @@ public static partial class WebUiEndpointExtensions
 
         app.MapDelete("/_/api/environments/{name}", async (string name, HttpRequest request) =>
         {
-            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!EnvironmentNamePattern().IsMatch(name))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
@@ -385,4 +385,7 @@ public static partial class WebUiEndpointExtensions
         }).AddEndpointFilter(SerializeEnvironmentListEdit).ExcludeFromDescription();
 
     }
+
+    [GeneratedRegex(@"^[a-zA-Z0-9_-]+$")]
+    private static partial Regex EnvironmentNamePattern();
 }
