@@ -305,7 +305,29 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.True(match.Success);
 
         using var config = JsonDocument.Parse(match.Groups[1].Value);
-        Assert.Contains(".scalar-app .endpoints-card:not(:has(li)) { display: none; }", config.RootElement.GetProperty("customCss").GetString());
+        var css = System.Text.RegularExpressions.Regex.Replace(config.RootElement.GetProperty("customCss").GetString()!, @"\s+", " ");
+        Assert.Contains(".scalar-app .endpoints-card:not(:has(li)) { display: none; }", css);
+    }
+
+    // Will fail if a Scalar bump drops a patched class
+    [Fact]
+    public async Task ScalarPage_OverrideClassesExistInVendoredBundle()
+    {
+        var html = await _client.GetStringAsync("/docs", TestContext.Current.CancellationToken);
+        var match = System.Text.RegularExpressions.Regex.Match(html, "data-configuration='([^']*)'");
+        Assert.True(match.Success);
+
+        using var config = JsonDocument.Parse(match.Groups[1].Value);
+        var css = config.RootElement.GetProperty("customCss").GetString()!;
+        var classes = System.Text.RegularExpressions.Regex.Matches(css, @"\.scalar-app ([^{]+)\{")
+            .SelectMany(rule => System.Text.RegularExpressions.Regex.Matches(rule.Groups[1].Value, @"\.((?:\\.|[\w-])+)"))
+            .Select(c => c.Groups[1].Value.Replace("\\", ""))
+            .Distinct()
+            .ToList();
+        Assert.NotEmpty(classes);
+
+        var bundle = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "wwwroot", "js", "vendor", "scalar-api-reference.js"), TestContext.Current.CancellationToken);
+        Assert.Empty(classes.Where(c => !bundle.Contains(c, StringComparison.Ordinal)));
     }
 
     // footer and title come from settings the console can write, so the docs page must encode them

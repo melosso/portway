@@ -243,10 +243,10 @@ public static class OpenApiConfiguration
         }).ExcludeFromDescription();
 
         // Serve minimal source maps for Scalar vendor JS to prevent DevTools 404 warnings
-        app.MapGet("/sm/{*path}", () => Results.Json(new { version = 3, sources = Array.Empty<string>(), mappings = "" }))
+        app.MapGet("/sm/{*path}", (string? path) => Results.Json(new { version = 3, sources = Array.Empty<string>(), mappings = "" }))
            .ExcludeFromDescription();
         // the scalar bundle names its map relative to js/vendor
-        app.MapGet("/js/vendor/{name}.map", () => Results.Json(new { version = 3, sources = Array.Empty<string>(), mappings = "" }))
+        app.MapGet("/js/vendor/{name}.map", (string name) => Results.Json(new { version = 3, sources = Array.Empty<string>(), mappings = "" }))
            .ExcludeFromDescription();
 
         // Configure unified documentation interface at /docs using Scalar
@@ -297,21 +297,21 @@ public static class OpenApiConfiguration
                     ""theme"": ""{GetScalarThemeName(openApiSettings.Scalar.Theme)}"",
                     ""layout"": ""{GetScalarLayoutName(openApiSettings.Scalar.Layout)}"",
                     ""sidebar"": {sidebarConfig},
-                    ""documentDownloadType"": ""{(openApiSettings.Scalar.HideDownloadButton ? "none" : "both")}"",
                     ""hideModels"": {(openApiSettings.Scalar.HideModels ? "true" : "false")},
                     ""hideClientButton"": {(openApiSettings.Scalar.HideClientButton ? "true" : "false")},
                     ""hideTestRequestButton"": {(openApiSettings.Scalar.HideTestRequestButton ? "true" : "false")},
-                    ""authentication"": {{ ""preferredSecurityScheme"": ""{securitySchemeName}"" }},
                     ""hiddenClients"": {HiddenClients},
+                    ""authentication"": {{ ""preferredSecurityScheme"": ""{securitySchemeName}"" }},
                     ""defaultHttpClient"": {{ ""targetKey"": ""shell"", ""clientKey"": ""curl"" }},
+                    ""documentDownloadType"": ""{(openApiSettings.Scalar.HideDownloadButton ? "none" : "both")}"",
                     ""pathRouting"": {{ ""basePath"": ""{docsBase}"" }},
                     {sources}
                     ""withDefaultFonts"": false,
-                    ""customCss"": ""{customCss}"",
                     ""telemetry"": false,
                     ""showDeveloperTools"": ""never"",
                     ""agent"": {{ ""disabled"": true }},
-                    ""mcp"": {{ ""disabled"": true }}
+                    ""mcp"": {{ ""disabled"": true }},
+                    ""customCss"": ""{customCss}""
                 }}";
 
             string Base64Url(byte[] input)
@@ -358,7 +358,10 @@ public static class OpenApiConfiguration
     <meta name=""referrer"" content=""no-referrer"">
     <link rel=""icon"" href=""{pathBase}/favicon.ico"" type=""image/x-icon"">
     <style>
-        body {{ margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }}
+        body {{
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }}
     </style>
 </head>
 <body>
@@ -481,7 +484,7 @@ public static class OpenApiConfiguration
 
         // every operation has its own url under /docs, the more specific document route still wins
         app.MapGet("/docs", DocsPage);
-        app.MapGet("/docs/{**slug}", DocsPage).ExcludeFromDescription();
+        app.MapGet("/docs/{**slug}", (string? slug, HttpContext context) => DocsPage(context)).ExcludeFromDescription();
     }
 
     /// <summary>
@@ -498,17 +501,51 @@ public static class OpenApiConfiguration
             Log.Information("OpenAPI documentation: Enabled at '/docs'");
     }
 
-    // To-do: drop the scalar 1.72.4 nested tag workarounds once upstream handles parent tags
-    // To-do: drop badge colors after upstream fix
+    // To-do: recheck these scalar overrides on each scalar bump
     private const string DocsCss = """
-        @font-face { font-family: "Onest"; font-weight: 400 700; font-display: swap; src: url("{pathBase}/fonts/onest-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
-        @font-face { font-family: "Onest"; font-weight: 400 700; font-display: swap; src: url("{pathBase}/fonts/onest-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-        :root, .light-mode, .dark-mode { --scalar-font: "Onest", ui-sans-serif, system-ui, sans-serif; }
-        .scalar-app nav.context-bar { display: none; }
-        .scalar-app .badge.badge-colored { background-color: var(--badge-color); border-color: transparent; color: lch(from var(--badge-color) calc((50 - l) * infinity) 0 0 / 1); }
-        .scalar-app .endpoints-card:not(:has(li)) { display: none; }
-        .scalar-app .peer\/button.cursor-auto.font-bold { margin-top: 0.75rem; }
-        .scalar-app .darklight-reference { padding-top: 0.75rem; }
+        @font-face {
+            font-family: "Onest";
+            font-weight: 400 700;
+            font-display: swap;
+            src: url("{pathBase}/fonts/onest-latin-ext.woff2") format("woff2");
+            unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+        }
+
+        @font-face {
+            font-family: "Onest";
+            font-weight: 400 700;
+            font-display: swap;
+            src: url("{pathBase}/fonts/onest-latin.woff2") format("woff2");
+            unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+        }
+
+        :root,
+        .light-mode,
+        .dark-mode {
+            --scalar-font: "Onest", ui-sans-serif, system-ui, sans-serif;
+        }
+
+        .scalar-app nav.context-bar {
+            display: none;
+        }
+
+        .scalar-app .badge.badge-colored {
+            background-color: var(--badge-color);
+            border-color: transparent;
+            color: lch(from var(--badge-color) calc((50 - l) * infinity) 0 0 / 1);
+        }
+
+        .scalar-app .endpoints-card:not(:has(li)) {
+            display: none;
+        }
+
+        .scalar-app .peer\/button.cursor-auto.font-bold {
+            margin-top: 0.75rem;
+        }
+
+        .scalar-app .darklight-reference {
+            padding-top: 0.75rem;
+        }
         """;
 
     // targets other than curl, c sharp, javascript, python and powershell
@@ -516,8 +553,43 @@ public static class OpenApiConfiguration
 
     // the console palette from css/site.css on a theme-less scalar
     private const string PortwayThemeCss = """
-        .light-mode { --scalar-color-1: hsl(240 10% 3.9%); --scalar-color-2: hsl(240 3.8% 46.1%); --scalar-color-3: hsl(240 3.8% 56%); --scalar-color-accent: hsl(294 45% 32%); --scalar-background-1: hsl(0 0% 100%); --scalar-background-2: hsl(240 4.8% 97.5%); --scalar-background-3: hsl(240 4.8% 95.9%); --scalar-background-accent: hsl(294 40% 94%); --scalar-border-color: hsl(240 5.9% 90%); --scalar-sidebar-background-1: hsl(294 16% 95%); --scalar-sidebar-color-1: hsl(294 12% 8%); --scalar-sidebar-color-2: hsl(294 8% 44%); --scalar-sidebar-border-color: hsl(294 14% 88%); --scalar-sidebar-item-hover-background: hsl(294 16% 91%); --scalar-sidebar-item-active-background: hsl(294 40% 94%); --scalar-sidebar-color-active: hsl(294 45% 32%); }
-        .dark-mode { --scalar-color-1: hsl(0 0% 98%); --scalar-color-2: hsl(240 5% 64.9%); --scalar-color-3: hsl(240 5% 50%); --scalar-color-accent: hsl(294 45% 66%); --scalar-background-1: hsl(240 10% 3.9%); --scalar-background-2: hsl(240 10% 2.5%); --scalar-background-3: hsl(240 3.7% 15.9%); --scalar-background-accent: hsl(294 30% 16%); --scalar-border-color: hsl(240 3.7% 15.9%); --scalar-sidebar-background-1: hsl(294 12% 9%); --scalar-sidebar-color-1: hsl(294 10% 96%); --scalar-sidebar-color-2: hsl(294 8% 62%); --scalar-sidebar-border-color: hsl(294 10% 18%); --scalar-sidebar-item-hover-background: hsl(294 12% 15%); --scalar-sidebar-item-active-background: hsl(294 30% 16%); --scalar-sidebar-color-active: hsl(294 45% 66%); }
+        .light-mode {
+            --scalar-color-1: hsl(240 10% 3.9%);
+            --scalar-color-2: hsl(240 3.8% 46.1%);
+            --scalar-color-3: hsl(240 3.8% 56%);
+            --scalar-color-accent: hsl(294 45% 32%);
+            --scalar-background-1: hsl(0 0% 100%);
+            --scalar-background-2: hsl(240 4.8% 97.5%);
+            --scalar-background-3: hsl(240 4.8% 95.9%);
+            --scalar-background-accent: hsl(294 40% 94%);
+            --scalar-border-color: hsl(240 5.9% 90%);
+            --scalar-sidebar-background-1: hsl(294 16% 95%);
+            --scalar-sidebar-color-1: hsl(294 12% 8%);
+            --scalar-sidebar-color-2: hsl(294 8% 44%);
+            --scalar-sidebar-border-color: hsl(294 14% 88%);
+            --scalar-sidebar-item-hover-background: hsl(294 16% 91%);
+            --scalar-sidebar-item-active-background: hsl(294 40% 94%);
+            --scalar-sidebar-color-active: hsl(294 45% 32%);
+        }
+
+        .dark-mode {
+            --scalar-color-1: hsl(0 0% 98%);
+            --scalar-color-2: hsl(240 5% 64.9%);
+            --scalar-color-3: hsl(240 5% 50%);
+            --scalar-color-accent: hsl(294 45% 66%);
+            --scalar-background-1: hsl(240 10% 3.9%);
+            --scalar-background-2: hsl(240 10% 2.5%);
+            --scalar-background-3: hsl(240 3.7% 15.9%);
+            --scalar-background-accent: hsl(294 30% 16%);
+            --scalar-border-color: hsl(240 3.7% 15.9%);
+            --scalar-sidebar-background-1: hsl(294 12% 9%);
+            --scalar-sidebar-color-1: hsl(294 10% 96%);
+            --scalar-sidebar-color-2: hsl(294 8% 62%);
+            --scalar-sidebar-border-color: hsl(294 10% 18%);
+            --scalar-sidebar-item-hover-background: hsl(294 12% 15%);
+            --scalar-sidebar-item-active-background: hsl(294 30% 16%);
+            --scalar-sidebar-color-active: hsl(294 45% 66%);
+        }
         """;
 
 
