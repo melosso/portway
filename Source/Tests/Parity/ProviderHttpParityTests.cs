@@ -54,6 +54,17 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
         procedure["Procedure"] = $"{schema}.{fixture.GuidKeyProcedureName}";
         WriteEndpoint("Proc", procedure);
 
+        var writeProcedure = TableEndpoint(fixture.QualifiedGuidKeysTable, "Id", "Name", "Price");
+        writeProcedure.Remove("WriteMode");
+        writeProcedure["AllowedMethods"] = new[] { "POST" };
+        writeProcedure["Procedure"] = $"{schema}.{(fixture.WriteProcedureName.Length > 0 ? fixture.WriteProcedureName : "NoProcedure")}";
+        WriteEndpoint("ProcUnlinked", writeProcedure);
+        writeProcedure = new Dictionary<string, object?>(writeProcedure)
+        {
+            ["Properties"] = new { CacheInvalidatedBy = new[] { fixture.QualifiedProductsTable } }
+        };
+        WriteEndpoint("ProcLinked", writeProcedure);
+
         var function = TableEndpoint($"{schema}.{(fixture.TvfName.Length > 0 ? fixture.TvfName : "NoFunction")}", "Id", "Name", "Price");
         function["DatabaseObjectType"] = "TableValuedFunction";
         function["AllowedMethods"] = new[] { "GET" };
@@ -334,6 +345,24 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
     {
         if (_fixture.Provider.SupportsProcedures)
             Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, Url("Proc", $"({GuidKey})"))).Status);
+    }
+
+    [DockerFact]
+    public async Task ProcedureWrite_RefreshesReadsOfListedTable()
+    {
+        if (!_fixture.Provider.SupportsProcedures)
+            return;
+
+        var id = Random.Shared.Next(100_000, 900_000);
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Get, Url("Int", $"?$filter=Id ge {id}"))).Status);
+
+        Assert.True((await Send(HttpMethod.Post, Url("ProcUnlinked"), $$"""{ "Id": {{id}}, "Name": "Unlinked", "Price": 1 }""")).Status is HttpStatusCode.Created or HttpStatusCode.OK);
+        Assert.DoesNotContain("Unlinked", (await Send(HttpMethod.Get, Url("Int", $"?$filter=Id ge {id}"))).Body);
+
+        Assert.True((await Send(HttpMethod.Post, Url("ProcLinked"), $$"""{ "Id": {{id + 1}}, "Name": "Linked", "Price": 1 }""")).Status is HttpStatusCode.Created or HttpStatusCode.OK);
+        var body = (await Send(HttpMethod.Get, Url("Int", $"?$filter=Id ge {id}"))).Body;
+        Assert.Contains("Unlinked", body);
+        Assert.Contains("Linked", body);
     }
 
     [DockerFact]

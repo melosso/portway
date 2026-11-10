@@ -13,7 +13,6 @@ public sealed partial class EndpointController
     /// Handles GET requests to endpoints
     /// </summary>
     [HttpGet("{env}/{**catchall}")]
-    [ResponseCache(Duration = 300, VaryByHeader = "Authorization")]
     public async Task<IActionResult> GetAsync(
         string env,
         string catchall,
@@ -76,7 +75,6 @@ public sealed partial class EndpointController
     /// Handles QUERY requests (RFC 10008): a safe, idempotent, cacheable read that puts the query in the request body instead of the URL
     /// </summary>
     [AcceptVerbs("QUERY", Route = "{env}/{**catchall}")]
-    [ResponseCache(Duration = 300, VaryByHeader = "Authorization")]
     public async Task<IActionResult> QueryAsync(string env, string catchall)
     {
         try

@@ -65,7 +65,7 @@ endpoints/
 | `Relationships` | array | | To-one navigations for [`$expand`](/reference/expand) |
 | `FunctionParameters` | array | | Table-valued function parameters |
 | `ResponseTransforms` | object | | `Remove`, `Rename` and `Mask` rules on result rows, including `/{id}` and table-valued function results. Field names are public names (aliases). Rules: [Proxy](#proxy) |
-| `Properties` | object | | `MaxPageSize` (upper limit for `$top`), `DefaultSort` (`$orderby` when none is given), `CacheEnabled` (`false` bypasses the response cache) |
+| `Properties` | object | | `MaxPageSize` (upper limit for `$top`), `DefaultSort` (`$orderby` when none is given), `CacheEnabled` (`false` bypasses the response cache), `CacheDurationMinutes` (cache TTL), `CacheInvalidatedBy` (tables whose writes invalidate cached reads, [Caching](/reference/caching#per-endpoint-settings)) |
 
 Writes, validation and table-valued functions: [SQL Endpoints](/guide/endpoints-sql).
 

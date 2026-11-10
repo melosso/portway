@@ -210,17 +210,25 @@ public sealed class ProxyRequestHandler
             {
                 Log.Debug("Detected SOAP request for endpoint: {Endpoint}", endpointName);
                 // SOAP requests generally shouldn't be cached, so bypass cache and execute directly
-                await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, isSoapRequest: true, originalMethod: originalMethod, endpointDefinition: endpointDefinition, tenants: tenants);
+                try
+                {
+                    await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, isSoapRequest: true, originalMethod: originalMethod, endpointDefinition: endpointDefinition, tenants: tenants);
+                }
+                finally
+                {
+                    if (!IsReadMethod(originalMethod))
+                        await _cacheManager.BumpGenerationAsync(Services.Caching.CacheGenerationKeys.ProxyEndpoint(env, endpointName));
+                }
                 return new EmptyResult(); // Response already written
             }
 
             // GET and QUERY are both safe and cacheable (RFC 10008 for QUERY)
-            if (originalMethod.Equals("GET", StringComparison.OrdinalIgnoreCase) ||
-                originalMethod.Equals("QUERY", StringComparison.OrdinalIgnoreCase))
+            if (IsReadMethod(originalMethod))
             {
                 // Create a cache key based on the request details
                 var headers = context.Request.Headers ?? new Microsoft.AspNetCore.Http.HeaderDictionary();
-                string cacheKey = CreateCacheKey(env, endpointName, fullUrl, headers, tenants);
+                var generation = await _cacheManager.GetGenerationAsync(Services.Caching.CacheGenerationKeys.ProxyEndpoint(env, endpointName));
+                string cacheKey = CreateCacheKey(env, $"{endpointName}:{generation}", fullUrl, headers, tenants);
 
                 // RFC 10008: the cache key for a QUERY request MUST incorporate the request content
                 if (originalMethod.Equals("QUERY", StringComparison.OrdinalIgnoreCase))
@@ -324,8 +332,14 @@ public sealed class ProxyRequestHandler
             }
             else
             {
-                // For non-GET requests, just execute the proxy request without caching
-                await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, originalMethod: originalMethod, endpointDefinition: endpointDefinition, tenants: tenants);
+                try
+                {
+                    await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, originalMethod: originalMethod, endpointDefinition: endpointDefinition, tenants: tenants);
+                }
+                finally
+                {
+                    await _cacheManager.BumpGenerationAsync(Services.Caching.CacheGenerationKeys.ProxyEndpoint(env, endpointName));
+                }
                 return new EmptyResult(); // Response already written
             }
         }
@@ -477,6 +491,9 @@ public sealed class ProxyRequestHandler
     /// <summary>
     /// Creates a cache key based on request details
     /// </summary>
+    private static bool IsReadMethod(string method) =>
+        method.Equals("GET", StringComparison.OrdinalIgnoreCase) || method.Equals("QUERY", StringComparison.OrdinalIgnoreCase);
+
     private string CreateCacheKey(string env, string endpointName, string upstreamUrl, IHeaderDictionary headers, IReadOnlyDictionary<string, string> tenants)
     {
         var keyBuilder = new StringBuilder();
@@ -697,14 +714,6 @@ public sealed class ProxyRequestHandler
                     responseHeaders[header.Key] = string.Join(",", header.Value);
                 }
             }
-        }
-
-        // For GET requests, ensure Cache-Control header is set (except for SOAP)
-        if (method.Equals("GET", StringComparison.OrdinalIgnoreCase) && !isSoapRequest && !responseHeaders.ContainsKey("Cache-Control"))
-        {
-            // Add a default cache control header
-            context.Response.Headers["Cache-Control"] = "private, max-age=300";
-            responseHeaders["Cache-Control"] = "private, max-age=300";
         }
 
         // Set status code

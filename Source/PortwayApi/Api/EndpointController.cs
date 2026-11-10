@@ -4,6 +4,7 @@ using PortwayApi.Classes;
 using PortwayApi.Helpers;
 using PortwayApi.Interfaces;
 using PortwayApi.Services;
+using PortwayApi.Services.Caching;
 using PortwayApi.Services.Files;
 using Serilog;
 
@@ -26,6 +27,7 @@ public sealed partial class EndpointController : ControllerBase
     private readonly SqlRequestHandler _sqlRequestHandler;
     private readonly ProxyRequestHandler _proxyRequestHandler;
     private readonly ISqlProviderFactory _providerFactory;
+    private readonly CacheManager _cacheManager;
 
     /// <summary>
     /// Validates if the environment is allowed both globally and for the specific endpoint
@@ -69,7 +71,8 @@ public sealed partial class EndpointController : ControllerBase
         StaticRequestHandler staticRequestHandler,
         SqlRequestHandler sqlRequestHandler,
         ProxyRequestHandler proxyRequestHandler,
-        ISqlProviderFactory providerFactory)
+        ISqlProviderFactory providerFactory,
+        CacheManager cacheManager)
     {
         _environmentSettings = environmentSettings;
         _environmentSettingsProvider = environmentSettingsProvider;
@@ -81,6 +84,7 @@ public sealed partial class EndpointController : ControllerBase
         _sqlRequestHandler = sqlRequestHandler;
         _proxyRequestHandler = proxyRequestHandler;
         _providerFactory = providerFactory;
+        _cacheManager = cacheManager;
     }
 
     /// <summary>

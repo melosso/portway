@@ -87,7 +87,7 @@ public sealed class StaticRequestHandler
             byte[] contentBytes;
             if (!hasODataParams)
             {
-                var staticCacheKey = $"static:{endpointName}:{env}";
+                var staticCacheKey = $"static:{endpointName}:{env}:{File.GetLastWriteTimeUtc(contentFilePath).Ticks}";
                 var cached = await _cacheManager.GetAsync<byte[]>(staticCacheKey);
                 if (cached != null)
                 {

@@ -67,7 +67,7 @@ If-None-Match: "33a64df551425fcc55e4d42a148795d9f25f89d4..."
 HTTP/1.1 304 Not Modified
 ```
 
-Authenticated responses include `Cache-Control: private, max-age=600` and `Vary: Authorization`, plus the endpoint's tenant headers (e.g. `Vary: Authorization, X-Company-Id`). Cached GET responses from endpoints with caching enabled include `Cache-Control` with the endpoint's duration. An upstream `public` directive is returned as `private`.
+Authenticated responses include `Cache-Control: private, no-cache` and `Vary: Authorization`, plus the endpoint's tenant headers (e.g. `Vary: Authorization, X-Company-Id`). Clients revalidate each read with the `ETag`. A proxy upstream `Cache-Control` value is returned with `public` changed to `private` ([Caching](/reference/caching#client-caching)).
 
 ## Compression
 

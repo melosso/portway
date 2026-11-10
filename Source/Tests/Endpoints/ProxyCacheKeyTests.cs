@@ -6,7 +6,7 @@ using Xunit;
 namespace PortwayApi.Tests.Endpoints;
 
 /// <summary>
-/// Proxy cache keys include the record
+/// Proxy cache keys include records
 /// </summary>
 public sealed class ProxyCacheKeyTests : ApiTestBase, IDisposable
 {
@@ -22,7 +22,7 @@ public sealed class ProxyCacheKeyTests : ApiTestBase, IDisposable
         File.WriteAllText(Path.Combine(Dir, "Accounts", "entity.json"), System.Text.Json.JsonSerializer.Serialize(new
         {
             Url = $"http://localhost:{UpstreamPort}/accounts",
-            Methods = new[] { "GET" },
+            Methods = new[] { "GET", "POST", "PUT", "PATCH", "DELETE" },
             AllowedEnvironments = new[] { Env }
         }));
         EndpointHandler.ReloadAllEndpoints();
@@ -66,5 +66,37 @@ public sealed class ProxyCacheKeyTests : ApiTestBase, IDisposable
 
         Assert.Equal(2, Hits);
         Assert.Contains(_upstream.Requests, r => r.StartsWith("/accounts/ZZ9"));
+    }
+
+    [Theory]
+    [InlineData("POST")]
+    [InlineData("PUT")]
+    [InlineData("PATCH")]
+    [InlineData("DELETE")]
+    public async Task Write_InvalidatesCachedReads(string method)
+    {
+        await Get("?$top=9");
+        await Get("?$top=9");
+        Assert.Equal(1, Hits);
+
+        using var write = new HttpRequestMessage(new HttpMethod(method), $"/api/{Env}/CacheKeyTest/Accounts('W1')");
+        if (method != "DELETE")
+            write.Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json");
+        var response = await _client.SendAsync(write, TestContext.Current.CancellationToken);
+        Assert.True(response.IsSuccessStatusCode);
+
+        await Get("?$top=9");
+        Assert.Equal(2, Hits);
+    }
+
+    [Fact]
+    public async Task AuthenticatedRead_RequiresRevalidation()
+    {
+        var response = await _client.GetAsync($"/api/{Env}/CacheKeyTest/Accounts?$top=7", TestContext.Current.CancellationToken);
+
+        Assert.True(response.Headers.CacheControl?.Private);
+        Assert.True(response.Headers.CacheControl?.NoCache);
+        Assert.Null(response.Headers.CacheControl?.MaxAge);
+        Assert.Contains("Authorization", response.Headers.Vary);
     }
 }

@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http;
 using PortwayApi.Helpers;
+using PortwayApi.Services.Caching;
 using Serilog;
 
 public sealed class CompositeEndpointHandler
@@ -16,15 +17,18 @@ public sealed class CompositeEndpointHandler
     private static readonly string ProxyEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy");
     private readonly string _serverName;
     private readonly Helpers.UrlValidator _urlValidator;
+    private readonly CacheManager _cacheManager;
 
     public CompositeEndpointHandler(
         IHttpClientFactory httpClientFactory,
         string serverName,
-        Helpers.UrlValidator urlValidator)
+        Helpers.UrlValidator urlValidator,
+        CacheManager cacheManager)
     {
         _httpClientFactory = httpClientFactory;
         _serverName = serverName;
         _urlValidator = urlValidator;
+        _cacheManager = cacheManager;
     }
 
     /// <summary>
@@ -153,6 +157,11 @@ public sealed class CompositeEndpointHandler
                         step = step.Name,
                         completedSteps
                     }, statusCode: StatusCodes.Status500InternalServerError);
+                }
+                finally
+                {
+                    if (!HttpMethods.IsGet(step.Method) && !string.Equals(step.Method, "QUERY", StringComparison.OrdinalIgnoreCase))
+                        await _cacheManager.BumpGenerationAsync(CacheGenerationKeys.ProxyEndpoint(env, step.Endpoint));
                 }
             }
 

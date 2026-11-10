@@ -59,7 +59,15 @@ public sealed partial class EndpointController
                     ["Payload"] = payload.ToString(),
                     ["ReceivedAt"] = DateTime.UtcNow
                 });
-            var insertedId = Convert.ToInt64(await connection.ExecuteScalarAsync(insert.Sql, insert.Parameters));
+            long insertedId;
+            try
+            {
+                insertedId = Convert.ToInt64(await connection.ExecuteScalarAsync(insert.Sql, insert.Parameters));
+            }
+            finally
+            {
+                await _cacheManager.BumpGenerationAsync(Services.Caching.CacheGenerationKeys.SqlTable(env, endpointConfig.DatabaseSchema, tableName));
+            }
 
             Log.Debug("Webhook processed successfully: {WebhookId} (ID: {InsertedId})",
                 webhookId, insertedId);

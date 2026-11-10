@@ -116,7 +116,8 @@ try
         new CompositeEndpointHandler(
             provider.GetRequiredService<IHttpClientFactory>(),
             serverName,
-            provider.GetRequiredService<UrlValidator>()
+            provider.GetRequiredService<UrlValidator>(),
+            provider.GetRequiredService<CacheManager>()
         )
     );
 

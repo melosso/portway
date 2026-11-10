@@ -85,7 +85,7 @@ Response returned to the caller:
 
 ## Caching
 
-GET responses are cached for `Caching:DefaultCacheDurationSeconds` (default `300`). The cache key includes the URL, query string, `Authorization` header and selected tenant values. POST, PUT, DELETE and PATCH bypass the cache and invalidate cached GET responses for the endpoint.
+GET responses are cached for `Caching:DefaultCacheDurationSeconds` (default `300`). The cache key includes the URL, query string, `Authorization` header and selected tenant values. POST, PUT, PATCH, MERGE and DELETE bypass the cache and invalidate the endpoint's cached reads. A composite write step invalidates the cached reads of the step's proxy endpoint ([Caching](/reference/caching#cache-invalidation)).
 
 ## Troubleshooting
 

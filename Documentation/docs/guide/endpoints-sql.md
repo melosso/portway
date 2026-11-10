@@ -253,6 +253,19 @@ GET /api/dev/Departments?UserCount=50&$top=20&$orderby=FirstName
 Table-valued function endpoints ignore `PrimaryKey`.
 :::
 
+## Caching
+
+GET and QUERY responses are cached per endpoint. A write through any SQL endpoint invalidates the cached reads of every endpoint on the same table. View, table-valued function and procedure endpoints list the tables they read or write in `Properties.CacheInvalidatedBy`:
+
+```json
+"Properties": {
+  "CacheDurationMinutes": 5,
+  "CacheInvalidatedBy": ["dbo.Items"]
+}
+```
+
+Settings and invalidation rules: [Caching](/reference/caching#cache-invalidation).
+
 ## Troubleshooting
 
 | Symptom | Resolution |

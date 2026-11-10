@@ -184,13 +184,6 @@ public sealed partial class SqlRequestHandler
                 // Return collection response with pagination headers
                 HttpResponseHeaderHelper.SetPaginationHeaders(context, null, tvfResultList.Count, !tvfIsLastPage);
 
-                // Only set Cache-Control header if caching is enabled for this endpoint
-                if (IsCacheEnabled(endpoint))
-                {
-                    var tvfCacheDurationSeconds = GetCacheDurationMinutes(endpoint) * 60;
-                    HttpResponseHeaderHelper.SetCacheControlHeader(context, tvfCacheDurationSeconds);
-                }
-
                 Log.Debug("Successfully processed TVF query for {FunctionName}", endpoint.DatabaseObjectName);
                 return PortwayResults.Collection(tvfResultList,
                     tvfIsLastPage ? null : BuildNextLink(env, endpointName, options, top, skip, pathSegments));
@@ -336,7 +329,7 @@ public sealed partial class SqlRequestHandler
 
             if (cacheEnabled)
             {
-                var generation = await GetReadGenerationAsync(endpoint, env);
+                var generation = await ReadGenerationAsync(endpoint, env);
                 cacheKey = BuildCacheKey(env, $"{endpointName}:{generation}", query, parameters, countRequested);
                 cachedResponse = await _cacheManager.GetAsync<object>(cacheKey);
 
@@ -416,13 +409,6 @@ public sealed partial class SqlRequestHandler
 
             // Step 10: Prepare response for collection requests with pagination headers
             HttpResponseHeaderHelper.SetPaginationHeaders(context, null, transformedResults.Count, !isLastPage);
-
-            // Only set Cache-Control header if caching is enabled for this endpoint
-            if (cacheEnabled)
-            {
-                var cacheDurationSeconds = GetCacheDurationMinutes(endpoint) * 60;
-                HttpResponseHeaderHelper.SetCacheControlHeader(context, cacheDurationSeconds);
-            }
 
             // Run the COUNT query only when the caller asked for it
             long? totalCount = null;
@@ -504,29 +490,20 @@ public sealed partial class SqlRequestHandler
         return null;
     }
 
-    private static string ReadGenerationKey(EndpointDefinition endpoint, string env) =>
-        $"sql:generation:{env}:{endpoint.DatabaseSchema}.{endpoint.DatabaseObjectName}".ToLowerInvariant();
-
-    // new generation hides older entries
-    private async Task<string> GetReadGenerationAsync(EndpointDefinition endpoint, string env)
+    private async Task<string> ReadGenerationAsync(EndpointDefinition endpoint, string env)
     {
-        var key = ReadGenerationKey(endpoint, env);
-        var generation = await _cacheManager.GetUncountedAsync<string>(key);
-        if (generation is not null)
-            return generation;
-
-        generation = Guid.NewGuid().ToString("N");
-        await _cacheManager.SetAsync(key, generation, ReadGenerationLifetime);
-        return generation;
+        var generations = new List<string>();
+        foreach (var key in Services.Caching.CacheGenerationKeys.SqlEndpoint(env, endpoint))
+            generations.Add(await _cacheManager.GetGenerationAsync(key));
+        return string.Join('.', generations);
     }
 
+    // uncached writers still invalidate
     private async Task InvalidateReadsAsync(EndpointDefinition endpoint, string env)
     {
-        if (IsCacheEnabled(endpoint))
-            await _cacheManager.SetAsync(ReadGenerationKey(endpoint, env), Guid.NewGuid().ToString("N"), ReadGenerationLifetime);
+        foreach (var key in Services.Caching.CacheGenerationKeys.SqlEndpoint(env, endpoint))
+            await _cacheManager.BumpGenerationAsync(key);
     }
-
-    private static readonly TimeSpan ReadGenerationLifetime = TimeSpan.FromDays(7);
 
     internal static string BuildCacheKey(string env, string endpointName, string query, IReadOnlyDictionary<string, object>? parameters, bool countRequested)
     {

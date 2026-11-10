@@ -685,29 +685,43 @@ function readKV(id) {
   return obj;
 }
 
-function fieldColumns(id, label, arr) {
-  const rows = (arr ?? []).map(col => colRow(col)).join('');
+function fieldColumns(id, label, arr, addLabel = 'Add column', placeholder = 'ColumnName') {
+  const rows = (arr ?? []).map(col => colRow(col, placeholder)).join('');
   return `<div class="field">
     <label class="field-label">${label}</label>
     <div class="ep-col-list" id="${id}">${rows}</div>
-    <button type="button" class="ep-add-row" onclick="addColRow('${id}')">
+    <button type="button" class="ep-add-row" onclick="addColRow('${id}', '${placeholder}')">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Add column
+      ${addLabel}
     </button>
   </div>`;
 }
 
-function colRow(val = '') {
+function colRow(val = '', placeholder = 'ColumnName') {
   return `<div class="ep-col-row">
-    <input type="text" class="input" placeholder="ColumnName" value="${esc(val)}" oninput="markDirty()">
+    <input type="text" class="input" placeholder="${placeholder}" value="${esc(val)}" oninput="markDirty()">
     <button type="button" class="btn btn-ghost btn-icon" onclick="this.closest('.ep-col-row').remove(); markDirty()" title="Remove">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>`;
 }
 
-function addColRow(id) {
-  document.getElementById(id)?.insertAdjacentHTML('beforeend', colRow());
+function addColRow(id, placeholder) {
+  document.getElementById(id)?.insertAdjacentHTML('beforeend', colRow('', placeholder));
+}
+
+// keep other Properties keys
+function readCacheProperties(existing) {
+  const props = { ...(existing ?? {}) };
+  delete props.CacheEnabled;
+  delete props.CacheDurationMinutes;
+  delete props.CacheInvalidatedBy;
+  if (!document.getElementById('cacheEnabled')?.checked) props.CacheEnabled = false;
+  const minutes = Number.parseInt(document.getElementById('cacheDurationMinutes')?.value ?? '', 10);
+  if (Number.isInteger(minutes) && minutes > 0) props.CacheDurationMinutes = minutes;
+  const tables = readColumns('cacheInvalidatedBy');
+  if (tables.length) props.CacheInvalidatedBy = tables;
+  return Object.keys(props).length ? props : undefined;
 }
 
 function readColumns(id) {
@@ -822,6 +836,10 @@ function renderSqlForm(c) {
     ${accordion('Columns',
         fieldColumns('allowedCols', 'Allowed Columns', c.AllowedColumns) +
         fieldColumns('requiredCols', 'Required Columns', c.RequiredColumns))}
+    ${accordion('Caching',
+        fieldToggle('cacheEnabled', 'Cache reads', (c.Properties?.CacheEnabled ?? true) !== false) +
+        fieldText('cacheDurationMinutes', 'Duration (minutes)', c.Properties?.CacheDurationMinutes ?? '') +
+        fieldColumns('cacheInvalidatedBy', 'Invalidated by tables', c.Properties?.CacheInvalidatedBy, 'Add table', 'Schema.Table'))}
     ${accordion('Advanced',
         fieldJson('columnValidation', 'Column Validation (JSON)', c.ColumnValidation) +
         fieldJson('functionParameters', 'Function Parameters (JSON, TVF only)', c.FunctionParameters))}
@@ -1022,6 +1040,7 @@ function validateForm(type) {
     case 'sql':
       if (!document.getElementById('objectName')?.value?.trim()) errors.push('Object Name is required');
       if (!document.getElementById('schema')?.value?.trim())     errors.push('Schema is required');
+      if (!/^\d*$/.test(document.getElementById('cacheDurationMinutes')?.value?.trim() ?? '')) errors.push('Duration must be a whole number of minutes');
       if (!methods.length) errors.push('At least one method must be selected');
       validateDocFields(errors);
       break;
@@ -1085,6 +1104,7 @@ function collectFormConfig(type, existingContent) {
         ColumnValidation:     readJsonField('columnValidation'),
         FunctionParameters:   readJsonField('functionParameters'),
         Tenancy:              readTenancy(),
+        Properties:           readCacheProperties(c.Properties),
         Documentation:        doc ?? undefined,
       };
     }

@@ -327,7 +327,7 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.NotEmpty(classes);
 
         var bundle = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "wwwroot", "js", "vendor", "scalar-api-reference.js"), TestContext.Current.CancellationToken);
-        Assert.Empty(classes.Where(c => !bundle.Contains(c, StringComparison.Ordinal)));
+        Assert.All(classes, c => Assert.Contains(c, bundle, StringComparison.Ordinal));
     }
 
     // footer and title come from settings the console can write, so the docs page must encode them
