@@ -48,6 +48,7 @@ Setting `Mcp.Exposed: true` in `entity.json` registers one tool per HTTP method 
 |---|---|---|---|
 | `Exposed` | Yes | bool | Registers the endpoint as MCP tools (default `false`) |
 | `Instruction` | No | string | Text appended to the tool description for the model, e.g. required filters or data shape |
+| `AllowedMethods` | No | string[] | Methods the MCP tool accepts. Methods outside the endpoint's methods are ignored. Default: the first method of the endpoint. |
 
 Tool names follow `{namespace}_{name}_{method}`, or `{name}_{method}` without a namespace (e.g. `products_GET`). `Instruction` changes only the model-facing description, not the Explorer summary.
 
