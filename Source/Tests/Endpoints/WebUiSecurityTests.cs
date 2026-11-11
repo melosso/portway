@@ -996,6 +996,49 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public void RedactEndpointUrls_MasksLiteralHeaderValues()
+    {
+        var redacted = PortwayApi.Endpoints.WebUiEndpointExtensions.RedactEndpointUrls(
+            """{"Url":"http://x/a","Headers":{"Authorization":"Bearer literal-header-secret","X-Api-Key":"${secret:ERP-KEY}"}}""");
+
+        Assert.DoesNotContain("literal-header-secret", redacted);
+        Assert.Contains("Authorization", redacted);
+        Assert.Contains("${secret:ERP-KEY}", redacted);
+    }
+
+    [Fact]
+    public async Task Viewer_EndpointGet_OmitsLiteralHeaderValues()
+    {
+        var dir = Path.Combine("endpoints", "Proxy", "ViewerHeaders", "Upstream");
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "entity.json"),
+            """{"Url":"http://localhost:9/x","Methods":["GET"],"Headers":{"Authorization":"Bearer literal-header-secret"}}""");
+        try
+        {
+            var client = CreateClient();
+            var (adminCookie, adminCsrf) = await LoginAsync(client);
+            var create = AuthedRequest(HttpMethod.Post, "/_/api/users", adminCookie, adminCsrf,
+                new { username = "header-viewer", password = "V13wer-header-pw-99", role = "viewer", current_password = SeededPassword });
+            Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, TestContext.Current.CancellationToken)).StatusCode);
+            var (viewerCookie, _) = await SignInAsync(client, "header-viewer", "V13wer-header-pw-99");
+
+            foreach (var url in new[] { "/_/api/endpoints/proxy/ViewerHeaders/Upstream", "/_/api/endpoints/proxy/ViewerHeaders/Upstream?raw=true" })
+            {
+                var response = await client.SendAsync(AuthedRequest(HttpMethod.Get, url, viewerCookie), TestContext.Current.CancellationToken);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Assert.DoesNotContain("literal-header-secret", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+            }
+
+            var admin = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/endpoints/proxy/ViewerHeaders/Upstream", adminCookie), TestContext.Current.CancellationToken);
+            Assert.Contains("literal-header-secret", await admin.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            Directory.Delete(Path.Combine("endpoints", "Proxy", "ViewerHeaders"), recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task ViewerAccount_CannotWriteSettings_ButCanRead()
     {
         var client = CreateClient();

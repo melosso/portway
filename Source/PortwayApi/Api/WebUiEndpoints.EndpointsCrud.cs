@@ -364,6 +364,10 @@ public static partial class WebUiEndpointExtensions
                 entity[key] = UrlRedaction.Redact(text);
             else if (key.Equals("FallbackUrls", StringComparison.OrdinalIgnoreCase) && value is JsonArray urls)
                 entity[key] = new JsonArray([.. urls.Select(u => (JsonNode?)UrlRedaction.Redact(u?.GetValue<string>()))]);
+            // a reference names a secret, a literal is the credential itself
+            else if (key.Equals("Headers", StringComparison.OrdinalIgnoreCase) && value is JsonObject headers)
+                foreach (var (name, header) in headers.ToList())
+                    headers[name] = header is JsonValue v && v.TryGetValue<string>(out var headerValue) && SecretReference.ExactName(headerValue) is not null ? headerValue : "Set";
         }
 
         return entity.ToJsonString();
