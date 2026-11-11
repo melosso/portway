@@ -141,7 +141,8 @@ public static partial class WebUiEndpointExtensions
             ReloadEndpoints(app.Services, epType);
 
             Audit(context, "update", "endpoint", $"{type}/{name}", null, backupPath);
-            return Results.Ok(new { ok = true, last_modified = lastMod });
+
+            return Results.Ok(new { ok = true, last_modified = lastMod, warnings = await MissingSecretWarningsAsync(app.Services, rawContent) });
         }).ExcludeFromDescription();
 
         // POST /_/api/endpoints/{type} , create a new endpoint
@@ -180,7 +181,7 @@ public static partial class WebUiEndpointExtensions
             ReloadEndpoints(app.Services, epType);
 
             Audit(context, "create", "endpoint", $"{type}/{name}");
-            return Results.Json(new { ok = true, name }, statusCode: 201);
+            return Results.Json(new { ok = true, name, warnings = await MissingSecretWarningsAsync(app.Services, rawContent) }, statusCode: 201);
         }).ExcludeFromDescription();
 
         // DELETE /_/api/endpoints/{type}/{**name} , remove an endpoint
@@ -305,6 +306,44 @@ public static partial class WebUiEndpointExtensions
         }).ExcludeFromDescription();
 
         // Client JS errors, unauthenticated for sendBeacon and IP rate limited
+    }
+
+    /// <summary>
+    /// One warning per referenced secret without a value in an environment the endpoint allows
+    /// </summary>
+    internal static async Task<List<string>> MissingSecretWarningsAsync(IServiceProvider services, string json)
+    {
+        var names = SecretReference.Names(json);
+        if (names.Count == 0)
+            return [];
+
+        List<string> environments;
+        using (var doc = JsonDocument.Parse(json))
+        {
+            environments = doc.RootElement.ValueKind == JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("AllowedEnvironments", out var allowed) && allowed.ValueKind == JsonValueKind.Array && allowed.GetArrayLength() > 0
+                ? [.. allowed.EnumerateArray().Select(e => e.GetString()).OfType<string>()]
+                : services.GetRequiredService<EnvironmentSettings>().GetAllowedEnvironments();
+        }
+
+        var provider = services.GetRequiredService<PortwayApi.Interfaces.IEnvironmentSettingsProvider>();
+        var warnings = new List<string>();
+        foreach (var env in environments)
+        {
+            foreach (var name in names)
+            {
+                try
+                {
+                    if (await provider.GetSecretAsync(env, name) is null)
+                        warnings.Add($"Secret {name} has no value in environment {env}");
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    warnings.Add($"Environment {env} could not be read to check secret {name}");
+                }
+            }
+        }
+        return warnings;
     }
 
     private static string? ConfigError(string type, string json) =>

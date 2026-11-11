@@ -684,6 +684,201 @@ public class WebUiSecurityTests : IDisposable
         }
     }
 
+    private async Task<(HttpClient Client, string Name, string Folder, string AdminCookie, string AdminCsrf)> SecretEnvironmentAsync(string settings)
+    {
+        var name = $"secretenv{Guid.NewGuid():N}";
+        var folder = Path.Combine("environments", name);
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "settings.json"), settings);
+        var client = CreateClient();
+        var (cookie, csrf) = await LoginAsync(client);
+        return (client, name, folder, cookie, csrf);
+    }
+
+    private const string PlainSecrets = """{"Encrypt":false,"ServerName":"srv","Headers":{},"Secrets":{"ERP-KEY":"plain-secret-value"},"FutureKey":{"x":1}}""";
+
+    [Fact]
+    public async Task Secrets_ValuesNeverReturned()
+    {
+        var (client, name, folder, adminCookie, adminCsrf) = await SecretEnvironmentAsync(PlainSecrets);
+        try
+        {
+            var create = AuthedRequest(HttpMethod.Post, "/_/api/users", adminCookie, adminCsrf,
+                new { username = "secret-viewer", password = "V13wer-secret-pw-99", role = "viewer", current_password = SeededPassword });
+            Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, TestContext.Current.CancellationToken)).StatusCode);
+            var (viewerCookie, _) = await SignInAsync(client, "secret-viewer", "V13wer-secret-pw-99");
+
+            foreach (var cookie in new[] { viewerCookie, adminCookie })
+            {
+                foreach (var url in new[] { "/_/api/environments", $"/_/api/environments/{name}" })
+                {
+                    var response = await client.SendAsync(AuthedRequest(HttpMethod.Get, url, cookie), TestContext.Current.CancellationToken);
+                    var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+                    Assert.DoesNotContain("plain-secret-value", body);
+                }
+            }
+
+            var named = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, $"/_/api/environments/{name}", viewerCookie), TestContext.Current.CancellationToken)).Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            Assert.Contains("ERP-KEY", named);
+
+            var raw = await client.SendAsync(AuthedRequest(HttpMethod.Get, $"/_/api/environments/{name}/raw", viewerCookie), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.Forbidden, raw.StatusCode);
+            Assert.DoesNotContain("plain-secret-value", await raw.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Secrets_ViewerCannotWrite()
+    {
+        var (client, name, folder, adminCookie, adminCsrf) = await SecretEnvironmentAsync(PlainSecrets);
+        try
+        {
+            var create = AuthedRequest(HttpMethod.Post, "/_/api/users", adminCookie, adminCsrf,
+                new { username = "secret-writer", password = "V13wer-writer-pw-99", role = "viewer", current_password = SeededPassword });
+            Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, TestContext.Current.CancellationToken)).StatusCode);
+            var (viewerCookie, viewerCsrf) = await SignInAsync(client, "secret-writer", "V13wer-writer-pw-99");
+
+            var put = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/environments/{name}/secrets/NEW-KEY", viewerCookie, viewerCsrf, new { value = "v" }), TestContext.Current.CancellationToken);
+            var delete = await client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/_/api/environments/{name}/secrets/ERP-KEY", viewerCookie, viewerCsrf), TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.Forbidden, put.StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, delete.StatusCode);
+            Assert.Contains("plain-secret-value", File.ReadAllText(Path.Combine(folder, "settings.json")));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Secrets_EmptyValue_Refused(string value)
+    {
+        var (client, name, folder, adminCookie, adminCsrf) = await SecretEnvironmentAsync(PlainSecrets);
+        try
+        {
+            var put = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/environments/{name}/secrets/NEW-KEY", adminCookie, adminCsrf, new { value }), TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("bad name")]
+    [InlineData("under_score")]
+    public async Task Secrets_InvalidName_Refused(string secret)
+    {
+        var (client, name, folder, adminCookie, adminCsrf) = await SecretEnvironmentAsync(PlainSecrets);
+        try
+        {
+            var put = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/environments/{name}/secrets/{Uri.EscapeDataString(secret)}", adminCookie, adminCsrf, new { value = "v" }), TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Secrets_PutReplacesCaseInsensitivelyAndDeleteRemoves()
+    {
+        var (client, name, folder, adminCookie, adminCsrf) = await SecretEnvironmentAsync("""{"ServerName":"srv","Headers":{},"Secrets":{"ERP-KEY":"old-value-000"}}""");
+        try
+        {
+            var put = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/environments/{name}/secrets/erp-key", adminCookie, adminCsrf, new { value = "new-secret-value" }), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+            Assert.DoesNotContain("new-secret-value", await put.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+
+            var saved = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(folder, "settings.json")))!["Secrets"]!.AsObject();
+            var only = Assert.Single(saved);
+            Assert.Equal("erp-key", only.Key);
+            Assert.StartsWith("PWENC:", only.Value!.GetValue<string>());
+
+            var delete = await client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/_/api/environments/{name}/secrets/ERP-KEY", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, delete.StatusCode);
+            Assert.Empty(System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(folder, "settings.json")))!["Secrets"]!.AsObject());
+
+            var again = await client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/_/api/environments/{name}/secrets/ERP-KEY", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.NotFound, again.StatusCode);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task FormSave_KeepsSecrets()
+    {
+        var (client, name, folder, adminCookie, adminCsrf) = await SecretEnvironmentAsync(PlainSecrets);
+        try
+        {
+            var save = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/environments/{name}", adminCookie, adminCsrf,
+                new { server_name = "srv2", headers = new Dictionary<string, string> { ["X-A"] = "1" } }), TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.OK, save.StatusCode);
+            var saved = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(folder, "settings.json")))!;
+            Assert.Equal("plain-secret-value", saved["Secrets"]!["ERP-KEY"]!.GetValue<string>());
+            Assert.Equal(1, saved["FutureKey"]!["x"]!.GetValue<int>());
+            Assert.Equal("srv2", saved["ServerName"]!.GetValue<string>());
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task RawSave_EncryptsSecrets()
+    {
+        var (client, name, folder, adminCookie, adminCsrf) = await SecretEnvironmentAsync("""{"ServerName":"srv"}""");
+        try
+        {
+            var save = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/environments/{name}/raw", adminCookie, adminCsrf,
+                new { content = """{"ServerName":"srv","Secrets":{"ERP-KEY":"raw-secret-value"}}""" }), TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.OK, save.StatusCode);
+            var file = File.ReadAllText(Path.Combine(folder, "settings.json"));
+            Assert.DoesNotContain("raw-secret-value", file);
+            Assert.StartsWith("PWENC:", System.Text.Json.Nodes.JsonNode.Parse(file)!["Secrets"]!["ERP-KEY"]!.GetValue<string>());
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task EndpointSave_WarnsOnMissingSecret()
+    {
+        var (_, name, folder, _, _) = await SecretEnvironmentAsync(PlainSecrets);
+        try
+        {
+            var warnings = await PortwayApi.Endpoints.WebUiEndpointExtensions.MissingSecretWarningsAsync(_factory.Services,
+                $$"""{"AllowedEnvironments":["{{name}}"],"Url":"https://api.example/x?a=${secret:ERP-KEY}&b=${secret:NOPE}"}""");
+
+            var warning = Assert.Single(warnings);
+            Assert.Contains("NOPE", warning);
+            Assert.Contains(name, warning);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
     [Fact]
     public void RedactEndpointUrls_MasksUrlAndFallbackQueries()
     {

@@ -101,10 +101,15 @@ public static partial class WebUiEndpointExtensions
                         hdrs[h.Name] = h.Value.GetString() ?? "";
                 var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(envPath), TimeSpan.Zero).ToUnixTimeSeconds();
                 var isEncrypted = cs != null && cs.StartsWith("PWENC:");
+                var secretNames = root.TryGetProperty("Secrets", out var secretsEl) && secretsEl.ValueKind == JsonValueKind.Object
+                    ? secretsEl.EnumerateObject().Select(p => p.Name).Order(StringComparer.OrdinalIgnoreCase).ToList()
+                    : [];
+
                 return Results.Json(new
                 {
                     name,
                     exists = true,
+                    secret_names = secretNames,
                     server_name = sn,
                     connection_string = isEncrypted || !isAdministrator ? null : cs,
                     connection_string_encrypted = isEncrypted,
@@ -167,26 +172,9 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400);
             }
 
-            // Encrypt any plaintext ConnectionString so raw saves never bypass encryption, unless the file opts out
-            bool rawEncryptOptOut = root.TryGetProperty("Encrypt", out var rawEnc) && rawEnc.ValueKind == JsonValueKind.False;
-            if (!rawEncryptOptOut &&
-                root.TryGetProperty("ConnectionString", out var csEl) &&
-                csEl.ValueKind == JsonValueKind.String)
-            {
-                var cs = csEl.GetString() ?? "";
-                if (!string.IsNullOrEmpty(cs) && !cs.StartsWith("PWENC:"))
-                {
-                    var encrypted = SettingsEncryptionHelper.Encrypt(cs);
-                    // Rebuild JSON with encrypted value
-                    var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(raw)!;
-                    var rebuilt = new Dictionary<string, object?>();
-                    foreach (var (k, v) in dict)
-                        rebuilt[k] = k == "ConnectionString"
-                            ? (object?)encrypted
-                            : JsonSerializer.Deserialize<object>(v.GetRawText());
-                    raw = JsonSerializer.Serialize(rebuilt, SharedJsonOptions.Indented);
-                }
-            }
+            // raw saves never bypass encryption, unless the file opts out
+            if (System.Text.Json.Nodes.JsonNode.Parse(raw) is System.Text.Json.Nodes.JsonObject rawObject && EncryptAtRest(rawObject))
+                raw = rawObject.ToJsonString(SharedJsonOptions.Indented);
 
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
             Directory.CreateDirectory(Path.GetDirectoryName(envPath)!);
@@ -196,6 +184,54 @@ public static partial class WebUiEndpointExtensions
             var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(envPath), TimeSpan.Zero).ToUnixTimeSeconds();
             return Results.Ok(new { ok = true, last_modified = lastMod });
         }).ExcludeFromDescription();
+
+        // write-only: no route returns a secret value
+        app.MapPut("/_/api/environments/{name}/secrets/{secret}", async (string name, string secret, HttpContext context) =>
+        {
+            if (!EnvironmentNamePattern().IsMatch(name) || !SecretReference.IsValidName(secret))
+                return Results.Json(new { error = "Invalid environment or secret name" }, statusCode: 400);
+
+            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+            if (!body.TryGetProperty("value", out var valueEl) || valueEl.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(valueEl.GetString()))
+                return Results.Json(new { error = "A secret value is required" }, statusCode: 400);
+
+            return await EditSecretsAsync(context, name, secret, secrets =>
+            {
+                RemoveSecret(secrets, secret);
+                secrets[secret] = valueEl.GetString();
+                return true;
+            }, "set-secret");
+        }).ExcludeFromDescription();
+
+        app.MapDelete("/_/api/environments/{name}/secrets/{secret}", async (string name, string secret, HttpContext context) =>
+        {
+            if (!EnvironmentNamePattern().IsMatch(name) || !SecretReference.IsValidName(secret))
+                return Results.Json(new { error = "Invalid environment or secret name" }, statusCode: 400);
+
+            return await EditSecretsAsync(context, name, secret, secrets => RemoveSecret(secrets, secret), "delete-secret");
+        }).ExcludeFromDescription();
+
+        async Task<IResult> EditSecretsAsync(HttpContext context, string name, string secret, Func<System.Text.Json.Nodes.JsonObject, bool> edit, string action)
+        {
+            var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
+            if (!File.Exists(envPath))
+                return Results.Json(new { error = "Environment not found" }, statusCode: 404);
+
+            if (System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(envPath)) is not System.Text.Json.Nodes.JsonObject settings)
+                return Results.Json(new { error = "settings.json is not a JSON object" }, statusCode: 400);
+
+            var secrets = settings["Secrets"] as System.Text.Json.Nodes.JsonObject ?? new System.Text.Json.Nodes.JsonObject();
+            settings["Secrets"] = secrets;
+            if (!edit(secrets))
+                return Results.Json(new { error = "Secret not found" }, statusCode: 404);
+
+            EncryptAtRest(settings);
+            var backupPath = Services.Configuration.ConfigBackupService.Backup(envPath);
+            await AtomicFile.WriteAllTextAsync(envPath, settings.ToJsonString(SharedJsonOptions.Indented));
+            Audit(context, action, "environment-secret", $"{name}/{secret}", null, backupPath);
+            var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(envPath), TimeSpan.Zero).ToUnixTimeSeconds();
+            return Results.Ok(new { ok = true, last_modified = lastMod });
+        }
 
         app.MapPost("/_/api/environments/{name}/test", async (string name) =>
         {
@@ -311,17 +347,14 @@ public static partial class WebUiEndpointExtensions
             Directory.CreateDirectory(envDir);
             var backupPath = Services.Configuration.ConfigBackupService.Backup(envSettingsPath);
 
-            // Preserve fields the edit form does not manage
-            var envModel = new Dictionary<string, object?>
-            {
-                ["ConnectionString"] = newCs,
-                ["ServerName"] = serverName,
-                ["Headers"] = headers
-            };
-            if (existing.TryGetProperty("Authentication", out var eauth) && eauth.ValueKind == JsonValueKind.Object)
-                envModel["Authentication"] = JsonSerializer.Deserialize<object>(eauth.GetRawText());
-            if (encryptOptOut)
-                envModel["Encrypt"] = false;
+            // keep every field the edit form does not manage, Secrets included
+            var envModel = new Dictionary<string, object?>();
+            if (existing.ValueKind == JsonValueKind.Object)
+                foreach (var property in existing.EnumerateObject())
+                    envModel[property.Name] = JsonSerializer.Deserialize<object>(property.Value.GetRawText());
+            envModel["ConnectionString"] = newCs;
+            envModel["ServerName"] = serverName;
+            envModel["Headers"] = headers;
 
             await AtomicFile.WriteAllTextAsync(envSettingsPath,
                 JsonSerializer.Serialize(envModel, SharedJsonOptions.Indented));
@@ -388,4 +421,42 @@ public static partial class WebUiEndpointExtensions
 
     [GeneratedRegex(@"^[a-zA-Z0-9_-]+$")]
     private static partial Regex EnvironmentNamePattern();
+
+    private static bool RemoveSecret(System.Text.Json.Nodes.JsonObject secrets, string secret)
+    {
+        var existing = secrets.Select(p => p.Key).Where(k => k.Equals(secret, StringComparison.OrdinalIgnoreCase)).ToList();
+        foreach (var key in existing)
+            secrets.Remove(key);
+        return existing.Count > 0;
+    }
+
+    /// <summary>
+    /// Encrypts a plaintext ConnectionString and every plaintext Secrets value unless the file sets Encrypt false. True when a value changed
+    /// </summary>
+    internal static bool EncryptAtRest(System.Text.Json.Nodes.JsonObject settings)
+    {
+        if (settings["Encrypt"] is System.Text.Json.Nodes.JsonValue optOut && optOut.TryGetValue<bool>(out var encrypt) && !encrypt)
+            return false;
+
+        var changed = false;
+        if (settings["ConnectionString"] is System.Text.Json.Nodes.JsonValue cs && cs.TryGetValue<string>(out var connection)
+            && !string.IsNullOrEmpty(connection) && !SettingsEncryptionHelper.IsEncrypted(connection))
+        {
+            settings["ConnectionString"] = SettingsEncryptionHelper.Encrypt(connection);
+            changed = true;
+        }
+
+        if (settings["Secrets"] is System.Text.Json.Nodes.JsonObject secrets)
+        {
+            foreach (var (key, value) in secrets.ToList())
+            {
+                if (value is System.Text.Json.Nodes.JsonValue v && v.TryGetValue<string>(out var text) && !string.IsNullOrWhiteSpace(text) && !SettingsEncryptionHelper.IsEncrypted(text))
+                {
+                    secrets[key] = SettingsEncryptionHelper.Encrypt(text);
+                    changed = true;
+                }
+            }
+        }
+        return changed;
+    }
 }
