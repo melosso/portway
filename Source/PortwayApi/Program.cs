@@ -38,7 +38,6 @@ try
 
     PortwayApi.Services.Configuration.SettingsWriteService.EnsureExists();
     builder.Configuration.AddConsoleOverrides();
-    builder.Configuration.AddConfigAliases();
 
     Log.Logger = new LoggerConfiguration()
         .ReadFrom.Configuration(builder.Configuration)
@@ -55,7 +54,7 @@ try
         Log.Warning("Restored backup {Backup}; the replaced files are in .backups/pre-restore-*", restored);
 
     EnvAliases.WarnOnLegacyUsage();
-    ConfigAliases.WarnOnDeprecatedNames(builder.Configuration);
+    ConfigAliases.ReportFormerNames(builder.Configuration);
     builder.Configuration.ValidateConsoleSettings();
 
     builder.Services.Configure<HostOptions>(opts =>

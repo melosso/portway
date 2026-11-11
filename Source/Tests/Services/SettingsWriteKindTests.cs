@@ -186,44 +186,11 @@ public sealed class SettingsWriteKindTests
     }
 
     [Fact]
-    public void LockedBy_ReportsAnEnvironmentVariableUnderTheDeprecatedName()
-    {
-        var writer = new SettingsWriteService(["RateLimiting__IpWindow"]);
-
-        Assert.Equal("RateLimiting__IpWindow", writer.LockedBy("RateLimiting:IpWindowSeconds"));
-    }
-
-    [Fact]
-    public void Migration_MovesDeprecatedKeysUnlessTheNewNameIsSet()
-    {
-        var root = JsonNode.Parse("""{ "RateLimiting": { "IpWindow": 30, "TokenWindow": 10, "TokenWindowSeconds": 20 }, "OpenApi": { "ScalarTheme": "moon" } }""")!.AsObject();
-
-        SettingsWriteService.MigrateDeprecatedKeys(root);
-
-        Assert.Equal(30, root["RateLimiting"]!["IpWindowSeconds"]!.GetValue<int>());
-        Assert.Equal(20, root["RateLimiting"]!["TokenWindowSeconds"]!.GetValue<int>());
-        Assert.Null(root["RateLimiting"]!["IpWindow"]);
-        Assert.Null(root["RateLimiting"]!["TokenWindow"]);
-        Assert.Equal("moon", root["OpenApi"]!["Scalar"]!["Theme"]!.GetValue<string>());
-    }
-
-    [Fact]
-    public void Migration_DropsRemovedKeys()
-    {
-        var root = JsonNode.Parse("""{ "Mcp": { "Enabled": true, "RequireAuthentication": false } }""")!.AsObject();
-
-        SettingsWriteService.MigrateDeprecatedKeys(root);
-
-        Assert.False(root["Mcp"]!.AsObject().ContainsKey("RequireAuthentication"));
-        Assert.True(root["Mcp"]!["Enabled"]!.GetValue<bool>());
-    }
-
-    [Fact]
     public void EveryRenamedKeyIsWritableUnderItsNewNameOnly()
     {
         var keys = SettingsWriteService.Schema.Select(s => s.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        Assert.All(ConfigAliases.RenamedKeys, r => Assert.DoesNotContain(r.Deprecated, keys));
+        Assert.All(ConfigAliases.RenamedKeys, r => Assert.DoesNotContain(r.Former, keys));
     }
 
     [Theory]

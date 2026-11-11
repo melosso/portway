@@ -381,7 +381,7 @@ public class OpenApiDocumentTests : ApiTestBase
 
         using var factory = _factory.WithWebHostBuilder(b => b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["OpenApi:ScalarTheme"] = "portway"
+            ["OpenApi:Scalar:Theme"] = "portway"
         })));
         using var config = ScalarConfig(await factory.CreateClient().GetStringAsync("/docs", TestContext.Current.CancellationToken));
         Assert.Equal("none", config.RootElement.GetProperty("theme").GetString());

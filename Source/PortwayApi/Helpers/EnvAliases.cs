@@ -8,19 +8,19 @@ public static class EnvAliases
     // (new PORTWAY_ name, old name, config key the new name should land under, or null for a direct-read var); a key ending in [] takes a comma-separated list
     private static readonly (string NewName, string OldName, string? ConfigKey)[] Map =
     [
-        ("PORTWAY_ADMIN_KEY", "WebUi__AdminApiKey", "Console:AdminApiKey"),
-        ("PORTWAY_WEBUI_ENABLED", "WebUi__Enabled", "Console:Enabled"),
+        ("PORTWAY_ADMIN_KEY", "Console__AdminApiKey", "Console:AdminApiKey"),
+        ("PORTWAY_WEBUI_ENABLED", "Console__Enabled", "Console:Enabled"),
         ("PORTWAY_ALLOWED_HOSTS", "AllowedHosts", "AllowedHosts"),
         ("PORTWAY_PATH_BASE", "PathBase", "PathBase"),
-        ("PORTWAY_SECURE_COOKIES", "WebUi__SecureCookies", "Console:SecureCookies"),
+        ("PORTWAY_SECURE_COOKIES", "Console__SecureCookies", "Console:SecureCookies"),
         ("PORTWAY_OPENAPI_MARKDOWN", "OpenApi__ServeMarkdown", "OpenApi:ServeMarkdown"),
         ("PORTWAY_OPENAPI_DESCRIPTION", "OpenApi__Description", "OpenApi:Description"),
-        ("PORTWAY_PUBLIC_ORIGINS", "WebUi__PublicOrigins__0", "Console:PublicOrigins[]"),
-        ("PORTWAY_SEED_PASSWORD", "WebUi__SeedPassword", "Console:SeedPassword"),
-        ("PORTWAY_SEED_TOKEN", "WebUi__SeedToken", "Console:SeedToken"),
-        ("PORTWAY_PROMO_TEXT", "WebUi__Customization__PromoText", "Console:Customization:PromoText"),
-        ("PORTWAY_LOGIN_FOOTER", "WebUi__Customization__LoginFooter", "Console:Customization:LoginFooter"),
-        ("PORTWAY_PROMO_LOGIN", "WebUi__Customization__PromoLogin", "Console:Customization:PromoLogin"),
+        ("PORTWAY_PUBLIC_ORIGINS", "Console__PublicOrigins__0", "Console:PublicOrigins[]"),
+        ("PORTWAY_SEED_PASSWORD", "Console__SeedPassword", "Console:SeedPassword"),
+        ("PORTWAY_SEED_TOKEN", "Console__SeedToken", "Console:SeedToken"),
+        ("PORTWAY_PROMO_TEXT", "Console__Customization__PromoText", "Console:Customization:PromoText"),
+        ("PORTWAY_LOGIN_FOOTER", "Console__Customization__LoginFooter", "Console:Customization:LoginFooter"),
+        ("PORTWAY_PROMO_LOGIN", "Console__Customization__PromoLogin", "Console:Customization:PromoLogin"),
         ("PORTWAY_KNOWN_PROXIES", "ForwardedHeaders__KnownProxies__0", "ForwardedHeaders:KnownProxies[]"),
         ("PORTWAY_KNOWN_NETWORKS", "ForwardedHeaders__KnownNetworks__0", "ForwardedHeaders:KnownNetworks[]"),
         ("PORTWAY_OIDC_ENABLED", "Oidc__Enabled", "Oidc:Enabled"),
@@ -74,14 +74,10 @@ public static class EnvAliases
         foreach (var name in envNames)
         {
             if (name == alias) return name;
-            if (native is null && (IsNativeNameFor(name, configKey) || IsNativeNameFor(name, LegacyKey(configKey)))) native = name;
+            if (native is null && IsNativeNameFor(name, configKey)) native = name;
         }
         return native;
     }
-
-    // WebUi is the deprecated name of the Console section
-    private static string LegacyKey(string configKey) =>
-        configKey.StartsWith("Console:", StringComparison.OrdinalIgnoreCase) ? "WebUi" + configKey["Console".Length..] : configKey;
 
     // list entries end in a numeric index
     private static bool IsNativeNameFor(string name, string configKey)

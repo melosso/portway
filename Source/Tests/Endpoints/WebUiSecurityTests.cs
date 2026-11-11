@@ -47,9 +47,9 @@ public class WebUiSecurityTests : IDisposable
                         ["Mcp:Enabled"] = "false",
                         ["Proxy:Username"] = "svc-proxy-account",
                         ["Telemetry:Otlp:Endpoint"] = "https://otel.example/?token=otlp-secret",
-                        ["WebUi:AdminApiKey"] = AdminKey,
+                        ["Console:AdminApiKey"] = AdminKey,
                         // TestServer connections have no remote IP, so allow via PublicOrigins instead of the local-network check
-                        ["WebUi:PublicOrigins:0"] = "http://localhost"
+                        ["Console:PublicOrigins:0"] = "http://localhost"
                     });
                 });
 
@@ -240,7 +240,7 @@ public class WebUiSecurityTests : IDisposable
         // Middleware must deny ui api routes itself now that it always runs
         using var offFactory = _factory.WithWebHostBuilder(b =>
             b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(
-                new Dictionary<string, string?> { ["WebUi:AdminApiKey"] = "", ["WebUi:Enabled"] = "false" })));
+                new Dictionary<string, string?> { ["Console:AdminApiKey"] = "", ["Console:Enabled"] = "false" })));
         var client = offFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var resp = await client.GetAsync("/_/api/environments/500", TestContext.Current.CancellationToken);
@@ -253,7 +253,7 @@ public class WebUiSecurityTests : IDisposable
         // The settings page clears WebUi:AdminApiKey once real accounts exist; WebUi:Enabled must keep the console open
         using var onFactory = _factory.WithWebHostBuilder(b =>
             b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(
-                new Dictionary<string, string?> { ["WebUi:AdminApiKey"] = "", ["WebUi:Enabled"] = "true" })));
+                new Dictionary<string, string?> { ["Console:AdminApiKey"] = "", ["Console:Enabled"] = "true" })));
         var client = onFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var resp = await client.GetAsync("/_/api/environments/500", TestContext.Current.CancellationToken);
@@ -274,8 +274,8 @@ public class WebUiSecurityTests : IDisposable
                 b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["Mcp:Enabled"] = "false",
-                    ["WebUi:AdminApiKey"] = AdminKey,
-                    ["WebUi:PublicOrigins:0"] = "http://localhost"
+                    ["Console:AdminApiKey"] = AdminKey,
+                    ["Console:PublicOrigins:0"] = "http://localhost"
                 }));
                 b.ConfigureTestServices(services =>
                 {
@@ -793,23 +793,22 @@ public class WebUiSecurityTests : IDisposable
         var (authCookie, csrfCookie) = await LoginAsync(client);
 
         var secret = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["WebUi:AdminApiKey"] = "stolen" });
+            new Dictionary<string, object> { ["Console:AdminApiKey"] = "stolen" });
         Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(secret, TestContext.Current.CancellationToken)).StatusCode);
 
+        var former = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
+            new Dictionary<string, object> { ["WebUi:Customization:PromoText"] = "former" });
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(former, TestContext.Current.CancellationToken)).StatusCode);
+
         var tooLong = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["WebUi:Customization:PromoText"] = new string('x', 2_001) });
+            new Dictionary<string, object> { ["Console:Customization:PromoText"] = new string('x', 2_001) });
         Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(tooLong, TestContext.Current.CancellationToken)).StatusCode);
 
         var ok = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["WebUi:Customization:PromoText"] = "Hello **there**" });
+            new Dictionary<string, object> { ["Console:Customization:PromoText"] = "Hello **there**" });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(ok, TestContext.Current.CancellationToken)).StatusCode);
-
-        // Console is the current section name; WebUi keys above still write to it
-        var current = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["Console:Customization:PromoText"] = "Current name" });
-        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(current, TestContext.Current.CancellationToken)).StatusCode);
         var written = JsonNode.Parse(await File.ReadAllTextAsync(_overridesPath, TestContext.Current.CancellationToken))!;
-        Assert.Equal("Current name", written["Console"]!["Customization"]!["PromoText"]!.GetValue<string>());
+        Assert.Equal("Hello **there**", written["Console"]!["Customization"]!["PromoText"]!.GetValue<string>());
         Assert.Null(written["WebUi"]);
     }
 
@@ -827,7 +826,7 @@ public class WebUiSecurityTests : IDisposable
             ("OpenApi:SecurityDefinition:In", "Query"),
             ("OpenApi:SecurityDefinition:Type", "OAuth2"),
             ("OpenApi:DefaultGroup", "A/B"),
-            ("OpenApi:ScalarTheme", "evil"),
+            ("OpenApi:Scalar:Theme", "evil"),
             ("OpenApi:ExternalDocs:Url", "javascript:alert(1)"),
             ("OpenApi:ExternalDocs:Url", "mailto:a@example.com"),
             ("OpenApi:Contact:Email", "not an address"),
@@ -839,7 +838,7 @@ public class WebUiSecurityTests : IDisposable
         }
 
         var ok = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["OpenApi:ShowNamespaces"] = true, ["OpenApi:Footer:Url"] = "https://example.com", ["OpenApi:ScalarTheme"] = "portway", ["OpenApi:ShowBadges"] = false, ["OpenApi:ServeMarkdown"] = true, ["OpenApi:ExternalDocs:Url"] = "", ["OpenApi:ExternalDocs:Description"] = "Guide" });
+            new Dictionary<string, object> { ["OpenApi:ShowNamespaces"] = true, ["OpenApi:Footer:Url"] = "https://example.com", ["OpenApi:Scalar:Theme"] = "portway", ["OpenApi:ShowBadges"] = false, ["OpenApi:ServeMarkdown"] = true, ["OpenApi:ExternalDocs:Url"] = "", ["OpenApi:ExternalDocs:Description"] = "Guide" });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(ok, TestContext.Current.CancellationToken)).StatusCode);
     }
 
@@ -982,8 +981,8 @@ public class WebUiSecurityTests : IDisposable
     [InlineData("ForwardedHeaders:KnownNetworks", new[] { "172.18.0.0/16" }, true)]
     [InlineData("ForwardedHeaders:KnownProxies", new[] { "not-an-ip" }, false)]
     [InlineData("ForwardedHeaders:KnownProxies", new[] { "10.0.0.8", "10.0.0.9" }, true)]
-    [InlineData("WebUi:PublicOrigins", new[] { "portway.example.com" }, false)]
-    [InlineData("WebUi:PublicOrigins", new[] { "https://*" }, false)]
+    [InlineData("Console:PublicOrigins", new[] { "portway.example.com" }, false)]
+    [InlineData("Console:PublicOrigins", new[] { "https://*" }, false)]
     public async Task DeploymentLists_AreValidatedEntryByEntry(string key, string[] values, bool expectOk)
     {
         var client = CreateClient();
@@ -1004,7 +1003,7 @@ public class WebUiSecurityTests : IDisposable
 
         // This session reaches /_ via PublicOrigins only, so replacing it is refused
         var evict = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["WebUi:PublicOrigins"] = new[] { "https://elsewhere.example.com" } });
+            new Dictionary<string, object> { ["Console:PublicOrigins"] = new[] { "https://elsewhere.example.com" } });
         var evictResp = await client.SendAsync(evict, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, evictResp.StatusCode);
@@ -1013,7 +1012,7 @@ public class WebUiSecurityTests : IDisposable
 
         // Keeping an entry that still covers the caller is allowed
         var keep = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["WebUi:PublicOrigins"] = new[] { "http://localhost", "https://elsewhere.example.com" } });
+            new Dictionary<string, object> { ["Console:PublicOrigins"] = new[] { "http://localhost", "https://elsewhere.example.com" } });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(keep, TestContext.Current.CancellationToken)).StatusCode);
     }
 
@@ -1082,7 +1081,7 @@ public class WebUiSecurityTests : IDisposable
                 b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["Mcp:Enabled"] = "false",
-                    ["WebUi:PublicOrigins:0"] = "http://localhost"
+                    ["Console:PublicOrigins:0"] = "http://localhost"
                 }));
                 b.ConfigureTestServices(services => services.AddDbContext<PortwayApi.Auth.AuthDbContext>(opts =>
                     opts.UseSqlite($"Data Source={authDb}"), ServiceLifetime.Scoped, ServiceLifetime.Scoped));
@@ -1194,11 +1193,11 @@ public class WebUiSecurityTests : IDisposable
         var (authCookie, csrfCookie) = await LoginAsync(client);
 
         var set = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["WebUi:AdminApiKey"] = "a-brand-new-secret-value" });
+            new Dictionary<string, object> { ["Console:AdminApiKey"] = "a-brand-new-secret-value" });
         Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(set, TestContext.Current.CancellationToken)).StatusCode);
 
         var clear = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["WebUi:AdminApiKey"] = "" });
+            new Dictionary<string, object> { ["Console:AdminApiKey"] = "" });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(clear, TestContext.Current.CancellationToken)).StatusCode);
     }
 

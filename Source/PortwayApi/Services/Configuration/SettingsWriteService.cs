@@ -241,9 +241,7 @@ public sealed partial class SettingsWriteService
     /// <summary>
     /// Locking env variable, or null.
     /// </summary>
-    public string? LockedBy(string key) =>
-        EnvAliases.EnvNameFor(key, _envNames) ??
-        (ConfigAliases.Deprecated(key) is { } deprecated ? EnvAliases.EnvNameFor(deprecated, _envNames) : null);
+    public string? LockedBy(string key) => EnvAliases.EnvNameFor(key, _envNames);
 
     public static IReadOnlyCollection<WritableSetting> Schema => Allowed.Values;
 
@@ -315,7 +313,6 @@ public sealed partial class SettingsWriteService
         try
         {
             var root = await ReadOverridesAsync(cancellationToken);
-            MigrateDeprecatedKeys(root);
             foreach (var (key, node) in parsed) SetPath(root, key, node);
             await WriteOverridesAsync(root);
             // file watchers miss in-place writes on a single-file bind mount
@@ -684,21 +681,6 @@ public sealed partial class SettingsWriteService
         a = a.Trim('/'); b = b.Trim('/');
         return a.Length > 0 && b.Length > 0 && (a.Equals(b, StringComparison.OrdinalIgnoreCase) ||
             a.StartsWith(b + "/", StringComparison.OrdinalIgnoreCase) || b.StartsWith(a + "/", StringComparison.OrdinalIgnoreCase));
-    }
-
-    /// <summary>
-    /// Migrates deprecated and removed keys.
-    /// </summary>
-    internal static void MigrateDeprecatedKeys(JsonObject root)
-    {
-        foreach (var (current, deprecated) in ConfigAliases.RenamedKeys)
-        {
-            if (!TryTakePath(root, deprecated, out var value)) continue;
-            if (!TryGetPath(root, current, out _)) SetPath(root, current, value);
-        }
-
-        foreach (var removed in ConfigAliases.RemovedKeys)
-            TryTakePath(root, removed, out _);
     }
 
     private static async Task<JsonObject> ReadOverridesAsync(CancellationToken cancellationToken)

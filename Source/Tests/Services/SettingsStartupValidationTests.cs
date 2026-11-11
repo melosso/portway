@@ -24,7 +24,6 @@ public sealed class SettingsStartupValidationTests
         var config = new ConfigurationManager();
         config.AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"));
         config.AddInMemoryCollection(overrides);
-        config.AddConfigAliases();
 
         var sink = new CollectingSink();
         var previous = Log.Logger;
