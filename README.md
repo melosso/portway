@@ -4,13 +4,16 @@
 
 [![License](https://img.shields.io/badge/license-EUPL%201.2-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/melosso/portway)](https://github.com/melosso/portway/commits/main)
-[![Latest Release](https://img.shields.io/github/v/release/melosso/portway)](https://github.com/melosso/portway/releases/latest)
+[![Release](https://img.shields.io/github/v/release/melosso/portway)](https://github.com/melosso/portway/releases/latest)
+[![GitHub stars](https://img.shields.io/github/stars/melosso/portway)](https://github.com/frain-dev/convoy/stargazers)
+
+Portway is an open source API gateway.
 
 - Documentation: [Github Pages](https://melosso.github.com/portway)
 - Deploy: [Install Portway](https://melosso.github.io/portway/guide/install/)
 - Demo: [Visit Instance](https://portway-demo.melosso.com/)
 
-[Portway](https://github.com/melosso/portway/) is an open source API gateway for databases, internal services and webhooks. Configuration is file-based. Built in: caching, audit logging, MCP, OData, Azure Key Vault secrets, rate limiting, and Prometheus or OTLP metrics.
+Built for databases, internal services and webhooks. Configuration is easy and file-based. Built in options: caching, audit logging, MCP, OData, Azure Key Vault secrets, rate limiting, and Prometheus or OTLP metrics.
 
 ## Getting Started
 
@@ -22,7 +25,7 @@
 
 ### Define Your Environments
 
-Environments (e.g. `prod`, `dev`) isolate server and connection settings for all endpoints. `environments/settings.json` lists the allowed environments; each has its own `settings.json`:
+Environments isolate server and connection settings for all endpoints. Follow the native web-console or instead configure your API manually. The `environments/settings.json` configures the allowed environments; each has its own `settings.json`:
 
 **`environments/settings.json`**
 
