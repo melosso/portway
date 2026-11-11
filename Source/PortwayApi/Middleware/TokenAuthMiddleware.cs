@@ -56,10 +56,25 @@ public sealed class TokenAuthMiddleware
 
         if (isApiOrWebhook && !string.IsNullOrEmpty(env))
         {
-            var config = await environmentProvider.GetEnvironmentConfigAsync(env);
+            EnvironmentConfig? config;
+            bool isEnvAuthenticated = false;
+            try
+            {
+                config = await environmentProvider.GetEnvironmentConfigAsync(env);
+                if (config?.Authentication is { Enabled: true })
+                    isEnvAuthenticated = await environmentAuthService.ValidateAsync(context, config.Authentication,
+                        template => environmentProvider.ResolveOrThrowAsync(env, template, SecretReference.ResolveExact, context.RequestAborted));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // fail closed, no token fallback
+                Log.Debug(ex, "Environment configuration for {Environment} could not be loaded", env);
+                await WriteErrorAsync(context, 500, "Internal server error");
+                return;
+            }
+
             if (config?.Authentication != null && config.Authentication.Enabled)
             {
-                bool isEnvAuthenticated = await environmentAuthService.ValidateAsync(context, config.Authentication);
 
                 if (isEnvAuthenticated)
                 {

@@ -345,4 +345,61 @@ public class EnvironmentAuthServiceTests
 
         Assert.False(result);
     }
+
+    private static AuthenticationSettings Single(AuthenticationMethod method) => new() { Enabled = true, Methods = [method] };
+
+    [Theory]
+    [InlineData("Basic", "Basic dXNlcjo=")]
+    [InlineData("Bearer", "Bearer ")]
+    public async Task EnvironmentAuth_EmptyValue_Refused(string type, string header)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers.Authorization = header;
+
+        Assert.False(await _service.ValidateAsync(context, Single(new AuthenticationMethod { Type = type, Name = "user", Value = "" })));
+    }
+
+    [Fact]
+    public async Task EnvironmentAuth_ResolvesReferenceOfMethodInUse()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers["X-API-Key"] = "resolved-key";
+        var method = new AuthenticationMethod { Type = "ApiKey", Name = "X-API-Key", Value = "${secret:API-KEY}", In = "Header" };
+
+        var result = await _service.ValidateAsync(context, Single(method),
+            t => Task.FromResult(t == "${secret:API-KEY}" ? "resolved-key" : t));
+
+        Assert.True(result);
+        Assert.Equal("${secret:API-KEY}", method.Value);
+    }
+
+    [Fact]
+    public async Task EnvironmentAuth_ResolveFailure_Propagates()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers["X-API-Key"] = "k";
+        var method = new AuthenticationMethod { Type = "ApiKey", Name = "X-API-Key", Value = "${secret:NOPE}", In = "Header" };
+
+        await Assert.ThrowsAsync<PortwayApi.Helpers.SecretResolutionException>(() => _service.ValidateAsync(context, Single(method),
+            _ => throw new PortwayApi.Helpers.SecretResolutionException(PortwayApi.Helpers.SecretResolution.Fail(PortwayApi.Helpers.SecretFailure.Missing, "NOPE"))));
+    }
+
+    [Fact]
+    public async Task EnvironmentAuth_UnusedMethodSecret_NotResolved()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers["X-API-Key"] = "k";
+        var settings = new AuthenticationSettings
+        {
+            Enabled = true,
+            Methods =
+            [
+                new AuthenticationMethod { Type = "ApiKey", Name = "X-API-Key", Value = "k", In = "Header" },
+                new AuthenticationMethod { Type = "Bearer", Name = "b", Value = "${secret:NOPE}" }
+            ]
+        };
+
+        Assert.True(await _service.ValidateAsync(context, settings,
+            t => PortwayApi.Helpers.SecretReference.ContainsReference(t) ? throw new InvalidOperationException("resolved") : Task.FromResult(t)));
+    }
 }

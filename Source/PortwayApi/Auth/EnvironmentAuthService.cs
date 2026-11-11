@@ -23,7 +23,13 @@ public sealed class EnvironmentAuthService
     /// <summary>
     /// Validates a request against the environment authentication settings
     /// </summary>
-    public async Task<bool> ValidateAsync(HttpContext context, AuthenticationSettings settings)
+    public Task<bool> ValidateAsync(HttpContext context, AuthenticationSettings settings) =>
+        ValidateAsync(context, settings, static template => Task.FromResult(template));
+
+    /// <summary>
+    /// Validates a request, resolving secret references of each method before it is tried. A resolve failure propagates.
+    /// </summary>
+    public async Task<bool> ValidateAsync(HttpContext context, AuthenticationSettings settings, Func<string, Task<string>> resolve)
     {
         // Auth disabled: nothing to enforce, let the global token path decide
         if (!settings.Enabled)
@@ -36,8 +42,9 @@ public sealed class EnvironmentAuthService
             return false;
         }
 
-        foreach (var method in settings.Methods)
+        foreach (var configured in settings.Methods)
         {
+            var method = await ResolveAsync(configured, resolve);
             try
             {
                 bool success = method.Type.ToLowerInvariant() switch
@@ -67,6 +74,30 @@ public sealed class EnvironmentAuthService
         }
 
         return false;
+    }
+
+    private static async Task<AuthenticationMethod> ResolveAsync(AuthenticationMethod method, Func<string, Task<string>> resolve)
+    {
+        if (!Helpers.SecretReference.ContainsReference(method.Value)
+            && !Helpers.SecretReference.ContainsReference(method.Secret)
+            && !Helpers.SecretReference.ContainsReference(method.ClientSecret))
+            return method;
+
+        return new AuthenticationMethod
+        {
+            Type = method.Type,
+            Name = method.Name,
+            Value = await resolve(method.Value),
+            In = method.In,
+            Issuer = method.Issuer,
+            Audience = method.Audience,
+            Secret = method.Secret is null ? null : await resolve(method.Secret),
+            PublicKey = method.PublicKey,
+            Algorithm = method.Algorithm,
+            ClientId = method.ClientId,
+            ClientSecret = method.ClientSecret is null ? null : await resolve(method.ClientSecret),
+            IntrospectionEndpoint = method.IntrospectionEndpoint
+        };
     }
 
     private bool ValidateApiKey(HttpContext context, AuthenticationMethod method)
@@ -113,7 +144,7 @@ public sealed class EnvironmentAuthService
             string username = credentials[0];
             string password = credentials[1];
 
-            return username == method.Name && SecureEquals(password, method.Value);
+            return !string.IsNullOrEmpty(method.Value) && username == method.Name && SecureEquals(password, method.Value);
         }
         catch
         {
@@ -128,7 +159,7 @@ public sealed class EnvironmentAuthService
             return false;
 
         var token = authHeader["Bearer ".Length..].Trim();
-        return SecureEquals(token, method.Value);
+        return !string.IsNullOrEmpty(method.Value) && SecureEquals(token, method.Value);
     }
 
     private async Task<bool> ValidateJwtTokenAsync(HttpContext context, AuthenticationMethod method)

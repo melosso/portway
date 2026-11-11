@@ -573,7 +573,7 @@ public sealed class ProxyRequestHandler
         // environment and endpoint headers replace client headers of the same name
         var configuredHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var header in envHeaders)
-            configuredHeaders[header.Key] = header.Value;
+            configuredHeaders[header.Key] = await _environmentSettingsProvider.ResolveOrThrowAsync(env, header.Value, SecretReference.ResolveHeader, context.RequestAborted);
         if (endpointDefinition != null && !string.IsNullOrEmpty(originalMethod))
         {
             var appendHeaders = HttpMethodHeaderAppender.GetAppendHeaders(
