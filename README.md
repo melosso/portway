@@ -1,25 +1,16 @@
-# <img src="https://github.com/melosso/portway/blob/main/Source/logo.webp?raw=true" alt="" width="34" style="vertical-align: middle;">  Portway
+![Portway](.github/images/banner.webp)
+
+---
 
 [![License](https://img.shields.io/badge/license-EUPL%201.2-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/melosso/portway)](https://github.com/melosso/portway/commits/main)
 [![Latest Release](https://img.shields.io/github/v/release/melosso/portway)](https://github.com/melosso/portway/releases/latest)
 
-Portway is a lightweight **API gateway** that simplifies secure service routing and infrastructure management.
+- Documentation: [Github Pages](https://melosso.github.com/portway)
+- Deploy: [Install Portway](https://melosso.github.io/portway/guide/install/)
+- Demo: [Visit Instance](https://portway-demo.melosso.com/)
 
-It unifies databases, internal services, and webhooks into a single interface using simple, file-based configuration. Caching, audit logging and generated documentation are built in.
-
-Portway serves proxy, SQL and webhook endpoints with MCP and OData support, plus Azure Key Vault secrets, rate limiting, a management console and metrics through Prometheus or any OTLP collector.
-
-<div>
-      <p align="center">
-        <strong>🔍 <a href="https://portway-demo.melosso.com/">See it in action!</a></strong>
-      </p>
-</div>
-
-
-![Screenshot of Portway](.github/images/example.webp)
-
----
+[Portway](https://github.com/melosso/portway/) is an open source lightweight API gateway used to securely unify databases, internal services, and webhooks into a single interface with rich features such as file-based configuration, built-in caching, audit logging, MCP and OData support, Azure Key Vault secrets integration, rate limiting, and Prometheus or OTLP metrics monitoring.
 
 ## Prerequisites
 
@@ -31,53 +22,11 @@ Requirements:
 
 ## Getting Started
 
-### 1. Download & Extract
+### 1. Installation
 
-#### Windows Server (IIS)
-
-Download the <a href="https://github.com/melosso/portway/releases" target="_blank" rel="noopener noreferrer">latest release</a> and extract it to your deployment folder. The build includes example environment and endpoint configurations.
-
-Set the encryption key before configuring the site in IIS:
-
-```powershell
-$bytes = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [Environment]::SetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", [Convert]::ToBase64String($bytes), "Machine")
-```
-
-On containerized environments, this can be done with the identically named `PORTWAY_ENCRYPTION_KEY` variable.
-
----
-
-#### **Docker Compose**
-
-You can quickly deploy Portway using Docker Compose and the official image:
-
-```yaml
-services:
-  portway:
-    image: ghcr.io/melosso/portway:latest
-    ports:
-      - "8080:8080"
-    volumes:
-      - portway_app:/app:z
-      - ./environments:/app/environments:z
-      - ./endpoints:/app/endpoints:z
-      - ./log:/app/log:z
-      - ./data:/app/data:z
-    environment:
-      # openssl rand -hex 32
-      - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-
-volumes:
-  portway_app:
-```
-
-Then run:
-
-```sh
-docker compose pull && docker compose up -d
-```
-
-Portway listens on port 8080 with the configuration folders mounted. The API requires environment and endpoint configuration before first use.
+* [Docker](https://melosso.github.io/portway/guide/deployment-docker/)
+* [Linux](https://melosso.github.io/portway/guide/deployment-linux/)
+* [Windows Server](https://melosso.github.io/portway/guide/deployment-windows/)
 
 ### 2. Define Your Environments
 
