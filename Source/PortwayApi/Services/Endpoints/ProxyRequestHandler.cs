@@ -172,6 +172,8 @@ public sealed class ProxyRequestHandler
             {
                 // context.Request.QueryString.Value begins with '?' when non-empty
                 var qs = queryString.StartsWith("?") ? queryString.Substring(1) : queryString;
+                // client text never reaches the secret resolver
+                qs = qs.Replace("${", "%24{", StringComparison.Ordinal);
 
                 // Drop client params that collide with baked ones; upstreams resolving duplicates last-wins would let clients override injected credentials
                 if (reservedParams.Count > 0 || queryCredentials.Count > 0)
@@ -542,9 +544,6 @@ public sealed class ProxyRequestHandler
         EndpointDefinition? endpointDefinition = null,
         IReadOnlyDictionary<string, string>? tenants = null)
     {
-        // Create HttpClient
-        var client = _httpClientFactory.CreateClient("ProxyClient");
-
         // Log the actual HTTP method being sent to backend
         Log.Debug("Sending {Method} request to backend: {Url}", method, UrlRedaction.Redact(fullUrl));
 
@@ -569,6 +568,11 @@ public sealed class ProxyRequestHandler
         // Load environment settings
         var (_, _, envHeaders) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
         var credentials = await CredentialNamesAsync(env);
+        var entityHeaders = endpointConfig.Headers ?? FrozenDictionary<string, string>.Empty;
+        var urlSecrets = await _environmentSettingsProvider.FetchSecretsAsync(env, (endpointConfig.FallbackUrls ?? []).Prepend(endpointConfig.Url), context.RequestAborted);
+        var sameHostRedirectsOnly = (endpointConfig.FallbackUrls ?? []).Prepend(endpointConfig.Url).Any(SecretReference.ContainsReference)
+            || envHeaders.Concat(entityHeaders).Any(h => SecretReference.ContainsReference(h.Value) || HeaderPolicy.IsSensitiveName(h.Key));
+        var client = _httpClientFactory.CreateClient(ProxyFailoverHelper.ClientName(sameHostRedirectsOnly));
 
         // environment and endpoint headers replace client headers of the same name
         var configuredHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -587,6 +591,8 @@ public sealed class ProxyRequestHandler
                     Log.Warning("Invalid custom header name: {HeaderKey}", header.Key);
             }
         }
+        foreach (var header in entityHeaders)
+            configuredHeaders[header.Key] = await _environmentSettingsProvider.ResolveOrThrowAsync(env, header.Value, SecretReference.ResolveHeader, context.RequestAborted);
 
         // tenant headers are configured headers and the inbound selector is not forwarded
         var tenantSelectors = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -603,7 +609,7 @@ public sealed class ProxyRequestHandler
 
         HttpRequestMessage BuildRequest(string targetUrl)
         {
-            var requestMessage = new HttpRequestMessage(new HttpMethod(method), targetUrl);
+            var requestMessage = new HttpRequestMessage(new HttpMethod(method), SecretResolver.ResolveOrThrow(env, targetUrl, urlSecrets, SecretReference.ResolveQueryValue));
 
             if (bodyBytes != null)
             {
@@ -686,7 +692,7 @@ public sealed class ProxyRequestHandler
 
         var response = await ProxyFailoverHelper.SendWithRetryAsync(
             client, BuildRequest, fullUrl, endpointConfig.Url, endpointDefinition?.FallbackUrls,
-            endpointDefinition?.Retry, $"endpoint '{endpointName}'", _urlValidator.IsUrlSafe, context.RequestAborted);
+            endpointDefinition?.Retry, $"endpoint '{endpointName}'", _urlValidator.IsUrlSafe, context.RequestAborted, sameHostRedirectsOnly);
 
         // Store response headers for cache and apply to current response
         var responseHeaders = new Dictionary<string, string>();

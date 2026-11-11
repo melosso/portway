@@ -174,6 +174,10 @@ public sealed class HealthCheckService
         }
     }
 
+    // a probe never sends a secret
+    internal static string ProbeUrl(string url) =>
+        SecretReference.ContainsReference(url) && url.IndexOf('?') is >= 0 and var query ? url[..query] : url;
+
     private async Task<HealthReportEntry> CheckProxyEndpointsAsync(IHttpClientFactory httpClientFactory, CancellationToken cancellationToken)
     {
         var startTime = DateTime.UtcNow;
@@ -181,7 +185,7 @@ public sealed class HealthCheckService
         var status = HealthStatus.Healthy;
 
         // ProxyClient applies the network access policy at connect time
-        using var client = httpClientFactory.CreateClient("ProxyClient");
+        using var client = httpClientFactory.CreateClient(Middleware.ProxyHttpClientExtensions.Client);
         var unhealthyEndpoints = new ConcurrentBag<string>();
 
         try
@@ -192,7 +196,7 @@ public sealed class HealthCheckService
                 .Where(e => !e.Value.Hidden && e.Value.Methods.Contains("GET"))
                 .Select(e => new KeyValuePair<string, (string Url, HashSet<string> Methods, bool Hidden, string Type)>(
                     e.Key,
-                    (e.Value.Url, new HashSet<string>(e.Value.Methods), e.Value.Hidden, e.Value.Type.ToString())))
+                    (ProbeUrl(e.Value.Url), new HashSet<string>(e.Value.Methods), e.Value.Hidden, e.Value.Type.ToString())))
                 .ToList();
 
             Log.Debug("Checking proxy endpoints: {Endpoints}",

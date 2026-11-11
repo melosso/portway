@@ -31,6 +31,11 @@ public sealed class EndpointEntity : EndpointEntityBase
     public List<string>? FallbackUrls { get; set; }
 
     /// <summary>
+    /// Headers sent upstream. Values replace environment headers of the same name and accept <c>${secret:NAME}</c>
+    /// </summary>
+    public Dictionary<string, string>? Headers { get; set; }
+
+    /// <summary>
     /// Sends the client Authorization header upstream when it also authenticated the request
     /// </summary>
     public bool ForwardAuthorization { get; set; } = false;

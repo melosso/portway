@@ -18,13 +18,16 @@ public sealed class CompositeEndpointHandler
     private readonly string _serverName;
     private readonly Helpers.UrlValidator _urlValidator;
     private readonly CacheManager _cacheManager;
+    private readonly Interfaces.IEnvironmentSettingsProvider _environmentSettings;
 
     public CompositeEndpointHandler(
         IHttpClientFactory httpClientFactory,
         string serverName,
         Helpers.UrlValidator urlValidator,
-        CacheManager cacheManager)
+        CacheManager cacheManager,
+        Interfaces.IEnvironmentSettingsProvider environmentSettings)
     {
+        _environmentSettings = environmentSettings;
         _httpClientFactory = httpClientFactory;
         _serverName = serverName;
         _urlValidator = urlValidator;
@@ -314,11 +317,18 @@ public sealed class CompositeEndpointHandler
         Dictionary<string, object> previousResults,
         CancellationToken ct = default)
     {
-        // Apply template transformations
-        ApplyTemplateTransformations(step, itemData, context, previousResults);
+        var secrets = await _environmentSettings.FetchSecretsAsync(env,
+            [endpoint.Url, .. endpoint.FallbackUrls ?? [], .. endpoint.Headers?.Values ?? [], .. step.TemplateTransformations.Values], ct);
+        var headers = (endpoint.Headers ?? new Dictionary<string, string>())
+            .ToDictionary(h => h.Key, h => SecretResolver.ResolveOrThrow(env, h.Value, secrets, SecretReference.ResolveHeader));
+        context.SecretValues.UnionWith(secrets.Values);
 
-        // Create the HttpClient
-        var client = _httpClientFactory.CreateClient("ProxyClient");
+        // Apply template transformations
+        ApplyTemplateTransformations(step, itemData, context, previousResults, env, secrets);
+
+        var sameHostRedirectsOnly = secrets.Count > 0 || headers.Keys.Any(HeaderPolicy.IsSensitiveName)
+            || (endpoint.FallbackUrls ?? []).Prepend(endpoint.Url).Any(SecretReference.ContainsReference);
+        var client = _httpClientFactory.CreateClient(ProxyFailoverHelper.ClientName(sameHostRedirectsOnly));
 
         // Prepare the URL for the request
         string fullUrl = endpoint.Url;
@@ -327,10 +337,15 @@ public sealed class CompositeEndpointHandler
 
         HttpRequestMessage BuildRequest(string targetUrl)
         {
-            var request = new HttpRequestMessage(new HttpMethod(step.Method), targetUrl);
+            var request = new HttpRequestMessage(new HttpMethod(step.Method), SecretResolver.ResolveOrThrow(env, targetUrl, secrets, SecretReference.ResolveQueryValue));
             request.Headers.Add("ServerName", _serverName);
             request.Headers.Add("DatabaseName", env);
             request.Headers.Add("Accept", "application/json,text/javascript; charset=utf-8");
+            foreach (var (name, value) in headers)
+            {
+                request.Headers.Remove(name);
+                request.Headers.TryAddWithoutValidation(name, value);
+            }
 
             if (step.Method != "GET" && step.Method != "DELETE")
             {
@@ -345,10 +360,10 @@ public sealed class CompositeEndpointHandler
 
         var response = await ProxyFailoverHelper.SendWithRetryAsync(
             client, BuildRequest, fullUrl, endpoint.Url, endpoint.FallbackUrls,
-            endpoint.Retry, $"step '{step.Name}'", _urlValidator.IsUrlSafe, ct);
+            endpoint.Retry, $"step '{step.Name}'", _urlValidator.IsUrlSafe, ct, sameHostRedirectsOnly);
 
         // Read the response content now to include in error messages if needed
-        var responseContent = await response.Content.ReadAsStringAsync(ct);
+        var responseContent = context.Mask(await response.Content.ReadAsStringAsync(ct));
 
         // Ensure success
         if (!response.IsSuccessStatusCode)
@@ -409,7 +424,9 @@ public sealed class CompositeEndpointHandler
         CompositeStep step,
         JsonNode data,
         ExecutionContext context,
-        Dictionary<string, object> previousResults)
+        Dictionary<string, object> previousResults,
+        string env,
+        IReadOnlyDictionary<string, string> secrets)
     {
         if (data is not JsonObject jsonObj)
         {
@@ -420,6 +437,12 @@ public sealed class CompositeEndpointHandler
         {
             var key = transform.Key;
             var valueTemplate = transform.Value;
+
+            if (SecretReference.ContainsReference(valueTemplate))
+            {
+                jsonObj[key] = SecretResolver.ResolveOrThrow(env, valueTemplate, secrets, SecretReference.ResolveExact);
+                continue;
+            }
 
             switch (valueTemplate.ToLowerInvariant())
             {

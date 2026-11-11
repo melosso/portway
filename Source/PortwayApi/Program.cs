@@ -116,7 +116,8 @@ try
             provider.GetRequiredService<IHttpClientFactory>(),
             serverName,
             provider.GetRequiredService<UrlValidator>(),
-            provider.GetRequiredService<CacheManager>()
+            provider.GetRequiredService<CacheManager>(),
+            provider.GetRequiredService<IEnvironmentSettingsProvider>()
         )
     );
 

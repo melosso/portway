@@ -33,6 +33,11 @@ internal sealed class UpstreamCapture : IDisposable
 
     public int? ResponseStatus { get; set; }
 
+    /// <summary>
+    /// Body of every reply; the placeholder {header:Name} is replaced with that request header
+    /// </summary>
+    public string? ResponseBody { get; set; }
+
     public UpstreamCapture(int port)
     {
         var builder = WebApplication.CreateSlimBuilder();
@@ -62,11 +67,14 @@ internal sealed class UpstreamCapture : IDisposable
         if (ResponseStatus is { } status)
         {
             ctx.Response.StatusCode = status;
-            return;
+            if (ResponseBody is null)
+                return;
         }
 
         ctx.Response.ContentType = "application/json";
-        await ctx.Response.WriteAsync("""{"ok":true}""");
+        await ctx.Response.WriteAsync(ResponseBody is null
+            ? """{"ok":true}"""
+            : System.Text.RegularExpressions.Regex.Replace(ResponseBody, @"\{header:([^}]+)\}", m => Headers.GetValueOrDefault(m.Groups[1].Value, "")));
     }
 
     public void Dispose() => _app.DisposeAsync().AsTask().GetAwaiter().GetResult();

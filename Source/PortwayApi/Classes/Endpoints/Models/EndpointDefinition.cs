@@ -7,6 +7,7 @@ public sealed class EndpointDefinition
 {
     public string Url { get; set; } = string.Empty;
     public List<string>? FallbackUrls { get; set; }
+    public Dictionary<string, string>? Headers { get; set; }
     public bool ForwardAuthorization { get; set; } = false;
     public ProxyRetryOptions? Retry { get; set; }
     public ProxyResponseTransforms? ResponseTransforms { get; set; }
@@ -304,7 +305,8 @@ public sealed class EndpointDefinition
             FallbackUrls,
             Retry,
             ResponseTransforms,
-            HasTenancy
+            HasTenancy,
+            Headers
         );
     }
 }

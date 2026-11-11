@@ -62,6 +62,35 @@ public static partial class SecretReference
         return names;
     }
 
+    /// <summary>
+    /// True when every reference in <paramref name="url"/> is inside a query value, so a secret never selects the destination.
+    /// </summary>
+    public static bool IsQueryValueOnly(string url)
+    {
+        if (!ContainsReference(url))
+            return true;
+
+        var query = url.IndexOf('?');
+        var fragment = url.IndexOf('#');
+        if (query < 0 || (fragment >= 0 && fragment < query))
+            return false;
+
+        var matches = ReferencePattern().Matches(url);
+        if (matches.Count != url.Split("${secret:").Length - 1)
+            return false;
+
+        foreach (Match match in matches)
+        {
+            if (match.Index < query || (fragment >= 0 && match.Index > fragment))
+                return false;
+            var pairStart = url.LastIndexOfAny(['?', '&'], match.Index);
+            var equals = url.IndexOf('=', pairStart);
+            if (equals < 0 || equals > match.Index)
+                return false;
+        }
+        return true;
+    }
+
     public static SecretResolution ResolveExact(string template, IReadOnlyDictionary<string, string> values)
     {
         if (!ContainsReference(template))
@@ -156,15 +185,36 @@ public static class SecretResolver
         string env,
         string template,
         Func<string, IReadOnlyDictionary<string, string>, SecretResolution> resolve,
+        CancellationToken cancellationToken = default) =>
+        ResolveOrThrow(env, template, await provider.FetchSecretsAsync(env, [template], cancellationToken), resolve);
+
+    /// <summary>
+    /// Fetches every secret referenced in <paramref name="templates"/>. Missing secrets are absent from the result.
+    /// </summary>
+    public static async Task<IReadOnlyDictionary<string, string>> FetchSecretsAsync(
+        this Interfaces.IEnvironmentSettingsProvider provider,
+        string env,
+        IEnumerable<string?> templates,
         CancellationToken cancellationToken = default)
     {
         var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var name in SecretReference.Names(template))
+        foreach (var name in templates.SelectMany(SecretReference.Names).Distinct(StringComparer.OrdinalIgnoreCase))
         {
             if (await provider.GetSecretAsync(env, name, cancellationToken) is { } value)
                 values[name] = value;
         }
+        return values;
+    }
 
+    /// <summary>
+    /// Applies <paramref name="resolve"/> to fetched values. Throws <see cref="SecretResolutionException"/> on failure.
+    /// </summary>
+    public static string ResolveOrThrow(
+        string env,
+        string template,
+        IReadOnlyDictionary<string, string> values,
+        Func<string, IReadOnlyDictionary<string, string>, SecretResolution> resolve)
+    {
         var result = resolve(template, values);
         if (result.Succeeded)
             return result.Value;

@@ -120,9 +120,14 @@ public static partial class EndpointHandler
         if (entity == null || string.IsNullOrWhiteSpace(entity.Url))
             return null;
 
+        var errors = ValidateProxyEndpointConfiguration(entity);
+        if (errors.Count > 0)
+            throw new InvalidOperationException($"Endpoint configuration is invalid: {string.Join(", ", errors)}");
+
         var definition = new EndpointDefinition
         {
             Url = entity.Url,
+            Headers = entity.Headers,
             Methods = entity.Methods ?? new List<string>(),
             Type = ParseEndpointType(entity.Type),
             CompositeConfig = entity.CompositeConfig,
@@ -137,6 +142,23 @@ public static partial class EndpointHandler
 
         entity.ApplyTo(definition);
         return definition;
+    }
+
+    internal static List<string> ValidateProxyEndpointConfiguration(EndpointEntity entity)
+    {
+        var errors = new List<string>();
+        foreach (var name in entity.Headers?.Keys ?? Enumerable.Empty<string>())
+        {
+            if (!HeaderPolicy.IsValidName(name) || HeaderPolicy.StrippedFromClient.Contains(name) || name.StartsWith("Content-", StringComparison.OrdinalIgnoreCase))
+                errors.Add($"Header '{name}' is not allowed");
+        }
+
+        foreach (var url in (IEnumerable<string?>)[entity.Url, .. entity.FallbackUrls ?? []])
+        {
+            if (url is not null && !SecretReference.IsQueryValueOnly(url))
+                errors.Add("A secret reference in a URL is allowed in a query value only");
+        }
+        return errors;
     }
 
     /// <summary>
