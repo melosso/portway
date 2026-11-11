@@ -106,8 +106,6 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 | `Scalar.HideClientButton` | boolean | Hides client generation |
 | `Scalar.HideTestRequestButton` | boolean | Hides test requests |
 
-The flat `ScalarTheme`, `ScalarLayout`, `ScalarShowSidebar` and `ScalarHide*` keys are deprecated and still read: [Deprecated keys](/reference/app-settings#deprecated-keys).
-
 The console edits these properties under **Settings → OpenAPI** (`/_/settings#openapi`: OpenAPI, API Reference and Reference Footer cards), except `SecurityDefinition.Name`, `Type`, `In` and `Scheme`: Portway accepts tokens only in the `Authorization` header. `Enabled` and `SecurityDefinition.Description` apply after a restart; the others apply on save. `Version` and `DefaultGroup` accept letters, digits, `.`, `-` and `_`. `Footer.Url` accepts `http`, `https` and `mailto` links or `#`. `ExternalDocs.Url` accepts `http` and `https` links or empty.
 
 The document is served at `/docs/openapi.json`; `/docs/openapi/v{n}/openapi.json` contains the operations of one endpoint version. The document of the highest version also contains every endpoint without a `v{n}` folder and is the default document of `/docs`. Other names under `/docs/openapi/{name}/openapi.json` redirect to `/docs/openapi.json`.

@@ -42,30 +42,7 @@ Validation rules for console writes:
 | `Console:SeedPassword`, `Console:SeedToken`, `Console:AdminApiKey` | Removable, never set from the console |
 | `AllowedHosts`, `Console:PublicOrigins`, `ForwardedHeaders:*` | Refused when the change excludes the current console session |
 
-A list or map saved from the console replaces the `appsettings.json` value as a whole.
-
-## Deprecated keys
-
-The keys below are renamed. The deprecated name is still read, with a warning at startup. A source with higher priority wins, whichever name it uses. Within one source, the current name takes precedence. Console saves are written under the current name.
-
-| Deprecated key | Current key |
-|---|---|
-| `RateLimiting:IpWindow` | `RateLimiting:IpWindowSeconds` |
-| `RateLimiting:TokenWindow` | `RateLimiting:TokenWindowSeconds` |
-| `RateLimiting:Store` | `RateLimiting:Provider` |
-| `RateLimiting:RedisConnectionString` | `RateLimiting:Redis:ConnectionString` |
-| `SqlConnectionPooling:ConnectionTimeout` | `SqlConnectionPooling:ConnectionTimeoutSeconds` |
-| `SqlConnectionPooling:CommandTimeout` | `SqlConnectionPooling:CommandTimeoutSeconds` |
-| `Caching:ProviderType` | `Caching:Provider` |
-| `FileStorage:MemoryCacheTimeSeconds` | `FileStorage:MemoryCacheDurationSeconds` |
-| `RequestTrafficLogging:StorageType` | `RequestTrafficLogging:Provider` |
-| `RequestTrafficLogging:IncludeRequestBodies` | `RequestTrafficLogging:CaptureRequestBodies` |
-| `RequestTrafficLogging:IncludeResponseBodies` | `RequestTrafficLogging:CaptureResponseBodies` |
-| `RequestTrafficLogging:EnableInfoLogging` | `RequestTrafficLogging:InfoLoggingEnabled` |
-| `Console:Customization:EnableLandingPage` | `Console:Customization:LandingPageEnabled` |
-| `OpenApi:ScalarTheme`, `ScalarLayout`, `ScalarShowSidebar`, `ScalarHide*` | `OpenApi:Scalar:Theme`, `Layout`, `ShowSidebar`, `Hide*` |
-
-`Mcp:RequireAuthentication` has no effect. The MCP server always requires a Portway token.
+A setting saved from the console replaces anything configured in your `appsettings.json` file.
 
 ## Sections
 

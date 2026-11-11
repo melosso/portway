@@ -5,7 +5,7 @@ description: "Receive HTTP POST payloads from external services and persist them
 
 # Webhook Endpoints
 
-Webhook endpoints accept POST requests from external services and store the JSON payload in a configured table. The webhook id is checked against `AllowedColumns`, the payload is inserted unchanged with a UTC timestamp, and the response returns the new row id.
+Webhook endpoints accept POST requests from external services and store the JSON payload in a configured table. The webhook id is checked against `AllowedColumns`, the request body is inserted as sent with a UTC timestamp, and the response returns the new row id.
 
 ## Database setup
 
@@ -81,7 +81,7 @@ Example with namespace `Webhooks` and endpoint name `Incoming`:
 }
 ```
 
-`AllowedColumns` lists the accepted webhook ids; other ids return `404`. The id is stored in the `WebhookId` column. All properties: [Entity configuration](/reference/entity-config#webhook).
+`AllowedColumns` contains a list of the accepted webhook ids; other ids return `404`. An endpoint with an empty or absent `AllowedColumns` will not load and returns `404` for every id. The id is stored in the `WebhookId` column with the casing in `AllowedColumns`. The route is exactly `/api/{env}/{namespace}/{name}/{id}`: extra segments and quoted or parenthesised ids return `404`. All properties: [Entity configuration](/reference/entity-config#webhook).
 
 ## Sending webhooks
 
@@ -108,7 +108,7 @@ Response (`201 Created`):
 ```json
 {
   "success": true,
-  "message": "Webhook processed successfully.",
+  "message": "Webhook stored.",
   "result": null,
   "id": 12345
 }
@@ -138,7 +138,7 @@ ORDER BY ReceivedAt DESC;
 
 - POST only
 - JSON payloads only; other bodies are rejected
-- No validation beyond JSON syntax and the webhook id
+- No validation beyond JSON syntax and the webhook id. A malformed or empty body returns `400`.
 - No retry on insert failure
 - No forwarding; a separate job or procedure processes the table
 - Payload size limit: 10MB (default)
@@ -148,7 +148,7 @@ ORDER BY ReceivedAt DESC;
 
 | Symptom | Resolution |
 |---|---|
-| "Webhook ID '...' is not configured." | Add the id to `AllowedColumns` (case-insensitive match). |
+| "Webhook not found." | Add the id to `AllowedColumns` (case-insensitive match), and check the route has exactly one segment after the endpoint name. |
 | Database errors | Check the table definition and the connection account's INSERT permission. |
 | `401` or `403` | Check the token and its access to the environment. |
 
