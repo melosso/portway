@@ -148,7 +148,7 @@ public class SqlMetadataService
 
             var environmentsToTry = new List<string>();
             if (definition.AllowedEnvironments != null && definition.AllowedEnvironments.Any())
-                environmentsToTry.AddRange(definition.AllowedEnvironments);
+                environmentsToTry.AddRange(definition.AllowedEnvironments.Where(environmentSettings.IsEnvironmentAllowed));
 
             foreach (var env in globalEnvironments)
             {
