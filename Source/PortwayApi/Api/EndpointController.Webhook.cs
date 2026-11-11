@@ -10,6 +10,13 @@ namespace PortwayApi.Api;
 public sealed partial class EndpointController
 {
     /// <summary>
+    /// A verified id accepts only the marker its own verification set; an unverified id needs none
+    /// </summary>
+    internal static bool AcceptsVerification(WebhookRoute route, EndpointDefinition endpoint, object? marker) =>
+        endpoint.Verification?.Keys.FirstOrDefault(k => k.Equals(route.Id, StringComparison.OrdinalIgnoreCase)) is not { } verifiedId
+        || (marker is WebhookRoute verified && verified == route with { Id = verifiedId });
+
+    /// <summary>
     /// Routes a webhook delivery to <see cref="WebhookRequestHandler"/> and shapes the response
     /// </summary>
     private async Task<IActionResult> HandleWebhookRequest(string env, string[] segments, string requestBody)
@@ -23,6 +30,9 @@ public sealed partial class EndpointController
 
         if (!endpoint.AllowedColumns.Contains(route.Id, StringComparer.OrdinalIgnoreCase))
             return PortwayResults.NotFound("Webhook not found.");
+
+        if (!AcceptsVerification(route, endpoint, HttpContext.Items[Middleware.TokenAuthMiddleware.VerifiedWebhookKey]))
+            return PortwayResults.Unauthorized("Authentication required");
 
         if (!JsonBody.TryParse(requestBody, out _))
             return PortwayResults.BadRequest(JsonBody.InvalidMessage);

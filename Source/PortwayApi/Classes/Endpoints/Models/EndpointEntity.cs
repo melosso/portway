@@ -36,6 +36,11 @@ public sealed class EndpointEntity : EndpointEntityBase
     public Dictionary<string, string>? Headers { get; set; }
 
     /// <summary>
+    /// Webhook verification per webhook id
+    /// </summary>
+    public Dictionary<string, WebhookVerification>? Verification { get; set; }
+
+    /// <summary>
     /// Sends the client Authorization header upstream when it also authenticated the request
     /// </summary>
     public bool ForwardAuthorization { get; set; } = false;

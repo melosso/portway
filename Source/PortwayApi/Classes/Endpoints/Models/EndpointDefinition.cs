@@ -8,6 +8,11 @@ public sealed class EndpointDefinition
     public string Url { get; set; } = string.Empty;
     public List<string>? FallbackUrls { get; set; }
     public Dictionary<string, string>? Headers { get; set; }
+
+    /// <summary>
+    /// Verification rules by canonical webhook id, case-insensitive
+    /// </summary>
+    public IReadOnlyDictionary<string, Services.WebhookRule>? Verification { get; set; }
     public bool ForwardAuthorization { get; set; } = false;
     public ProxyRetryOptions? Retry { get; set; }
     public ProxyResponseTransforms? ResponseTransforms { get; set; }

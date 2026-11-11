@@ -26,7 +26,9 @@ public sealed class TokenAuthMiddleware
         AuthFailureAuditQueue auditQueue,
         TokenService tokenService,
         IEnvironmentSettingsProvider environmentProvider,
-        EnvironmentAuthService environmentAuthService)
+        EnvironmentAuthService environmentAuthService,
+        EnvironmentSettings environmentSettings,
+        TimeProvider timeProvider)
     {
         var pathBase = context.Request.PathBase.Value ?? "";
         string env = ExtractEnvironmentFromPath(context.Request.Path);
@@ -46,6 +48,22 @@ public sealed class TokenAuthMiddleware
             (_metricsPath is not null && context.Request.Path.StartsWithSegments(_metricsPath)))
         {
             Log.Debug("Skipping token authentication for {Path} (basePath: {pathBase})", context.Request.Path, pathBase);
+            await _next(context);
+            return;
+        }
+
+        if (HttpMethods.IsPost(context.Request.Method) && context.Request.Path.StartsWithSegments("/api") && !string.IsNullOrEmpty(env)
+            && FindVerifiedWebhook(context, env) is { } webhook)
+        {
+            var (route, endpoint, rule) = webhook;
+            var verified = await VerifyWebhookAsync(context, route, endpoint, rule, environmentProvider, environmentSettings, timeProvider);
+            if (!verified)
+            {
+                await WriteErrorAsync(context, 401, "Authentication required", BearerChallenge);
+                return;
+            }
+
+            context.Items[VerifiedWebhookKey] = route;
             await _next(context);
             return;
         }
@@ -185,6 +203,70 @@ public sealed class TokenAuthMiddleware
     }
 
     public const string AuthorizationAcceptedKey = "Portway.AuthorizationAccepted";
+    public const string VerifiedWebhookKey = "Portway.VerifiedWebhook";
+
+    /// <summary>
+    /// The webhook route, endpoint and rule when the request targets an id with Verification
+    /// </summary>
+    internal static (Services.WebhookRoute Route, EndpointDefinition Endpoint, Services.WebhookRule Rule)? FindVerifiedWebhook(HttpContext context, string env)
+    {
+        var segments = context.Request.Path.Value!.Split('/', StringSplitOptions.RemoveEmptyEntries)[2..];
+        if (!Services.WebhookRoute.TryParse(env, segments, context, out var route)
+            || !EndpointHandler.GetSqlWebhookEndpoints().TryGetValue(route.EndpointKey, out var endpoint)
+            || endpoint.Verification is null)
+            return null;
+
+        foreach (var (id, rule) in endpoint.Verification)
+        {
+            if (id.Equals(route.Id, StringComparison.OrdinalIgnoreCase))
+                return (route with { Id = id }, endpoint, rule);
+        }
+        return null;
+    }
+
+    private static async Task<bool> VerifyWebhookAsync(
+        HttpContext context,
+        Services.WebhookRoute route,
+        EndpointDefinition endpoint,
+        Services.WebhookRule rule,
+        IEnvironmentSettingsProvider environmentProvider,
+        EnvironmentSettings environmentSettings,
+        TimeProvider timeProvider)
+    {
+        string? reason = null;
+        if (rule.Error is not null)
+            reason = "configuration error";
+        else if (!environmentSettings.IsEnvironmentAllowed(route.Env) || !endpoint.AllowsEnvironment(route.Env))
+            reason = "environment not allowed";
+        else if (!context.Request.Headers.ContainsKey(rule.RequiredHeader))
+            reason = "signature or credential header missing";
+
+        if (reason is null)
+        {
+            context.Request.EnableBuffering();
+            using var buffer = new MemoryStream();
+            await context.Request.Body.CopyToAsync(buffer, context.RequestAborted);
+            context.Request.Body.Position = 0;
+
+            var secrets = new List<string>(2);
+            foreach (var name in new[] { rule.SecretName, rule.PreviousSecretName })
+            {
+                if (name is not null && await environmentProvider.GetSecretAsync(route.Env, name, context.RequestAborted) is { } value)
+                    secrets.Add(value);
+            }
+
+            if (secrets.Count == 0)
+                reason = "secret missing";
+            else if (Services.WebhookVerifier.Verify(rule, context.Request.Headers, buffer.GetBuffer().AsSpan(0, (int)buffer.Length), secrets, timeProvider.GetUtcNow()) is { Verified: false } failed)
+                reason = failed.Reason;
+        }
+
+        if (reason is null)
+            return true;
+
+        Log.Warning("Webhook verification failed for {Endpoint}/{Id} ({Scheme}): {Reason}", route.EndpointKey, route.Id, rule.Scheme, reason);
+        return false;
+    }
 
     // legacy files scope grants every file endpoint
     private static bool HasEndpointAccess(Func<string, bool> hasAccess, string endpointName) =>

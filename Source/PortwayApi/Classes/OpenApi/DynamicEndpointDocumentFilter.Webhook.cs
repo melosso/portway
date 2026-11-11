@@ -40,7 +40,7 @@ public sealed partial class DynamicEndpointDocumentFilter
             {
                 Tags = new HashSet<OpenApiTagReference> { new(webhookTag) },
                 Summary = webhookDocumentation?.MethodDescriptions?.GetValueOrDefault("POST") ?? "Process incoming request",
-                Description = webhookDocumentation?.MethodDocumentation?.GetValueOrDefault("POST") ?? "Receives and processes a request payload",
+                Description = (webhookDocumentation?.MethodDocumentation?.GetValueOrDefault("POST") ?? "Receives and processes a request payload") + VerificationNote(definition),
                 OperationId = OpenApiEndpointCatalog.OperationId("POST", definition),
                 Parameters = new List<IOpenApiParameter>
             {
@@ -241,4 +241,10 @@ public sealed partial class DynamicEndpointDocumentFilter
         }
     }
 
+    // header names only, secret names stay out
+    private static string VerificationNote(EndpointDefinition definition) =>
+        definition.Verification is not { Count: > 0 } rules
+            ? string.Empty
+            : "\n\nVerified ids: " + string.Join("; ", rules.Select(r => $"`{r.Key}` ({r.Value.Scheme}, header `{r.Value.RequiredHeader}`)"))
+              + ". A verified id accepts its signature or credential only. Other ids require a Bearer token.";
 }

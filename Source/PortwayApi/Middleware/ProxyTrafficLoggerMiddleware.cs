@@ -69,6 +69,9 @@ public sealed class ProxyTrafficLoggerMiddleware
         logEntry.EndpointName = endpoint ?? string.Empty;
 
         var extraHeaderNames = await GetEnvironmentAuthHeaderNamesAsync(env);
+        foreach (var webhook in Classes.EndpointHandler.GetSqlWebhookEndpoints().Values)
+            foreach (var rule in webhook.Verification?.Values ?? [])
+                extraHeaderNames.UnionWith(rule.HeaderNames);
         logEntry.QueryString = UrlRedaction.Redact(context.Request.QueryString.Value);
 
         // Log at debug level only

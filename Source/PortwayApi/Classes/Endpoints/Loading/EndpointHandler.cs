@@ -50,8 +50,18 @@ public static partial class EndpointHandler
         "Webhook", "webhook", "webhook ", "entity.json", NamespaceAware: true,
         ParseWebhookEndpointDefinition,
         d => !string.IsNullOrWhiteSpace(d.DatabaseObjectName),
-        (key, d) => Log.Debug("Webhook Endpoint: {Name}; Object: {Schema}.{Object}; Namespace: {Namespace}",
-            key, d.DatabaseSchema, d.DatabaseObjectName, d.EffectiveNamespace ?? "None"));
+        (key, d) =>
+        {
+            Log.Debug("Webhook Endpoint: {Name}; Object: {Schema}.{Object}; Namespace: {Namespace}",
+                key, d.DatabaseSchema, d.DatabaseObjectName, d.EffectiveNamespace ?? "None");
+            foreach (var (id, rule) in d.Verification ?? new Dictionary<string, Services.WebhookRule>())
+            {
+                if (rule.Error is not null)
+                    Log.Error("Webhook {Endpoint} id {Id} verification is invalid and answers 401: {Error}", key, id, rule.Error);
+                if (rule.Warning is not null)
+                    Log.Warning("Webhook {Endpoint} id {Id} verification {Warning}", key, id, rule.Warning);
+            }
+        });
 
     /// <summary>
     /// Tenancy, Stability and Badges errors for an endpoint file, using the loader's parser and rules

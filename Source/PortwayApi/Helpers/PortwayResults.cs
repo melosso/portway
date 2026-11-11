@@ -22,6 +22,9 @@ public static class PortwayResults
     public static IActionResult BadRequest(string error)
         => new BadRequestObjectResult(ErrorResponse.Of(error));
 
+    public static IActionResult Unauthorized(string error)
+        => new ObjectResult(ErrorResponse.Of(error)) { StatusCode = StatusCodes.Status401Unauthorized };
+
     public static IActionResult Forbidden(string error)
         => new ObjectResult(ErrorResponse.Of(error)) { StatusCode = 403 };
 

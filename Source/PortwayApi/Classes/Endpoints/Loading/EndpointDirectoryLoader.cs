@@ -63,6 +63,12 @@ internal static class EndpointDirectoryLoader
                         : BuildFlatKey(file, definition);
                     if (key == null) continue;
 
+                    if (definition.Verification is { Count: > 0 } && !key.Contains('/'))
+                    {
+                        Log.Error("Failed to load {Type} endpoint {Key}: Verification requires a namespace", spec.TypeLabel, key);
+                        continue;
+                    }
+
                     definition.ConfigDirectory = Path.GetDirectoryName(file);
                     endpoints[key] = definition;
                     spec.LogLoaded(key, definition);
@@ -74,6 +80,10 @@ internal static class EndpointDirectoryLoader
                     foreach (var (key, definition) in kept)
                         endpoints[key] = definition;
                     Log.Warning($"Invalid JSON in {spec.LowerLabel} endpoint {{File}}: {{Message}}. Last valid definition kept: {{Kept}}", file, ex.Message, kept.Count > 0);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    Log.Error($"Failed to load {spec.FailPrefix}endpoint from {{File}}: {{Message}}", file, ex.Message);
                 }
                 catch (Exception ex)
                 {

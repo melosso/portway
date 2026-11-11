@@ -91,6 +91,15 @@ public static partial class SecretReference
         return true;
     }
 
+    /// <summary>
+    /// The name when <paramref name="value"/> is exactly one <c>${secret:NAME}</c> reference, otherwise null.
+    /// </summary>
+    public static string? ExactName(string? value) =>
+        value is not null && ReferencePattern().Match(value) is { Success: true } match
+            && match.Index == 0 && match.Length == value.Length && IsValidName(match.Groups[1].Value)
+            ? match.Groups[1].Value
+            : null;
+
     public static SecretResolution ResolveExact(string template, IReadOnlyDictionary<string, string> values)
     {
         if (!ContainsReference(template))

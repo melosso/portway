@@ -17,7 +17,11 @@ public static partial class EndpointHandler
         {
             if (definition.AllowedColumns.Count == 0)
                 throw new InvalidOperationException("Webhook endpoint requires AllowedColumns, the list of accepted webhook ids");
+            
             definition.Type = EndpointType.Webhook;
+
+            var entity = JsonSerializer.Deserialize<EndpointEntity>(json, SharedJsonOptions.CaseInsensitive);
+            definition.Verification = BuildVerification(entity?.Verification, definition.AllowedColumns);
         }
         return definition;
     }
@@ -144,6 +148,30 @@ public static partial class EndpointHandler
 
         entity.ApplyTo(definition);
         return definition;
+    }
+
+    /// <summary>
+    /// Verification rules keyed by the canonical id from AllowedColumns. An id outside AllowedColumns keeps a rule with an error, so it answers 401
+    /// </summary>
+    internal static IReadOnlyDictionary<string, Services.WebhookRule>? BuildVerification(Dictionary<string, WebhookVerification>? verification, List<string> allowedColumns)
+    {
+        if (verification is null || verification.Count == 0)
+            return null;
+
+        var rules = new Dictionary<string, Services.WebhookRule>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (id, config) in verification)
+        {
+            var canonical = allowedColumns.FirstOrDefault(c => c.Equals(id, StringComparison.OrdinalIgnoreCase));
+            var rule = Services.WebhookVerifier.Build(config);
+            rules[canonical ?? id] = canonical is null ? rule with { Error = "id is not in AllowedColumns" } : rule;
+        }
+
+        foreach (var shared in rules.Where(r => r.Value.SecretName.Length > 0).GroupBy(r => r.Value.SecretName, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
+        {
+            foreach (var (id, rule) in shared.ToList())
+                rules[id] = rule with { Warning = $"secret {shared.Key} is shared by ids {string.Join(", ", shared.Select(s => s.Key))}; use one secret per sender" };
+        }
+        return rules;
     }
 
     internal static List<string> ValidateProxyEndpointConfiguration(EndpointEntity entity)
