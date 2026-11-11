@@ -23,8 +23,13 @@ public sealed class ProxySecretTests : ApiTestBase, IDisposable
     public ProxySecretTests()
     {
         SetAllowedEnvironments(Env);
-        Write("Header", new { Url = $"http://localhost:{UpstreamPort}/header", Methods = new[] { "GET", "POST" }, AllowedEnvironments = new[] { Env },
-            Headers = new Dictionary<string, string> { ["Authorization"] = "Bearer ${secret:ERP-KEY}", ["X-Api-Key"] = "${secret:ERP-KEY}" } });
+        Write("Header", new
+        {
+            Url = $"http://localhost:{UpstreamPort}/header",
+            Methods = new[] { "GET", "POST" },
+            AllowedEnvironments = new[] { Env },
+            Headers = new Dictionary<string, string> { ["Authorization"] = "Bearer ${secret:ERP-KEY}", ["X-Api-Key"] = "${secret:ERP-KEY}" }
+        });
         Write("Query", new { Url = $"http://localhost:{UpstreamPort}/query?key=${{secret:ERP-KEY}}", Methods = new[] { "GET" }, AllowedEnvironments = new[] { Env } });
         Write("Missing", new { Url = $"http://localhost:{UpstreamPort}/missing?key=${{secret:NOPE}}", Methods = new[] { "GET" }, AllowedEnvironments = new[] { Env } });
         Write("Flow", new

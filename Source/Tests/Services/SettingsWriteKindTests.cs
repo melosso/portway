@@ -174,10 +174,10 @@ public sealed class SettingsWriteKindTests
             .Build();
         var writer = new SettingsWriteService([], root);
 
-        var pageSize = await writer.ApplyAsync(new Dictionary<string, JsonElement> { ["Mcp:DefaultPageSize"] = Json("500") });
-        var paths = await writer.ApplyAsync(new Dictionary<string, JsonElement> { ["Mcp:Path"] = Json("\"/metrics\"") });
-        var logs = await writer.ApplyAsync(new Dictionary<string, JsonElement> { ["RequestTrafficLogging:LogDirectory"] = Json("\"storage/files/traffic\"") });
-        var storage = await writer.ApplyAsync(new Dictionary<string, JsonElement> { ["FileStorage:StorageDirectory"] = Json("\"log/uploads\"") });
+        var pageSize = await writer.ApplyAsync(new Dictionary<string, JsonElement> { ["Mcp:DefaultPageSize"] = Json("500") }, TestContext.Current.CancellationToken);
+        var paths = await writer.ApplyAsync(new Dictionary<string, JsonElement> { ["Mcp:Path"] = Json("\"/metrics\"") }, TestContext.Current.CancellationToken);
+        var logs = await writer.ApplyAsync(new Dictionary<string, JsonElement> { ["RequestTrafficLogging:LogDirectory"] = Json("\"storage/files/traffic\"") }, TestContext.Current.CancellationToken);
+        var storage = await writer.ApplyAsync(new Dictionary<string, JsonElement> { ["FileStorage:StorageDirectory"] = Json("\"log/uploads\"") }, TestContext.Current.CancellationToken);
 
         Assert.Equal("Mcp:DefaultPageSize", pageSize.Field);
         Assert.Equal("Mcp:Path", paths.Field);

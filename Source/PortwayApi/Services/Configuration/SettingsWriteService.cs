@@ -730,13 +730,6 @@ public sealed partial class SettingsWriteService
         return Parent(root, key, false) is { } parent && parent.TryGetPropertyValue(Leaf(key), out value);
     }
 
-    private static bool TryTakePath(JsonObject root, string key, out JsonNode? value)
-    {
-        if (!TryGetPath(root, key, out value)) return false;
-        Parent(root, key, false)!.Remove(Leaf(key));
-        return true;
-    }
-
     /// <summary>
     /// Writes a colon-separated configuration key into the nested JSON document
     /// </summary>

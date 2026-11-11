@@ -17,7 +17,7 @@ public static partial class EndpointHandler
         {
             if (definition.AllowedColumns.Count == 0)
                 throw new InvalidOperationException("Webhook endpoint requires AllowedColumns, the list of accepted webhook ids");
-            
+
             definition.Type = EndpointType.Webhook;
 
             var entity = JsonSerializer.Deserialize<EndpointEntity>(json, SharedJsonOptions.CaseInsensitive);
