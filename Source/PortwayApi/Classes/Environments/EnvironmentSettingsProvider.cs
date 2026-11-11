@@ -804,17 +804,7 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             return false;
         }
     }
-    private bool IsSensitiveField(string fieldName)
-    {
-        string[] sensitivePatterns =
-        {
-            "password", "secret", "token", "key", "auth",
-            "credential", "signature", "hmac", "bearer", "value", "clientsecret"
-        };
-
-        var lowerName = fieldName.ToLowerInvariant();
-        return sensitivePatterns.Any(pattern => lowerName.Contains(pattern));
-    }
+    private static bool IsSensitiveField(string fieldName) => HeaderPolicy.IsSensitiveName(fieldName);
 
     private void SaveEncryptedConfig(string settingsPath, EnvironmentConfig config)
     {
