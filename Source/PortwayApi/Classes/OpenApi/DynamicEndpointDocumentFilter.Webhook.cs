@@ -237,6 +237,36 @@ public sealed partial class DynamicEndpointDocumentFilter
 
             StandardResponses.AddErrors(webhookOperation, ApiOperationKind.Webhook);
 
+            if (definition.Verification?.Values.Any(r => r.Deduplicate) == true)
+            {
+                webhookOperation.Responses["200"] = new OpenApiResponse
+                {
+                    Description = "OK - Duplicate delivery ignored",
+                    Content = new Dictionary<string, IOpenApiMediaType>
+                    {
+                        ["application/json"] = new OpenApiMediaType
+                        {
+                            Schema = new OpenApiSchema
+                            {
+                                Type = JsonSchemaType.Object,
+                                Properties = new Dictionary<string, IOpenApiSchema>
+                                {
+                                    ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
+                                    ["message"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                    ["result"] = new OpenApiSchema { Type = JsonSchemaType.Object | JsonSchemaType.Null }
+                                }
+                            },
+                            Example = new JsonObject
+                            {
+                                ["success"] = JsonValue.Create(true),
+                                ["message"] = JsonValue.Create("Duplicate delivery ignored."),
+                                ["result"] = null
+                            }
+                        }
+                    }
+                };
+            }
+
             document.Paths[path].Operations![HttpMethod.Post] = webhookOperation;
         }
     }

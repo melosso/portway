@@ -39,11 +39,13 @@ public sealed partial class EndpointController
 
         try
         {
-            var result = await _webhookRequestHandler.StoreAsync(route, endpoint, requestBody, HttpContext.RequestAborted);
+            var result = await _webhookRequestHandler.StoreAsync(route, endpoint, requestBody, Request.Headers, HttpContext.RequestAborted);
             return result.Outcome switch
             {
                 WebhookOutcome.Stored => PortwayResults.Created("Webhook stored.", result.Id),
                 WebhookOutcome.UnknownId => PortwayResults.NotFound("Webhook not found."),
+                WebhookOutcome.Duplicate => PortwayResults.Mutation("Duplicate delivery ignored."),
+                WebhookOutcome.InvalidDeliveryId => PortwayResults.BadRequest($"Delivery id is missing or longer than {WebhookRequestHandler.MaxDeliveryIdLength} characters."),
                 _ => PortwayResults.BadRequest("Environment is not configured properly.")
             };
         }
