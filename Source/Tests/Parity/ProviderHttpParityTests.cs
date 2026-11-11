@@ -32,6 +32,8 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
 
     protected virtual bool KeyedWriteMismatchIsAnError => KeyMismatchIsAnError;
 
+    protected virtual bool AcceptsTimestampText => true;
+
     protected ProviderHttpParityTests(TFixture fixture) : base(connectTimeoutSeconds: 15)
     {
         _fixture = fixture;
@@ -88,6 +90,9 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
             }
         }));
         _mockEnvironmentSettingsProvider.Setup(p => p.GetSecretAsync(It.IsAny<string>(), "HOOK", It.IsAny<CancellationToken>())).ReturnsAsync(HookSecret);
+        var hookRows = TableEndpoint(fixture.QualifiedWebhookTable, "Id", "WebhookId", "DeliveryId", "ProcessedAt");
+        hookRows["AllowedMethods"] = new[] { "GET", "PATCH" };
+        WriteEndpoint("HookRows", hookRows);
         EndpointHandler.ReloadAllEndpoints();
 
         SetAllowedEnvironments(Env);
@@ -176,6 +181,33 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
         Assert.Equal(HttpStatusCode.Created, await Deliver(messageId));
         Assert.Equal(HttpStatusCode.OK, await Deliver(messageId));
         Assert.Equal(HttpStatusCode.Created, await Deliver(messageId + "-next"));
+    }
+
+    [DockerFact]
+    public async Task WebhookRecipe_SqlEndpointMarksDeliveryProcessed()
+    {
+        var messageId = $"recipe-{Guid.NewGuid():N}";
+        using (var request = new HttpRequestMessage(HttpMethod.Post, $"/api/{Env}/{_namespace}/Hooks/dedupe") { Content = new StringContent("""{"a":1}""", Encoding.UTF8, "application/json") })
+        {
+            request.Headers.Add("X-Hook-Key", HookSecret);
+            request.Headers.Add("X-Message-Id", messageId);
+            Assert.Equal(HttpStatusCode.Created, (await _client.SendAsync(request, TestContext.Current.CancellationToken)).StatusCode);
+        }
+
+        var pending = Url("HookRows", $"?$filter=DeliveryId eq '{messageId}' and ProcessedAt eq null");
+        var (status, body) = await Send(HttpMethod.Get, pending);
+        Assert.Equal(HttpStatusCode.OK, status);
+        var id = JsonDocument.Parse(body).RootElement.GetProperty("value")[0].GetProperty("Id").GetInt64();
+
+        var (patchStatus, patchBody) = await Send(HttpMethod.Patch, Url("HookRows"), $$"""{ "Id": {{id}}, "ProcessedAt": "2026-11-11 10:00:00" }""");
+        if (!AcceptsTimestampText)
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, patchStatus);
+            return;
+        }
+        Assert.True(patchStatus == HttpStatusCode.OK, patchBody);
+
+        Assert.Equal(0, JsonDocument.Parse((await Send(HttpMethod.Get, pending)).Body).RootElement.GetProperty("value").GetArrayLength());
     }
 
     [DockerFact]

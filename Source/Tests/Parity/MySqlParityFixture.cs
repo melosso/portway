@@ -35,7 +35,7 @@ public sealed class MySqlParityFixture : ParityDatabaseFixture
     // MariaDB runs the same statements
     internal static IReadOnlyList<string> Schema =>
     [
-        "CREATE TABLE test.WebhookData (Id INT AUTO_INCREMENT PRIMARY KEY, WebhookId VARCHAR(100) NOT NULL, Payload TEXT NOT NULL, ReceivedAt DATETIME NOT NULL, DeliveryId VARCHAR(255) NULL)",
+        "CREATE TABLE test.WebhookData (Id INT AUTO_INCREMENT PRIMARY KEY, WebhookId VARCHAR(100) NOT NULL, Payload TEXT NOT NULL, ReceivedAt DATETIME NOT NULL, DeliveryId VARCHAR(255) NULL, ProcessedAt DATETIME NULL)",
         "CREATE UNIQUE INDEX UX_WebhookData_Delivery ON test.WebhookData (WebhookId, DeliveryId)",
         "CREATE TABLE test.Products (Id INT PRIMARY KEY, Name VARCHAR(100) NOT NULL, Price DECIMAL(10,2) NOT NULL, ReleasedAt DATE NULL, CategoryId INT NULL)",
         $"INSERT INTO test.Products (Id, Name, Price, ReleasedAt) VALUES {SeedValues}",

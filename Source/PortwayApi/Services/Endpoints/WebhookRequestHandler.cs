@@ -85,6 +85,32 @@ public sealed class WebhookRequestHandler(
     }
 
     public const int MaxDeliveryIdLength = 255;
+    public const int LatestDeliveries = 50;
+
+    public sealed record Delivery(long Id, string WebhookId, string Payload, DateTime ReceivedAt);
+
+    /// <summary>
+    /// The newest deliveries of an endpoint in one environment, newest first
+    /// </summary>
+    public async Task<IReadOnlyList<Delivery>> LatestAsync(string env, EndpointDefinition endpoint, CancellationToken cancellationToken)
+    {
+        var (connectionString, _, _) = await environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
+        await using var connection = connectionPoolService.CreateConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        var provider = providerFactory.GetProvider(connectionString);
+        var schema = SqlSchemaResolver.Resolve(endpoint.DatabaseSchema ?? "dbo", provider, connection.Database);
+        var tableName = endpoint.DatabaseObjectName ?? "WebhookData";
+        var select = SqlTableWriteBuilder.BuildLatest(provider, schema.Length > 0 ? $"{schema}.{tableName}" : tableName,
+            ["Id", "WebhookId", "Payload", "ReceivedAt"], "Id", LatestDeliveries);
+
+        var rows = await connection.QueryAsync(new CommandDefinition(select.Sql, select.Parameters, cancellationToken: cancellationToken));
+        return [.. rows.Cast<IDictionary<string, object?>>().Select(r => new Delivery(
+            Convert.ToInt64(r["Id"]),
+            Convert.ToString(r["WebhookId"]) ?? string.Empty,
+            Convert.ToString(r["Payload"]) ?? string.Empty,
+            r["ReceivedAt"] switch { DateTime d => d, DateTimeOffset o => o.UtcDateTime, var other => DateTime.Parse(Convert.ToString(other)!, System.Globalization.CultureInfo.InvariantCulture) }))];
+    }
 
     /// <summary>
     /// The delivery id: the lowercase hex SHA-256 of the body, a header, or a top-level string or number field. Null when absent

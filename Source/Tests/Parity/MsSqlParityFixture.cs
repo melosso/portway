@@ -33,7 +33,7 @@ public sealed class MsSqlParityFixture : ParityDatabaseFixture
 
     protected override IEnumerable<string> SchemaStatements =>
     [
-        "CREATE TABLE dbo.WebhookData (Id INT IDENTITY(1,1) PRIMARY KEY, WebhookId NVARCHAR(100) NOT NULL, Payload NVARCHAR(MAX) NOT NULL, ReceivedAt DATETIME2 NOT NULL, DeliveryId NVARCHAR(255) NULL)",
+        "CREATE TABLE dbo.WebhookData (Id INT IDENTITY(1,1) PRIMARY KEY, WebhookId NVARCHAR(100) NOT NULL, Payload NVARCHAR(MAX) NOT NULL, ReceivedAt DATETIME2 NOT NULL, DeliveryId NVARCHAR(255) NULL, ProcessedAt DATETIME2 NULL)",
         "CREATE UNIQUE INDEX UX_WebhookData_Delivery ON dbo.WebhookData (WebhookId, DeliveryId) WHERE DeliveryId IS NOT NULL",
         "CREATE TABLE dbo.Products (Id INT PRIMARY KEY, Name NVARCHAR(100) NOT NULL, Price DECIMAL(10,2) NOT NULL, ReleasedAt DATE NULL, CategoryId INT NULL)",
         $"INSERT INTO dbo.Products (Id, Name, Price, ReleasedAt) VALUES {SeedValues}",

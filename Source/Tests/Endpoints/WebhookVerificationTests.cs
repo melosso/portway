@@ -221,4 +221,63 @@ public sealed class WebhookVerificationTests : ApiTestBase, IDisposable
         Assert.Equal("[REDACTED]", entry!.RequestHeaders["X-Hook-Key"]);
         Assert.Equal("[REDACTED]", entry.RequestHeaders["X-Hub-Signature-256"]);
     }
+
+    private static async Task<PortwayApi.Middleware.ProxyTrafficLogEntry> CaptureTraffic(string path, string body)
+    {
+        var channel = System.Threading.Channels.Channel.CreateUnbounded<PortwayApi.Middleware.ProxyTrafficLogEntry>();
+        var services = new ServiceCollection();
+        services.AddSingleton(new Mock<PortwayApi.Interfaces.IEnvironmentSettingsProvider>().Object);
+        var options = Microsoft.Extensions.Options.Options.Create(new PortwayApi.Middleware.RequestTrafficLoggingOptions { Enabled = true, CaptureRequestBodies = true });
+        var middleware = new PortwayApi.Middleware.ProxyTrafficLoggerMiddleware(_ => Task.CompletedTask, options, channel, services.BuildServiceProvider());
+        var context = new Microsoft.AspNetCore.Http.DefaultHttpContext();
+        context.Request.Method = "POST";
+        context.Request.Path = path;
+        context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+        context.Response.Body = new MemoryStream();
+
+        await middleware.InvokeAsync(context);
+
+        Assert.True(channel.Reader.TryRead(out var entry));
+        return entry!;
+    }
+
+    [Fact]
+    public async Task TrafficCapture_ExcludesWebhookBody()
+    {
+        var webhook = await CaptureTraffic($"/api/{Env}/Signed/Hooks/erp", """{"card":"4111-webhook-payload"}""");
+        var other = await CaptureTraffic($"/api/{Env}/Nope/Other", """{"card":"plain-body"}""");
+
+        Assert.True(string.IsNullOrEmpty(webhook.RequestBody));
+        Assert.Contains("plain-body", other.RequestBody);
+    }
+
+    [Fact]
+    public async Task Metrics_ExcludePayloadValues()
+    {
+        var measurements = new System.Collections.Concurrent.ConcurrentBag<(string Instrument, KeyValuePair<string, object?>[] Tags)>();
+        using var listener = new System.Diagnostics.Metrics.MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Name.StartsWith("portway.webhook.", StringComparison.Ordinal))
+                l.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<long>((instrument, _, tags, _) => measurements.Add((instrument.Name, tags.ToArray())));
+        listener.Start();
+
+        const string marker = "payload-marker-value";
+        var body = $$"""{"secret":"{{marker}}"}""";
+        var request = new HttpRequestMessage(HttpMethod.Post, $"/api/{Env}/Signed/Hooks/Payments") { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+        request.Headers.Add("X-Hub-Signature-256", GitHubSignature(body));
+        await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        await Post("Payments", r => r.Headers.Add("X-Hub-Signature-256", "sha256=" + marker));
+
+        var mine = measurements.Where(m => m.Tags.Any(t => Equals(t.Value, "Signed/Hooks"))).ToList();
+        Assert.Contains(mine, m => m.Instrument == "portway.webhook.stored.count");
+        Assert.Contains(mine, m => m.Instrument == "portway.webhook.verification_failed.count");
+        Assert.All(mine, m =>
+        {
+            Assert.Equal(["portway.endpoint", "portway.webhook.scheme"], m.Tags.Select(t => t.Key).Order());
+            Assert.DoesNotContain(m.Tags, t => t.Value?.ToString()?.Contains(marker) == true);
+        });
+    }
 }

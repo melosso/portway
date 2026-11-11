@@ -102,8 +102,8 @@ public sealed class ProxyTrafficLoggerMiddleware
 
         try
         {
-            // Capture request body if enabled
-            if (_options.CaptureRequestBodies)
+            // Capture request body if enabled; webhook payloads stay out of the traffic log
+            if (_options.CaptureRequestBodies && !IsWebhookRoute(context))
             {
                 // Create a new MemoryStream to capture the request body
                 requestBodyStream = new MemoryStream();
@@ -345,6 +345,13 @@ public sealed class ProxyTrafficLoggerMiddleware
     /// <summary>
     /// Credential header names from environment auth
     /// </summary>
+    internal static bool IsWebhookRoute(HttpContext context)
+    {
+        var segments = (context.Request.Path.Value ?? string.Empty).Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return segments.Length >= 3 && segments[0].Equals("api", StringComparison.OrdinalIgnoreCase)
+            && Api.EndpointController.ResolveEndpointIdentity(segments[2..]) is { Type: Classes.EndpointType.Webhook };
+    }
+
     private async Task<HashSet<string>> GetEnvironmentAuthHeaderNamesAsync(string? env)
     {
         var headerNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

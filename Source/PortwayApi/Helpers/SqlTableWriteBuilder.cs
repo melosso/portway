@@ -99,6 +99,9 @@ public static partial class SqlTableWriteBuilder
     public static TableWriteCommand BuildDelete(ISqlProvider provider, string table, string pkColumn, object pkValue, IReadOnlyList<TenantPredicate>? tenants = null)
         => Compile(provider, Confine(KeyQuery(provider, table, pkColumn, pkValue), tenants).AsDelete());
 
+    public static TableWriteCommand BuildLatest(ISqlProvider provider, string table, string[] columns, string orderBy, int limit) =>
+        Compile(provider, new Query(table).Select(columns).OrderByDesc(orderBy).Limit(limit));
+
     public static TableWriteCommand BuildSelectByKey(ISqlProvider provider, string table, string pkColumn, object pkValue, IReadOnlyList<TenantPredicate>? tenants = null)
         => Compile(provider, Confine(KeyQuery(provider, table, pkColumn, pkValue), tenants));
 

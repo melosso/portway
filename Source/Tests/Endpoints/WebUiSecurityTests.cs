@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Moq;
+using PortwayApi.Classes;
 using PortwayApi.Tests.Base;
 using Xunit;
 
@@ -876,6 +878,109 @@ public class WebUiSecurityTests : IDisposable
         finally
         {
             Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    private async Task<(HttpClient Client, string Cookie, string Csrf, WebApplicationFactory<Program> Factory, string DbPath, string Dir)> DeliveriesAsync()
+    {
+        var dbPath = Path.Combine(Path.GetTempPath(), $"portway_deliveries_{Guid.NewGuid():N}.db");
+        using (var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "CREATE TABLE WebhookData (Id INTEGER PRIMARY KEY, WebhookId TEXT, Payload TEXT, ReceivedAt TEXT);"
+                + string.Concat(Enumerable.Range(1, 60).Select(i => $"INSERT INTO WebhookData VALUES ({i}, 'evt', '{{\"n\":{i},\"html\":\"<b>x</b>\"}}', '2026-11-11T10:00:00Z');"));
+            command.ExecuteNonQuery();
+        }
+
+        var dir = Path.Combine("endpoints", "Webhooks", "ConsoleView");
+        Directory.CreateDirectory(Path.Combine(dir, "Hooks"));
+        File.WriteAllText(Path.Combine(dir, "Hooks", "entity.json"), """{"DatabaseObjectName":"WebhookData","AllowedColumns":["evt"],"AllowedEnvironments":["HOOKENV"]}""");
+        EndpointHandler.ReloadAllEndpoints();
+
+        var settings = new PortwayApi.Tests.Base.TestEnvironmentSettings();
+        settings.SetAllowedEnvironments(["HOOKENV"]);
+        var provider = new Moq.Mock<PortwayApi.Interfaces.IEnvironmentSettingsProvider>();
+        provider.Setup(p => p.LoadEnvironmentOrThrowAsync("HOOKENV")).ReturnsAsync(($"Data Source={dbPath}", "localhost", new Dictionary<string, string>()));
+        var factory = _factory.WithWebHostBuilder(b => b.ConfigureTestServices(services =>
+        {
+            services.AddSingleton<EnvironmentSettings>(settings);
+            services.AddSingleton(provider.Object);
+        }));
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var (cookie, csrf) = await LoginAsync(client);
+        return (client, cookie, csrf, factory, dbPath, dir);
+    }
+
+    [Fact]
+    public async Task Deliveries_ReturnsLatestFiftyNewestFirst()
+    {
+        var (client, cookie, _, factory, dbPath, dir) = await DeliveriesAsync();
+        try
+        {
+            var response = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/webhooks/ConsoleView/Hooks/deliveries?env=HOOKENV", cookie), TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+            var deliveries = json.RootElement.GetProperty("deliveries");
+            Assert.Equal(50, deliveries.GetArrayLength());
+            Assert.Equal(60, deliveries[0].GetProperty("id").GetInt64());
+            Assert.Contains("<b>x</b>", deliveries[0].GetProperty("payload").GetString());
+        }
+        finally
+        {
+            factory.Dispose();
+            Directory.Delete(dir, recursive: true);
+            EndpointHandler.ReloadAllEndpoints();
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            File.Delete(dbPath);
+        }
+    }
+
+    [Fact]
+    public async Task Deliveries_ViewerDenied()
+    {
+        var (client, cookie, csrf, factory, dbPath, dir) = await DeliveriesAsync();
+        try
+        {
+            var create = AuthedRequest(HttpMethod.Post, "/_/api/users", cookie, csrf,
+                new { username = "hook-viewer", password = "V13wer-hook-pw-99", role = "viewer", current_password = SeededPassword });
+            Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, TestContext.Current.CancellationToken)).StatusCode);
+            var (viewerCookie, _) = await SignInAsync(client, "hook-viewer", "V13wer-hook-pw-99");
+
+            var response = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/webhooks/ConsoleView/Hooks/deliveries?env=HOOKENV", viewerCookie), TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+            Assert.DoesNotContain("<b>x</b>", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            factory.Dispose();
+            Directory.Delete(dir, recursive: true);
+            EndpointHandler.ReloadAllEndpoints();
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            File.Delete(dbPath);
+        }
+    }
+
+    [Theory]
+    [InlineData("/_/api/webhooks/ConsoleView/Hooks/deliveries?env=OTHER", HttpStatusCode.BadRequest)]
+    [InlineData("/_/api/webhooks/ConsoleView/Hooks/deliveries", HttpStatusCode.BadRequest)]
+    [InlineData("/_/api/webhooks/Nope/deliveries?env=HOOKENV", HttpStatusCode.NotFound)]
+    public async Task Deliveries_RefusesUnknownEndpointOrEnvironment(string url, HttpStatusCode expected)
+    {
+        var (client, cookie, _, factory, dbPath, dir) = await DeliveriesAsync();
+        try
+        {
+            Assert.Equal(expected, (await client.SendAsync(AuthedRequest(HttpMethod.Get, url, cookie), TestContext.Current.CancellationToken)).StatusCode);
+        }
+        finally
+        {
+            factory.Dispose();
+            Directory.Delete(dir, recursive: true);
+            EndpointHandler.ReloadAllEndpoints();
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            File.Delete(dbPath);
         }
     }
 

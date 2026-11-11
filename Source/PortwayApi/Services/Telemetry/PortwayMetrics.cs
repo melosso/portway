@@ -9,6 +9,9 @@ public sealed class PortwayMetrics : IDisposable
     private readonly Counter<long> _cacheHitCounter;
     private readonly Counter<long> _cacheMissCounter;
     private readonly Histogram<double> _requestDuration;
+    private readonly Counter<long> _webhookStored;
+    private readonly Counter<long> _webhookDuplicate;
+    private readonly Counter<long> _webhookVerificationFailed;
 
     public PortwayMetrics()
     {
@@ -28,7 +31,18 @@ public sealed class PortwayMetrics : IDisposable
             "portway.request.duration",
             unit: "s",
             description: "Duration of API requests");
+
+        _webhookStored = _meter.CreateCounter<long>("portway.webhook.stored.count", unit: "{delivery}", description: "Webhook deliveries stored");
+        _webhookDuplicate = _meter.CreateCounter<long>("portway.webhook.duplicate.count", unit: "{delivery}", description: "Duplicate webhook deliveries ignored");
+        _webhookVerificationFailed = _meter.CreateCounter<long>("portway.webhook.verification_failed.count", unit: "{delivery}", description: "Webhook deliveries refused by verification");
     }
+
+    // endpoint and scheme only, never payload or header values
+    private static TagList WebhookTags(string endpoint, string? scheme) => new() { { "portway.endpoint", endpoint }, { "portway.webhook.scheme", scheme ?? "Bearer" } };
+
+    public void WebhookStored(string endpoint, string? scheme) => _webhookStored.Add(1, WebhookTags(endpoint, scheme));
+    public void WebhookDuplicate(string endpoint, string? scheme) => _webhookDuplicate.Add(1, WebhookTags(endpoint, scheme));
+    public void WebhookVerificationFailed(string endpoint, string? scheme) => _webhookVerificationFailed.Add(1, WebhookTags(endpoint, scheme));
 
     public void CacheHit() => _cacheHitCounter.Add(1);
     public void CacheMiss() => _cacheMissCounter.Add(1);

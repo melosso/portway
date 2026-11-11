@@ -265,6 +265,7 @@ public sealed class TokenAuthMiddleware
             return true;
 
         Log.Warning("Webhook verification failed for {Endpoint}/{Id} ({Scheme}): {Reason}", route.EndpointKey, route.Id, rule.Scheme, reason);
+        context.RequestServices.GetService<Services.Telemetry.PortwayMetrics>()?.WebhookVerificationFailed(route.EndpointKey, rule.Scheme);
         return false;
     }
 
