@@ -10,25 +10,17 @@
 - Deploy: [Install Portway](https://melosso.github.io/portway/guide/install/)
 - Demo: [Visit Instance](https://portway-demo.melosso.com/)
 
-[Portway](https://github.com/melosso/portway/) is an open source lightweight API gateway used to securely unify databases, internal services, and webhooks into a single interface with rich features such as file-based configuration, built-in caching, audit logging, MCP and OData support, Azure Key Vault secrets integration, rate limiting, and Prometheus or OTLP metrics monitoring.
-
-## Prerequisites
-
-Requirements:
-
-* .NET Hosting Bundle: <a href="https://get.dot.net/11" target="_blank" rel="noopener noreferrer">.NET 11</a>
-* Windows: Internet Information Services (IIS)
-* *Optional*: a supported SQL database: SQL Server, PostgreSQL, MySQL/MariaDB, or SQLite
+[Portway](https://github.com/melosso/portway/) is an open source API gateway for databases, internal services and webhooks. Configuration is file-based. Built in: caching, audit logging, MCP, OData, Azure Key Vault secrets, rate limiting, and Prometheus or OTLP metrics.
 
 ## Getting Started
 
-### 1. Installation
+### Installation
 
 * [Docker](https://melosso.github.io/portway/guide/deployment-docker/)
 * [Linux](https://melosso.github.io/portway/guide/deployment-linux/)
 * [Windows Server](https://melosso.github.io/portway/guide/deployment-windows/)
 
-### 2. Define Your Environments
+### Define Your Environments
 
 Environments (e.g. `prod`, `dev`) isolate server and connection settings for all endpoints. `environments/settings.json` lists the allowed environments; each has its own `settings.json`:
 
@@ -52,7 +44,7 @@ Environments (e.g. `prod`, `dev`) isolate server and connection settings for all
 }
 ```
 
-### 3. Define Your Endpoints
+### Define Your Endpoints
 
 Each endpoint is an `entity.json` file in a directory per type. Advanced configuration is in the <a href="https://melosso.github.io/portway/" target="_blank" rel="noopener noreferrer">documentation</a>. Endpoint types:
 
@@ -215,7 +207,7 @@ Receive inbound calls from external services and write the payload to a table.
 
 </details>
 
-### 4. Deploy
+### Deploy
 
 When you're ready to deploy, follow the <a href="https://melosso.github.io/portway/guide/deployment" target="_blank" rel="noopener noreferrer">deployment guide</a>. It covers most scenario's, from containerization to application pool identity (needed for NTLM proxy scenarios), security settings, and production hardening.
 
