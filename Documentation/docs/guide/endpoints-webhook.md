@@ -230,7 +230,7 @@ PATCH /api/prod/Webhooks/Pending
 { "Id": 42, "ProcessedAt": "2026-11-11 10:00:00" }
 ```
 
-On PostgreSQL, a `timestamptz` column refuses a text value over the API; mark rows with a stored procedure there.
+Date and time values are converted by column type on every engine; a zone-aware column stores the value in UTC.
 
 Portway does not delete webhook rows. Example cleanup of rows older than 90 days:
 
