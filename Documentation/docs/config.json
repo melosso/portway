@@ -6,8 +6,332 @@
   "versions": {
     "items": [
       {
-        "text": "v0.11",
+        "text": "v0.13",
         "link": "/"
+      },
+      {
+        "text": "v0.12",
+        "link": "/v0.12/",
+        "sidebar": {
+          "/guide/": [
+            {
+              "title": "Introduction",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "What is Portway?",
+                  "path": "guide/"
+                },
+                {
+                  "title": "Getting Started",
+                  "path": "guide/getting-started"
+                },
+                {
+                  "title": "Routing",
+                  "path": "guide/layout"
+                }
+              ]
+            },
+            {
+              "title": "Installation",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Install",
+                  "path": "guide/install"
+                },
+                {
+                  "title": "Instances",
+                  "path": "guide/instances"
+                },
+                {
+                  "title": "Upgrading",
+                  "path": "guide/upgrading"
+                }
+              ]
+            },
+            {
+              "title": "Endpoints",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "SQL",
+                  "path": "guide/endpoints-sql"
+                },
+                {
+                  "title": "Proxy",
+                  "path": "guide/endpoints-proxy"
+                },
+                {
+                  "title": "Composite",
+                  "path": "guide/endpoints-composite"
+                },
+                {
+                  "title": "Static",
+                  "path": "guide/endpoints-static"
+                },
+                {
+                  "title": "Files",
+                  "path": "guide/endpoints-file"
+                },
+                {
+                  "title": "Webhook",
+                  "path": "guide/endpoints-webhook"
+                },
+                {
+                  "title": "Versions",
+                  "path": "guide/endpoint-versions"
+                }
+              ]
+            },
+            {
+              "title": "Access",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Environments",
+                  "path": "guide/environments"
+                },
+                {
+                  "title": "Access Tokens",
+                  "path": "guide/tokens"
+                },
+                {
+                  "title": "Tenant Headers",
+                  "path": "guide/tenant-headers"
+                },
+                {
+                  "title": "Rate Limiting",
+                  "path": "guide/rate-limiting"
+                },
+                {
+                  "title": "Security",
+                  "path": "guide/security"
+                }
+              ]
+            },
+            {
+              "title": "Console",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Overview",
+                  "path": "guide/webui"
+                },
+                {
+                  "title": "Accounts",
+                  "path": "guide/accounts"
+                },
+                {
+                  "title": "Single Sign-On",
+                  "path": "guide/sso"
+                }
+              ]
+            },
+            {
+              "title": "MCP",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Server",
+                  "path": "guide/mcp"
+                },
+                {
+                  "title": "Built-in Chat",
+                  "path": "guide/mcp-chat"
+                }
+              ]
+            },
+            {
+              "title": "Operations",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Telemetry",
+                  "path": "guide/telemetry"
+                },
+                {
+                  "title": "Health and Logs",
+                  "path": "guide/monitoring"
+                },
+                {
+                  "title": "Troubleshooting",
+                  "path": "guide/troubleshooting"
+                }
+              ]
+            },
+            {
+              "title": "Reference",
+              "path": "reference/"
+            }
+          ],
+          "/reference/": [
+            {
+              "title": "API Reference",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Overview",
+                  "path": "reference/"
+                },
+                {
+                  "title": "API Authentication",
+                  "path": "reference/api-auth"
+                },
+                {
+                  "title": "HTTP Headers",
+                  "path": "reference/headers"
+                },
+                {
+                  "title": "Console API",
+                  "path": "reference/console-api"
+                }
+              ]
+            },
+            {
+              "title": "Configuration",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Entity",
+                  "path": "reference/entity-config"
+                },
+                {
+                  "title": "HTTP Methods",
+                  "path": "reference/http-methods"
+                },
+                {
+                  "title": "Environment",
+                  "path": "reference/environment-settings"
+                },
+                {
+                  "title": "SQL Providers",
+                  "path": "reference/sql-providers"
+                },
+                {
+                  "title": "Authentication",
+                  "path": "reference/environment-auth"
+                },
+                {
+                  "title": "Namespaces",
+                  "path": "reference/namespaces"
+                }
+              ]
+            },
+            {
+              "title": "Settings",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Application",
+                  "path": "reference/app-settings"
+                },
+                {
+                  "title": "OpenAPI",
+                  "path": "reference/openapi-settings"
+                }
+              ]
+            },
+            {
+              "title": "Query Language",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "OData Syntax",
+                  "path": "reference/odata"
+                },
+                {
+                  "title": "Filter Operations",
+                  "path": "reference/filters"
+                },
+                {
+                  "title": "Sorting & Pagination",
+                  "path": "reference/sorting-pagination"
+                },
+                {
+                  "title": "Expanding Related Data",
+                  "path": "reference/expand"
+                }
+              ]
+            },
+            {
+              "title": "Tools & Options",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Token Audit Log",
+                  "path": "reference/token-audit"
+                },
+                {
+                  "title": "Secret Encryption",
+                  "path": "reference/secrets"
+                },
+                {
+                  "title": "Health Checks",
+                  "path": "reference/health-checks"
+                },
+                {
+                  "title": "Caching",
+                  "path": "reference/caching"
+                },
+                {
+                  "title": "Logging",
+                  "path": "reference/logging"
+                },
+                {
+                  "title": "Audit",
+                  "path": "reference/audit"
+                }
+              ]
+            },
+            {
+              "title": "Integrations",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Overview",
+                  "path": "reference/integrations/"
+                },
+                {
+                  "title": "Exact Globe+",
+                  "path": "reference/integrations/exact-globe"
+                },
+                {
+                  "title": "Exact Synergy",
+                  "path": "reference/integrations/exact-synergy"
+                },
+                {
+                  "title": "NAV Business Central",
+                  "path": "reference/integrations/nav-business-central"
+                },
+                {
+                  "title": "AFAS Profit",
+                  "path": "reference/integrations/afas-profit"
+                },
+                {
+                  "title": "Odoo",
+                  "path": "reference/integrations/odoo"
+                },
+                {
+                  "title": "SAP Business One",
+                  "path": "reference/integrations/sap-business-one"
+                },
+                {
+                  "title": "NocoDB",
+                  "path": "reference/integrations/nocodb"
+                },
+                {
+                  "title": "Teable",
+                  "path": "reference/integrations/teable"
+                },
+                {
+                  "title": "Pimcore",
+                  "path": "reference/integrations/pimcore"
+                }
+              ]
+            }
+          ]
+        }
       },
       {
         "text": "v0.7",
