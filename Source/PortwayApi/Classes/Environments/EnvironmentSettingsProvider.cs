@@ -24,14 +24,33 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 
     // RSA decryption costs ~2 ms per field; file stamp invalidates entries
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (DateTime Stamp, long Length, EnvironmentConfig Config)> _jsonCache = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (DateTime Stamp, long Length)> _badStamps = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, KeyVaultEntry> _keyVaultCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<(string Env, string Name), byte> _missingLogged = new();
+    private readonly SecretClient? _secretClient;
+    private readonly TimeProvider _time;
 
-    public EnvironmentSettingsProvider()
+    internal static readonly TimeSpan KeyVaultValueLifetime = TimeSpan.FromMinutes(5);
+    internal static readonly TimeSpan KeyVaultMissLifetime = TimeSpan.FromSeconds(60);
+    internal static readonly TimeSpan KeyVaultLastKnownLifetime = TimeSpan.FromHours(1);
+
+    private enum KeyVaultState { Found, NotFound, Disabled, Unavailable }
+
+    private sealed record KeyVaultEntry(KeyVaultState State, string? Value, DateTimeOffset FetchedAt, DateTimeOffset LastKnownAt);
+
+    public EnvironmentSettingsProvider() : this(null, TimeProvider.System)
     {
+    }
+
+    internal EnvironmentSettingsProvider(SecretClient? secretClient, TimeProvider timeProvider)
+    {
+        _time = timeProvider;
         // Support both lowercase and uppercase folder names for cross-platform compatibility
         var baseDir = Directory.GetCurrentDirectory();
         _basePath = Path.Combine(baseDir, "environments");
         _keyVaultUri = EnvAliases.GetDirect("PORTWAY_KEYVAULT_URI");
         _certsPath = Path.Combine(Directory.GetCurrentDirectory(), ".core");
+        _secretClient = secretClient ?? CreateSecretClient(_keyVaultUri);
 
         try
         {
@@ -274,7 +293,7 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
     {
         Log.Debug("Loading environment settings for: {Environment}", env);
 
-        if (!string.IsNullOrWhiteSpace(_keyVaultUri))
+        if (_secretClient is not null)
         {
             Log.Debug("Attempting to load from Azure Key Vault...");
             var azure = await TryLoadFromAzureAsync(env);
@@ -282,7 +301,7 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             {
                 Log.Debug("Successfully loaded environment {Env} from Azure Key Vault", env);
                 var secureConnectionString = SecureConnectionString(azure.ConnectionString!);
-                return (secureConnectionString, azure.ServerName!, azure.Headers);
+                return (await this.ResolveOrThrowAsync(env, secureConnectionString, SecretReference.ResolveConnectionString), azure.ServerName!, azure.Headers);
             }
         }
 
@@ -298,118 +317,128 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 
         var securedLocalConnectionString = string.IsNullOrWhiteSpace(local.ConnectionString)
             ? string.Empty
-            : SecureConnectionString(local.ConnectionString!);
+            : await this.ResolveOrThrowAsync(env, SecureConnectionString(local.ConnectionString!), SecretReference.ResolveConnectionString);
         return (securedLocalConnectionString, local.ServerName ?? string.Empty, local.Headers);
     }
 
-    public async Task<EnvironmentConfig?> GetEnvironmentConfigAsync(string env)
+    public Task<EnvironmentConfig?> GetEnvironmentConfigAsync(string env) =>
+        Task.FromResult(File.Exists(Path.Combine(_basePath, env, "settings.json")) ? LoadFromJson(env) : null);
+
+    public async Task<string?> GetSecretAsync(string env, string name, CancellationToken cancellationToken = default)
     {
-        try
+        var value = await LookupSecretAsync(env, name, cancellationToken);
+        if (string.IsNullOrWhiteSpace(value))
         {
-            return LoadFromJson(env);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Failed to get environment config for {Env}", env);
+            if (_missingLogged.TryAdd((env, name.ToUpperInvariant()), 0))
+                Log.Error("Secret {SecretName} has no value in environment {Environment}", name, env);
             return null;
         }
+
+        _missingLogged.TryRemove((env, name.ToUpperInvariant()), out _);
+        return value;
+    }
+
+    private async Task<string?> LookupSecretAsync(string env, string name, CancellationToken cancellationToken)
+    {
+        if (_secretClient is not null)
+        {
+            var entry = await GetKeyVaultValueAsync($"{env}-Secret-{name}", cancellationToken);
+            if (entry.State == KeyVaultState.Found)
+                return entry.Value;
+            if (entry.State != KeyVaultState.NotFound)
+                return null;
+        }
+
+        var config = await GetEnvironmentConfigAsync(env);
+        return config?.Secrets is { } secrets && secrets.TryGetValue(name, out var value) ? value : null;
+    }
+
+    private static SecretClient? CreateSecretClient(string? keyVaultUri)
+    {
+        if (string.IsNullOrWhiteSpace(keyVaultUri))
+            return null;
+
+        var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions { ExcludeInteractiveBrowserCredential = true });
+        return new SecretClient(new Uri(keyVaultUri), credential);
+    }
+
+    private async Task<KeyVaultEntry> GetKeyVaultValueAsync(string secretName, CancellationToken cancellationToken)
+    {
+        var now = _time.GetUtcNow();
+        _keyVaultCache.TryGetValue(secretName, out var cached);
+        if (cached is not null && now - cached.FetchedAt < (cached.State == KeyVaultState.Found ? KeyVaultValueLifetime : KeyVaultMissLifetime)
+            && (cached.State != KeyVaultState.Found || now - cached.LastKnownAt <= KeyVaultLastKnownLifetime))
+            return cached;
+
+        KeyVaultEntry entry;
+        try
+        {
+            var response = await _secretClient!.GetSecretAsync(secretName, null, cancellationToken);
+            entry = new KeyVaultEntry(KeyVaultState.Found, response.Value.Value, now, now);
+        }
+        catch (Azure.RequestFailedException ex) when (ex.Status == 404)
+        {
+            entry = new KeyVaultEntry(KeyVaultState.NotFound, null, now, now);
+        }
+        catch (Azure.RequestFailedException ex) when (ex.ErrorCode == "SecretDisabled")
+        {
+            Log.Warning("Azure Key Vault secret {SecretName} is disabled", secretName);
+            entry = new KeyVaultEntry(KeyVaultState.Disabled, null, now, now);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            var lastKnownValid = cached is { State: KeyVaultState.Found } && now - cached.LastKnownAt <= KeyVaultLastKnownLifetime;
+            Log.Warning("Azure Key Vault lookup of {SecretName} failed ({ErrorType}); {Fallback}",
+                secretName, ex.GetType().Name, lastKnownValid ? "using the last known value" : "no last known value");
+            entry = lastKnownValid
+                ? cached! with { FetchedAt = now }
+                : new KeyVaultEntry(KeyVaultState.Unavailable, null, now, now);
+        }
+
+        _keyVaultCache[secretName] = entry;
+        return entry;
     }
 
     private async Task<EnvironmentConfig?> TryLoadFromAzureAsync(string env)
     {
-        if (string.IsNullOrWhiteSpace(_keyVaultUri))
+        if (_secretClient is null)
+            return null;
+
+        var connectionString = await GetKeyVaultValueAsync($"{env}-ConnectionString", CancellationToken.None);
+        if (connectionString.State == KeyVaultState.Unavailable)
+            throw new InvalidOperationException("Application connection configuration could not be loaded for the current environment.");
+        if (connectionString.State != KeyVaultState.Found || string.IsNullOrWhiteSpace(connectionString.Value))
         {
-            Log.Debug("Azure Key Vault not configured.");
+            Log.Debug("Secret {SecretName} not found in Azure Key Vault", $"{env}-ConnectionString");
             return null;
         }
 
-        try
+        var serverNameEntry = await GetKeyVaultValueAsync($"{env}-ServerName", CancellationToken.None);
+        var serverName = serverNameEntry.State == KeyVaultState.Found ? serverNameEntry.Value ?? "." : ".";
+
+        var headersEntry = await GetKeyVaultValueAsync($"{env}-Headers", CancellationToken.None);
+        var headers = new Dictionary<string, string>();
+        if (headersEntry.State == KeyVaultState.Found && !string.IsNullOrWhiteSpace(headersEntry.Value))
         {
-            Log.Information("Azure Key Vault: Attempting connection to {KeyVaultUri}", _keyVaultUri);
-
-            var credentialOptions = new DefaultAzureCredentialOptions
+            try
             {
-                ExcludeEnvironmentCredential = false,
-                ExcludeManagedIdentityCredential = false,
-                ExcludeVisualStudioCredential = false,
-                ExcludeAzureCliCredential = false,
-                ExcludeInteractiveBrowserCredential = true
-            };
-
-            var credential = new DefaultAzureCredential(credentialOptions);
-            var client = new SecretClient(new Uri(_keyVaultUri), credential);
-
-            var connectionStringKey = $"{env}-ConnectionString";
-            var connectionString = await TryGetSecretValue(client, connectionStringKey);
-
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                Log.Warning("Required secret {SecretName} not found in Azure Key Vault", connectionStringKey);
-                return null;
+                headers = JsonSerializer.Deserialize<Dictionary<string, string>>(headersEntry.Value) ?? new Dictionary<string, string>();
             }
-
-            var serverNameKey = $"{env}-ServerName";
-            var serverName = await TryGetSecretValue(client, serverNameKey) ?? ".";
-
-            var headersKey = $"{env}-Headers";
-            var headersJson = await TryGetSecretValue(client, headersKey);
-
-            var headers = new Dictionary<string, string>();
-
-            if (!string.IsNullOrWhiteSpace(headersJson))
+            catch (JsonException ex)
             {
-                try
-                {
-                    headers = JsonSerializer.Deserialize<Dictionary<string, string>>(headersJson) ?? new Dictionary<string, string>();
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "Error parsing headers from Azure Key Vault");
-                }
+                Log.Warning(ex, "Error parsing headers from Azure Key Vault");
             }
+        }
 
-            if (!headers.ContainsKey("DatabaseName"))
-                headers["DatabaseName"] = env;
+        headers.TryAdd("DatabaseName", env);
+        headers.TryAdd("ServerName", serverName);
 
-            if (!headers.ContainsKey("ServerName"))
-                headers["ServerName"] = serverName;
-
-            return new EnvironmentConfig
-            {
-                ConnectionString = connectionString,
-                ServerName = serverName,
-                Headers = headers
-            };
-        }
-        catch (Exception ex)
+        return new EnvironmentConfig
         {
-            Log.Error(ex, "Azure Key Vault access failed: {ErrorType} - {ErrorMessage}",
-                ex.GetType().Name, ex.Message);
-            return null;
-        }
-    }
-
-    private async Task<string?> TryGetSecretValue(SecretClient client, string secretName)
-    {
-        try
-        {
-            var secretResponse = await client.GetSecretAsync(secretName);
-            return secretResponse?.Value?.Value;
-        }
-        catch (Azure.RequestFailedException rfEx)
-        {
-            if (rfEx.Status == 404)
-            {
-                Log.Debug("Secret {SecretName} not found (404)", secretName);
-            }
-            return null;
-        }
-        catch (Exception ex)
-        {
-            Log.Debug("Exception retrieving secret {SecretName}: {ErrorType} - {ErrorMessage}",
-                secretName, ex.GetType().Name, ex.Message);
-            return null;
-        }
+            ConnectionString = connectionString.Value,
+            ServerName = serverName,
+            Headers = headers
+        };
     }
 
     private EnvironmentConfig? LoadFromJson(string env)
@@ -424,16 +453,34 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             throw new FileNotFoundException($"settings.json not found for environment: {env}", settingsPath);
         }
 
-        if (_jsonCache.TryGetValue(settingsPath, out var cached) && cached.Stamp == file.LastWriteTimeUtc && cached.Length == file.Length)
+        var hasCached = _jsonCache.TryGetValue(settingsPath, out var cached);
+        if (hasCached && cached.Stamp == file.LastWriteTimeUtc && cached.Length == file.Length)
             return cached.Config;
+
+        if (_badStamps.TryGetValue(settingsPath, out var bad) && bad == (file.LastWriteTimeUtc, file.Length))
+            return hasCached ? cached.Config : throw new InvalidOperationException("Application connection configuration could not be loaded for the current environment.");
 
         try
         {
-            var json = File.ReadAllText(settingsPath);
-            var config = JsonSerializer.Deserialize<EnvironmentConfig>(json);
+            EnvironmentConfig? config;
+            try
+            {
+                config = JsonSerializer.Deserialize<EnvironmentConfig>(File.ReadAllText(settingsPath));
+            }
+            catch (JsonException)
+            {
+                config = null;
+            }
 
             if (config == null)
             {
+                _badStamps[settingsPath] = (file.LastWriteTimeUtc, file.Length);
+                if (hasCached)
+                {
+                    Log.Error("settings.json for environment {Environment} could not be parsed; serving the last good configuration", env);
+                    return cached.Config;
+                }
+
                 Log.Error("Failed to deserialize JSON from {FilePath}", settingsPath);
                 throw new InvalidOperationException($"Application connection configuration could not be loaded for the current environment.");
             }
@@ -444,6 +491,7 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             }
 
             DecryptConfig(config, env);
+            config.Secrets = ValidateSecrets(config.Secrets, env);
 
             config.Headers ??= new Dictionary<string, string>();
 
@@ -461,6 +509,27 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             Log.Error(ex, "Error reading or parsing settings.json for environment: {Environment}", env);
             throw;
         }
+    }
+
+    private static Dictionary<string, string>? ValidateSecrets(Dictionary<string, string>? secrets, string env)
+    {
+        if (secrets is null)
+            return null;
+
+        var valid = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var group in secrets.GroupBy(s => s.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            var (name, value) = group.First();
+            if (!SecretReference.IsValidName(name))
+                Log.Error("Secret name {SecretName} in environment {Environment} is invalid; allowed are letters, digits and hyphens, up to 64", name, env);
+            else if (group.Count() > 1)
+                Log.Error("Secret name {SecretName} in environment {Environment} is defined more than once with different casing", name, env);
+            else if (string.IsNullOrWhiteSpace(value))
+                Log.Error("Secret {SecretName} in environment {Environment} has an empty value", name, env);
+            else
+                valid[name] = value;
+        }
+        return valid;
     }
 
     private void DecryptConfig(EnvironmentConfig config, string env)
@@ -499,6 +568,12 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
                 }
             }
             config.Headers = decryptedHeaders;
+        }
+
+        if (config.Secrets != null)
+        {
+            foreach (var name in config.Secrets.Keys.ToList())
+                config.Secrets[name] = TryDecrypt(config.Secrets[name], "Secrets", env);
         }
 
         // Decrypt authentication settings
@@ -555,44 +630,27 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         }
     }
 
-    private string MaskConnectionString(string connectionString)
+    internal static string MaskConnectionString(string connectionString)
     {
         try
         {
-            var parts = connectionString.Split(';')
-                .Where(p => !string.IsNullOrWhiteSpace(p))
-                .Select(part =>
-                {
-                    var keyValue = part.Split('=', 2);
-                    if (keyValue.Length != 2) return part;
-
-                    var key = keyValue[0].Trim();
-                    var value = keyValue[1].Trim();
-
-                    if (key.Contains("password", StringComparison.OrdinalIgnoreCase) ||
-                        key.Contains("pwd", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return $"{key}=***MASKED***";
-                    }
-
-                    if (key.Contains("server", StringComparison.OrdinalIgnoreCase) ||
-                        key.Contains("data source", StringComparison.OrdinalIgnoreCase) ||
-                        key.Contains("database", StringComparison.OrdinalIgnoreCase) ||
-                        key.Contains("initial catalog", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return $"{key}={value}";
-                    }
-
-                    return $"{key}=***";
-                });
-
-            return string.Join("; ", parts);
+            var builder = new System.Data.Common.DbConnectionStringBuilder { ConnectionString = connectionString };
+            return string.Join("; ", builder.Keys.Cast<string>().Select(key =>
+                key.Contains("password", StringComparison.OrdinalIgnoreCase) || key.Contains("pwd", StringComparison.OrdinalIgnoreCase)
+                    ? $"{key}=***MASKED***"
+                    : IsVisibleConnectionKey(key) ? $"{key}={builder[key]}" : $"{key}=***"));
         }
-        catch
+        catch (ArgumentException)
         {
             return "ConnectionString parsing failed";
         }
     }
+
+    private static bool IsVisibleConnectionKey(string key) =>
+        key.Contains("server", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("data source", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("database", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("initial catalog", StringComparison.OrdinalIgnoreCase);
 
     private EncryptionResult AutoEncryptIfNeeded(string settingsPath, EnvironmentConfig config, string envName)
     {
@@ -613,6 +671,7 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 
         AutoEncryptHeaders(config, envName, ref needsSave, ref alreadyEncrypted);
         AutoEncryptAuthentication(config, envName, ref needsSave, ref alreadyEncrypted);
+        AutoEncryptSecrets(config, envName, ref needsSave, ref alreadyEncrypted);
 
         if (needsSave)
         {
@@ -672,6 +731,23 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             method.Value = EncryptFieldIfNeeded(method.Value, "Value", envName, ref needsSave, ref alreadyEncrypted) ?? string.Empty;
             method.Secret = EncryptFieldIfNeeded(method.Secret, "Secret", envName, ref needsSave, ref alreadyEncrypted);
             method.ClientSecret = EncryptFieldIfNeeded(method.ClientSecret, "ClientSecret", envName, ref needsSave, ref alreadyEncrypted);
+        }
+    }
+
+    private static void AutoEncryptSecrets(EnvironmentConfig config, string envName, ref bool needsSave, ref bool alreadyEncrypted)
+    {
+        if (config.Secrets == null) return;
+
+        foreach (var name in config.Secrets.Keys.ToList())
+        {
+            var value = config.Secrets[name];
+            if (string.IsNullOrWhiteSpace(value) || SettingsEncryptionHelper.IsEncrypted(value))
+                continue;
+
+            config.Secrets[name] = SettingsEncryptionHelper.Encrypt(value);
+            needsSave = true;
+            alreadyEncrypted = false;
+            Log.Debug("Encrypted secret {SecretName} for environment: {Env}", name, envName);
         }
     }
 
