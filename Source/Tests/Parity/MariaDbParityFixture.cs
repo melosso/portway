@@ -41,7 +41,4 @@ public sealed class MariaDbProviderHttpParityTests(MariaDbParityFixture fixture)
 {
     // char(36) accepts any short text
     protected override HttpStatusCode NonGuidKeyOnGuidColumnStatus => HttpStatusCode.NotFound;
-
-    // To-do: F2 decides whether a non-numeric key on a numeric column answers 400 on MariaDB
-    protected override bool KeyedWriteMismatchIsAnError => false;
 }

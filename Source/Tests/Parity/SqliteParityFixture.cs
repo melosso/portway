@@ -54,5 +54,4 @@ public sealed class SqliteProviderHttpParityTests(SqliteParityFixture fixture)
 {
     // text keys accept any value
     protected override System.Net.HttpStatusCode NonGuidKeyOnGuidColumnStatus => System.Net.HttpStatusCode.NotFound;
-    protected override bool KeyMismatchIsAnError => false;
 }

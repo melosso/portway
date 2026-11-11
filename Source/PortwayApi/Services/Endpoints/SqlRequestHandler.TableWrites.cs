@@ -6,6 +6,7 @@ using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using PortwayApi.Classes;
 using PortwayApi.Helpers;
+using PortwayApi.Services.Database;
 using Serilog;
 
 /// <summary>
@@ -64,10 +65,22 @@ public sealed partial class SqlRequestHandler
                 columns[tenant.Column] = TenantSql.Literal(tenant.Value);
         }
 
+        // typed by column metadata so engines agree on refusals and date binding
+        var metadata = _metadataService?.GetObjectMetadata(endpointName);
+        ColumnMetadata? Column(string name) => metadata?.FirstOrDefault(c => c.DatabaseColumnName.Equals(name, StringComparison.OrdinalIgnoreCase) || c.ColumnName.Equals(name, StringComparison.OrdinalIgnoreCase));
+        foreach (var (name, value) in columns.ToList())
+        {
+            if (!SqlValueCoercion.TryCoerce(Column(name), value, provider.ProviderType, out var typed))
+                return PortwayResults.BadRequest(InvalidColumnValueMessage);
+            columns[name] = typed;
+        }
+
         // Primary key value comes from the route (DELETE) or the payload (PUT/PATCH)
         object? pkValue = routeId;
         if (pkValue == null && columns.TryGetValue(pkColumn, out var fromPayload))
             pkValue = fromPayload;
+        else if (!SqlValueCoercion.TryCoerce(Column(pkColumn), pkValue, provider.ProviderType, out pkValue))
+            return PortwayResults.BadRequest(InvalidRecordIdMessage);
 
         switch (kind)
         {

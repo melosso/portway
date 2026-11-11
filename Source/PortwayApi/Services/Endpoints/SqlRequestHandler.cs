@@ -27,8 +27,10 @@ public sealed partial class SqlRequestHandler
         IEnvironmentSettingsProvider environmentSettingsProvider,
         SqlConnectionPoolService connectionPoolService,
         Services.Caching.CacheManager cacheManager,
-        ISqlProviderFactory providerFactory)
+        ISqlProviderFactory providerFactory,
+        SqlMetadataService? metadataService = null)
     {
+        _metadataService = metadataService;
         _oDataToSqlConverter = oDataToSqlConverter;
         _environmentSettingsProvider = environmentSettingsProvider;
         _connectionPoolService = connectionPoolService;
@@ -37,6 +39,7 @@ public sealed partial class SqlRequestHandler
     }
 
     private readonly ISqlProviderFactory _providerFactory;
+    private readonly SqlMetadataService? _metadataService;
 
     /// <summary>
     /// Runs a write procedure with the dialect-correct invocation for the environment's provider

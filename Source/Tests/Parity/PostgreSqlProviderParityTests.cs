@@ -26,8 +26,4 @@ public sealed class PostgreSqlProviderParityTests(PostgreSqlParityFixture fixtur
 }
 
 public sealed class PostgreSqlProviderHttpParityTests(PostgreSqlParityFixture fixture)
-    : ProviderHttpParityTests<PostgreSqlParityFixture>(fixture)
-{
-    // To-do: F3 decides how a JSON string reaches a PostgreSQL timestamp column
-    protected override bool AcceptsTimestampText => false;
-}
+    : ProviderHttpParityTests<PostgreSqlParityFixture>(fixture);

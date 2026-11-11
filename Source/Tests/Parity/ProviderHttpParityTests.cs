@@ -27,13 +27,6 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
 
     protected virtual HttpStatusCode NonGuidKeyOnGuidColumnStatus => HttpStatusCode.BadRequest;
 
-    // sqlite never converts text keys
-    protected virtual bool KeyMismatchIsAnError => true;
-
-    protected virtual bool KeyedWriteMismatchIsAnError => KeyMismatchIsAnError;
-
-    protected virtual bool AcceptsTimestampText => true;
-
     protected ProviderHttpParityTests(TFixture fixture) : base(connectTimeoutSeconds: 15)
     {
         _fixture = fixture;
@@ -99,6 +92,12 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
         _mockEnvironmentSettingsProvider
             .Setup(p => p.LoadEnvironmentOrThrowAsync(It.IsAny<string>()))
             .ReturnsAsync((fixture.ConnectionString, "localhost", new Dictionary<string, string>()));
+
+        // column types drive value coercion as in production
+        _mockSqlMetadataService.CallBase = true;
+        _mockSqlMetadataService.Object.InitializeAsync(
+            EndpointHandler.GetSqlEndpoints().Where(e => e.Key.StartsWith(_namespace + "/", StringComparison.Ordinal)).ToDictionary(),
+            _testEnvironmentSettings, _ => Task.FromResult(fixture.ConnectionString), CancellationToken.None).GetAwaiter().GetResult();
 
         var converter = new ODataToSqlConverter([new MsSqlProvider(), new PostgreSqlProvider(), new MySqlProvider(), new SqliteProvider()]);
         _mockODataToSqlConverter
@@ -200,11 +199,6 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
         var id = JsonDocument.Parse(body).RootElement.GetProperty("value")[0].GetProperty("Id").GetInt64();
 
         var (patchStatus, patchBody) = await Send(HttpMethod.Patch, Url("HookRows"), $$"""{ "Id": {{id}}, "ProcessedAt": "2026-11-11 10:00:00" }""");
-        if (!AcceptsTimestampText)
-        {
-            Assert.Equal(HttpStatusCode.BadRequest, patchStatus);
-            return;
-        }
         Assert.True(patchStatus == HttpStatusCode.OK, patchBody);
 
         Assert.Equal(0, JsonDocument.Parse((await Send(HttpMethod.Get, pending)).Body).RootElement.GetProperty("value").GetArrayLength());
@@ -266,27 +260,15 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
     {
         const string payload = """{ "Id": "abc", "Name": "Bad", "Price": 1 }""";
 
-        foreach (var method in KeyMismatchIsAnError ? new[] { HttpMethod.Post, HttpMethod.Patch } : [HttpMethod.Post])
+        foreach (var method in new[] { HttpMethod.Post, HttpMethod.Patch })
         {
             var (status, body) = await Send(method, Url("Int"), payload);
-
-            if (method == HttpMethod.Patch && !KeyedWriteMismatchIsAnError)
-            {
-                Assert.Equal(HttpStatusCode.NotFound, status);
-                continue;
-            }
 
             Assert.Equal(HttpStatusCode.BadRequest, status);
             Assert.Contains("Invalid column value", body);
         }
 
         var (deleteStatus, deleteBody) = await Send(HttpMethod.Delete, Url("Int", "('abc')"));
-        if (!KeyMismatchIsAnError || !KeyedWriteMismatchIsAnError)
-        {
-            Assert.Equal(HttpStatusCode.NotFound, deleteStatus);
-            return;
-        }
-
         Assert.Equal(HttpStatusCode.BadRequest, deleteStatus);
         Assert.Contains("Invalid record ID", deleteBody);
     }
