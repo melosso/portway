@@ -95,6 +95,22 @@ public sealed class ProxySecretTests : ApiTestBase, IDisposable
     }
 
     [Fact]
+    public async Task RawClientQuery_SecretReference_IsNotResolved()
+    {
+        await _factory.Server.SendAsync(ctx =>
+        {
+            ctx.Request.Method = "GET";
+            ctx.Request.Path = $"/api/{Env}/SecretTest/Header";
+            ctx.Request.QueryString = new Microsoft.AspNetCore.Http.QueryString("?q=${secret:ERP-KEY}");
+            ctx.Request.Headers.Authorization = "Bearer test-token";
+        }, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(_upstream.PathAndQuery);
+        Assert.DoesNotContain("erp-secret", _upstream.PathAndQuery);
+        Assert.Contains("secret:ERP-KEY", Uri.UnescapeDataString(_upstream.PathAndQuery));
+    }
+
+    [Fact]
     public async Task ClientQuery_CollidingWithReference_IsDropped()
     {
         await Get("Query?key=attacker&other=1");
