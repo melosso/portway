@@ -573,6 +573,7 @@ function buildFormView(name, d, headersHtml) {
            <div class="field-help" style="margin-top:0.25rem">Required for SQL endpoints.</div>`
       }
     </div>
+    ${buildSecretsSection(name, d)}
     ${buildAuthSection(d.authentication)}
     <div class="card">
       <div class="card-header"><h2 class="card-title">Headers</h2></div>
@@ -583,6 +584,106 @@ function buildFormView(name, d, headersHtml) {
         Add header
       </button>
     </div>`;
+}
+
+// values are write-only: the api returns names, the page never holds a value after submit
+function buildSecretsSection(name, d) {
+  if (!d.exists) return '';
+  state.secretEnv = name;
+  return `
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Secrets</h2></div>
+      <div class="field-help" style="margin-bottom:0.5rem">Use as <code>\${secret:NAME}</code>. Values are encrypted and never shown. Changes apply immediately.</div>
+      <div class="secret-list" id="secretList">${secretRows(d.secret_names ?? [])}</div>
+      <form class="kv-row secret-add" onsubmit="event.preventDefault(); addSecret()">
+        <input type="text" id="newSecretName" class="input secret-name-input" placeholder="NAME" maxlength="64" autocomplete="off" spellcheck="false" aria-label="Secret name">
+        <input type="password" id="newSecretValue" class="input input-secret" placeholder="Value" autocomplete="new-password" aria-label="Secret value">
+        <button type="submit" class="btn btn-outline btn-sm">Add</button>
+      </form>
+    </div>`;
+}
+
+function secretRows(names) {
+  if (!names.length) return `<div class="secret-empty">No secrets</div>`;
+  return names.map(n => `
+    <div class="secret-row" data-secret="${esc(n)}">
+      <span class="secret-name">${esc(n)}</span>
+      <span class="secret-mask" aria-label="Value hidden">••••••••</span>
+      <button type="button" class="btn btn-outline btn-sm" onclick="startReplaceSecret(this)">Replace</button>
+      <button type="button" class="btn btn-outline btn-sm secret-delete" onclick="startDeleteSecret(this)">Delete</button>
+    </div>`).join('');
+}
+
+const SECRET_NAME = /^[A-Za-z0-9-]{1,64}$/;
+
+async function refreshSecrets() {
+  const name = state.secretEnv;
+  try {
+    const d = await api(`/_/api/environments/${encodeURIComponent(name)}`, { silent: true });
+    state.envData[name] = d;
+    state.polledLastMod = d.last_modified;
+    const list = document.getElementById('secretList');
+    if (list) list.innerHTML = secretRows(d.secret_names ?? []);
+  } catch (e) {}
+}
+
+async function putSecret(secret, value) {
+  await api(`/_/api/environments/${encodeURIComponent(state.secretEnv)}/secrets/${encodeURIComponent(secret)}`, {
+    method: 'PUT', body: { value }, success: `Saved ${secret}`
+  });
+  await refreshSecrets();
+}
+
+async function addSecret() {
+  const nameEl = document.getElementById('newSecretName');
+  const valueEl = document.getElementById('newSecretValue');
+  const secret = nameEl.value.trim();
+  if (!SECRET_NAME.test(secret)) { toast('Use letters, digits and hyphens, up to 64 characters.', 'error'); nameEl.focus(); return; }
+  if (!valueEl.value.trim()) { toast('Enter a value.', 'error'); valueEl.focus(); return; }
+  const exists = (state.envData[state.secretEnv]?.secret_names ?? []).some(n => n.toLowerCase() === secret.toLowerCase());
+  const submit = async () => {
+    try {
+      await putSecret(secret, valueEl.value);
+      nameEl.value = '';
+      valueEl.value = '';
+    } catch (e) {}
+  };
+  if (!exists) return submit();
+  showAlertDialog({ title: `Replace "${secret}"?`, description: 'The current value is overwritten.', actionLabel: 'Replace', onConfirm: submit });
+}
+
+function startReplaceSecret(btn) {
+  const row = btn.closest('.secret-row');
+  const secret = row.dataset.secret;
+  row.innerHTML = `
+    <span class="secret-name">${esc(secret)}</span>
+    <input type="password" class="input input-secret" placeholder="New value" autocomplete="new-password" aria-label="New value for ${esc(secret)}"
+      onkeydown="if(event.key==='Enter')saveReplaceSecret(this);if(event.key==='Escape')refreshSecrets()">
+    <button type="button" class="btn btn-primary btn-sm" onclick="saveReplaceSecret(this)">Save</button>
+    <button type="button" class="btn btn-outline btn-sm" onclick="refreshSecrets()">Cancel</button>`;
+  row.querySelector('input').focus();
+}
+
+async function saveReplaceSecret(el) {
+  const row = el.closest('.secret-row');
+  const input = row.querySelector('input');
+  if (!input.value.trim()) { toast('Enter a value.', 'error'); input.focus(); return; }
+  try { await putSecret(row.dataset.secret, input.value); } catch (e) {}
+}
+
+function startDeleteSecret(btn) {
+  const secret = btn.closest('.secret-row').dataset.secret;
+  showAlertDialog({
+    title: `Delete "${secret}"?`,
+    description: 'References to this secret fail until a value is added again.',
+    actionLabel: 'Delete',
+    onConfirm: async () => {
+      try {
+        await api(`/_/api/environments/${encodeURIComponent(state.secretEnv)}/secrets/${encodeURIComponent(secret)}`, { method: 'DELETE', success: `Deleted ${secret}` });
+        await refreshSecrets();
+      } catch (e) {}
+    }
+  });
 }
 
 function buildAuthSection(auth, prefix = 'edit') {
