@@ -376,6 +376,56 @@ public abstract class ProviderParityTests<TFixture>(TFixture fixture) : IClassFi
         Assert.Equal("invoices", row["WebhookId"]);
     }
 
+    private async Task<Exception?> InsertDelivery(string webhookId, string? deliveryId)
+    {
+        var provider = _fixture.Provider;
+        await using var connection = provider.CreateConnection(_fixture.ConnectionString);
+        await connection.OpenAsync();
+        var insert = SqlTableWriteBuilder.BuildInsertReturningId(provider, _fixture.QualifiedWebhookTable,
+            new Dictionary<string, object?> { ["WebhookId"] = webhookId, ["Payload"] = """{"a":1}""", ["ReceivedAt"] = DateTime.UtcNow, ["DeliveryId"] = deliveryId });
+        try
+        {
+            await connection.ExecuteScalarAsync(insert.Sql, insert.Parameters);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return ex;
+        }
+    }
+
+    [DockerFact]
+    public async Task Webhook_SecondDelivery_IsClassifiedAsDuplicateKey()
+    {
+        var deliveryId = $"evt-{Guid.NewGuid():N}";
+
+        Assert.Null(await InsertDelivery("dedupe", deliveryId));
+        var duplicate = await InsertDelivery("dedupe", deliveryId);
+
+        var dbException = Assert.IsAssignableFrom<System.Data.Common.DbException>(duplicate);
+        Assert.True(SqlErrorClassifier.IsDuplicateKey(dbException));
+        Assert.Null(await InsertDelivery("other-hook", deliveryId));
+    }
+
+    [DockerFact]
+    public async Task Webhook_NullDeliveryIds_AreNotDuplicates()
+    {
+        Assert.Null(await InsertDelivery("no-dedupe", null));
+        Assert.Null(await InsertDelivery("no-dedupe", null));
+    }
+
+    [DockerFact]
+    public async Task Webhook_ConcurrentIdenticalDeliveries_StoreOneRow()
+    {
+        var deliveryId = $"evt-{Guid.NewGuid():N}";
+
+        var results = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => InsertDelivery("concurrent", deliveryId)));
+
+        Assert.Single(results, r => r is null);
+        Assert.All(results.OfType<System.Data.Common.DbException>(), ex => Assert.True(SqlErrorClassifier.IsDuplicateKey(ex), ex.Message));
+        Assert.Equal(7, results.OfType<System.Data.Common.DbException>().Count());
+    }
+
     private RelationalExpandSpec CategorySpec() => new(
         "Category", _fixture.QualifiedCategoriesTable, "CategoryId", "CategoryId",
         new[] { "CategoryId", "CategoryName" });

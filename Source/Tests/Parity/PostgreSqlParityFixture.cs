@@ -35,7 +35,8 @@ public sealed class PostgreSqlParityFixture : ParityDatabaseFixture
     // Quoted identifiers keep the casing the OData compiler emits
     protected override IEnumerable<string> SchemaStatements =>
     [
-        """CREATE TABLE public."WebhookData" ("Id" SERIAL PRIMARY KEY, "WebhookId" VARCHAR(100) NOT NULL, "Payload" TEXT NOT NULL, "ReceivedAt" TIMESTAMPTZ NOT NULL)""",
+        """CREATE TABLE public."WebhookData" ("Id" SERIAL PRIMARY KEY, "WebhookId" VARCHAR(100) NOT NULL, "Payload" TEXT NOT NULL, "ReceivedAt" TIMESTAMPTZ NOT NULL, "DeliveryId" VARCHAR(255) NULL)""",
+        """CREATE UNIQUE INDEX "UX_WebhookData_Delivery" ON public."WebhookData" ("WebhookId", "DeliveryId")""",
         """CREATE TABLE public."Products" ("Id" INT PRIMARY KEY, "Name" VARCHAR(100) NOT NULL, "Price" DECIMAL(10,2) NOT NULL, "ReleasedAt" DATE NULL, "CategoryId" INT NULL)""",
         $"""INSERT INTO public."Products" ("Id", "Name", "Price", "ReleasedAt") VALUES {SeedValues}""",
         """CREATE TABLE public."Categories" ("CategoryId" INT PRIMARY KEY, "CategoryName" VARCHAR(100) NOT NULL)""",

@@ -31,7 +31,8 @@ public sealed class SqliteParityFixture : ParityDatabaseFixture
 
     protected override IEnumerable<string> SchemaStatements =>
     [
-        "CREATE TABLE WebhookData (Id INTEGER PRIMARY KEY AUTOINCREMENT, WebhookId TEXT NOT NULL, Payload TEXT NOT NULL, ReceivedAt TEXT NOT NULL)",
+        "CREATE TABLE WebhookData (Id INTEGER PRIMARY KEY AUTOINCREMENT, WebhookId TEXT NOT NULL, Payload TEXT NOT NULL, ReceivedAt TEXT NOT NULL, DeliveryId TEXT NULL)",
+        "CREATE UNIQUE INDEX UX_WebhookData_Delivery ON WebhookData (WebhookId, DeliveryId)",
         "CREATE TABLE Products (Id INTEGER PRIMARY KEY, Name TEXT NOT NULL, Price NUMERIC NOT NULL, ReleasedAt TEXT NULL, CategoryId INTEGER NULL)",
         $"INSERT INTO Products (Id, Name, Price, ReleasedAt) VALUES {SeedValues}",
         "CREATE TABLE Categories (CategoryId INTEGER PRIMARY KEY, CategoryName TEXT NOT NULL)",

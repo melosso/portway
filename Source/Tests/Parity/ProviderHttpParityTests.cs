@@ -30,10 +30,12 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
     // sqlite never converts text keys
     protected virtual bool KeyMismatchIsAnError => true;
 
+    protected virtual bool KeyedWriteMismatchIsAnError => KeyMismatchIsAnError;
+
     protected ProviderHttpParityTests(TFixture fixture) : base(connectTimeoutSeconds: 15)
     {
         _fixture = fixture;
-        _namespace = $"Http{fixture.ProviderType}";
+        _namespace = $"Http{typeof(TFixture).Name.Replace("ParityFixture", "")}";
         _endpointDir = Path.Combine("endpoints", "SQL", _namespace);
 
         var schema = fixture.QualifiedGuidKeysTable.Split('.')[0];
@@ -71,6 +73,21 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
         function.Remove("WriteMode");
         function["FunctionParameters"] = new[] { new { Name = "MinPrice", SqlType = "decimal", Source = "Path", Position = 1, Required = true } };
         WriteEndpoint("Tvf", function);
+
+        var webhookTable = fixture.QualifiedWebhookTable.Split('.');
+        Directory.CreateDirectory(Path.Combine(WebhookDir, "Hooks"));
+        File.WriteAllText(Path.Combine(WebhookDir, "Hooks", "entity.json"), JsonSerializer.Serialize(new
+        {
+            DatabaseSchema = webhookTable[0],
+            DatabaseObjectName = webhookTable[1],
+            AllowedEnvironments = new[] { Env },
+            AllowedColumns = new[] { "dedupe" },
+            Verification = new Dictionary<string, object>
+            {
+                ["dedupe"] = new { Scheme = "SharedSecret", Header = "X-Hook-Key", Secret = "${secret:HOOK}", DeliveryIdHeader = "X-Message-Id", Deduplicate = true }
+            }
+        }));
+        _mockEnvironmentSettingsProvider.Setup(p => p.GetSecretAsync(It.IsAny<string>(), "HOOK", It.IsAny<CancellationToken>())).ReturnsAsync(HookSecret);
         EndpointHandler.ReloadAllEndpoints();
 
         SetAllowedEnvironments(Env);
@@ -116,9 +133,14 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
         File.WriteAllText(Path.Combine(target, "entity.json"), JsonSerializer.Serialize(definition));
     }
 
+    private const string HookSecret = "parity-hook-secret-0000";
+
+    private string WebhookDir => Path.Combine("endpoints", "Webhooks", _namespace);
+
     public new void Dispose()
     {
         Directory.Delete(_endpointDir, recursive: true);
+        Directory.Delete(WebhookDir, recursive: true);
         EndpointHandler.ReloadAllEndpoints();
         base.Dispose();
     }
@@ -134,6 +156,26 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
 
         var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
         return (response.StatusCode, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
+
+    [DockerFact]
+    public async Task Webhook_DuplicateDelivery_Returns200AndStoresOnce()
+    {
+        async Task<HttpStatusCode> Deliver(string messageId)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/{Env}/{_namespace}/Hooks/dedupe")
+            {
+                Content = new StringContent("""{"a":1}""", Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Hook-Key", HookSecret);
+            request.Headers.Add("X-Message-Id", messageId);
+            return (await _client.SendAsync(request, TestContext.Current.CancellationToken)).StatusCode;
+        }
+
+        var messageId = $"http-{Guid.NewGuid():N}";
+        Assert.Equal(HttpStatusCode.Created, await Deliver(messageId));
+        Assert.Equal(HttpStatusCode.OK, await Deliver(messageId));
+        Assert.Equal(HttpStatusCode.Created, await Deliver(messageId + "-next"));
     }
 
     [DockerFact]
@@ -196,12 +238,18 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
         {
             var (status, body) = await Send(method, Url("Int"), payload);
 
+            if (method == HttpMethod.Patch && !KeyedWriteMismatchIsAnError)
+            {
+                Assert.Equal(HttpStatusCode.NotFound, status);
+                continue;
+            }
+
             Assert.Equal(HttpStatusCode.BadRequest, status);
             Assert.Contains("Invalid column value", body);
         }
 
         var (deleteStatus, deleteBody) = await Send(HttpMethod.Delete, Url("Int", "('abc')"));
-        if (!KeyMismatchIsAnError)
+        if (!KeyMismatchIsAnError || !KeyedWriteMismatchIsAnError)
         {
             Assert.Equal(HttpStatusCode.NotFound, deleteStatus);
             return;
