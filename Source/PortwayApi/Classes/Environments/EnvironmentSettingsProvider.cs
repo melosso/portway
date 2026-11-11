@@ -83,6 +83,7 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 
             // Encrypt all environments on startup 
             AutoEncryptAllEnvironmentsOnStartup();
+            WarnOnUnscopedAuthentication();
         }
         catch (Exception ex)
         {
@@ -164,6 +165,29 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 
         Log.Debug("Encryption scan complete: {Encrypted} encrypted, {AlreadyEncrypted} already encrypted, {Errors} errors",
             encryptedCount, alreadyEncryptedCount, errorCount);
+    }
+
+    internal static bool HasUnscopedMethods(AuthenticationSettings? settings) =>
+        settings is { Enabled: true, Methods: { } methods } && methods.Any(m => m.AllowedEndpoints is null);
+
+    private void WarnOnUnscopedAuthentication()
+    {
+        if (!Directory.Exists(_basePath))
+            return;
+
+        foreach (var settingsPath in Directory.GetDirectories(_basePath).Select(d => Path.Combine(d, "settings.json")).Where(File.Exists))
+        {
+            try
+            {
+                if (HasUnscopedMethods(JsonSerializer.Deserialize<EnvironmentConfig>(File.ReadAllText(settingsPath))?.Authentication))
+                    Log.Warning("Environment {Environment} has an authentication method without AllowedEndpoints; it grants every endpoint in the environment",
+                        new DirectoryInfo(Path.GetDirectoryName(settingsPath)!).Name);
+            }
+            catch (JsonException)
+            {
+                // reported when the environment loads
+            }
+        }
     }
 
     public void EncryptEnvironmentIfNeeded(string envName)

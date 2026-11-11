@@ -34,4 +34,9 @@ public sealed class AuthenticationMethod
     public string? ClientId { get; set; }
     public string? ClientSecret { get; set; } // Will be encrypted
     public string? IntrospectionEndpoint { get; set; }
+
+    /// <summary>
+    /// Endpoint scope patterns this method grants, as token scopes. Null grants every endpoint in the environment
+    /// </summary>
+    public List<string>? AllowedEndpoints { get; set; }
 }

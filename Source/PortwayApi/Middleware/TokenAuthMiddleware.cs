@@ -78,6 +78,15 @@ public sealed class TokenAuthMiddleware
 
                 if (isEnvAuthenticated)
                 {
+                    if (context.Items[EnvironmentAuthService.MatchedMethodKey] is AuthenticationMethod { AllowedEndpoints: { } allowed }
+                        && ExtractEndpointName(context) is { Length: > 0 } scopedName
+                        && !HasEndpointAccess(name => ScopeMatcher.Matches(allowed, name), scopedName))
+                    {
+                        Log.Warning("Environment authentication for {Env} lacks permission for endpoint {Endpoint}", env, scopedName);
+                        await WriteErrorAsync(context, 403, "Access denied to endpoint");
+                        return;
+                    }
+
                     Log.Debug("Authorized for environment '{Env}' via custom authentication", env);
                     await _next(context);
                     return;
@@ -151,9 +160,7 @@ public sealed class TokenAuthMiddleware
         // Check endpoint permissions if endpoint name was successfully extracted
         if (!string.IsNullOrEmpty(endpointName))
         {
-            // legacy files scope grants every file endpoint
-            bool hasEndpointAccess = tokenDetails.HasAccessToEndpoint(endpointName)
-                || (endpointName.StartsWith(FileScopePrefix, StringComparison.OrdinalIgnoreCase) && tokenDetails.HasAccessToEndpoint("files"));
+            bool hasEndpointAccess = HasEndpointAccess(tokenDetails.HasAccessToEndpoint, endpointName);
 
             if (!hasEndpointAccess)
             {
@@ -178,6 +185,10 @@ public sealed class TokenAuthMiddleware
     }
 
     public const string AuthorizationAcceptedKey = "Portway.AuthorizationAccepted";
+
+    // legacy files scope grants every file endpoint
+    private static bool HasEndpointAccess(Func<string, bool> hasAccess, string endpointName) =>
+        hasAccess(endpointName) || (endpointName.StartsWith(FileScopePrefix, StringComparison.OrdinalIgnoreCase) && hasAccess("files"));
     private const string FileScopePrefix = "files/";
     private const string BearerChallenge = "Bearer realm=\"portway\"";
     private const string InvalidTokenChallenge = "Bearer realm=\"portway\", error=\"invalid_token\"";

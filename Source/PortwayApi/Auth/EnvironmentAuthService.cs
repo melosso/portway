@@ -23,6 +23,8 @@ public sealed class EnvironmentAuthService
     /// <summary>
     /// Validates a request against the environment authentication settings
     /// </summary>
+    public const string MatchedMethodKey = "Portway.EnvironmentAuthMethod";
+
     public Task<bool> ValidateAsync(HttpContext context, AuthenticationSettings settings) =>
         ValidateAsync(context, settings, static template => Task.FromResult(template));
 
@@ -60,6 +62,8 @@ public sealed class EnvironmentAuthService
                 if (success)
                 {
                     _logger.Debug("Successfully authenticated using environment method: {Type}", method.Type);
+
+                    context.Items[MatchedMethodKey] = configured;
 
                     if (method.Type.ToLowerInvariant() is "basic" or "bearer" or "jwt")
                         context.Items[Middleware.TokenAuthMiddleware.AuthorizationAcceptedKey] = true;

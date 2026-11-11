@@ -102,4 +102,57 @@ public sealed class EnvironmentSecretAuthTests : ApiTestBase
         var response = await _client.GetAsync("/api/700/Nope/Nothing", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    private void ScopedApiKey(params string[]? allowedEndpoints)
+    {
+        var auth = ApiKey("scoped-key");
+        auth.Methods![0].AllowedEndpoints = allowedEndpoints?.ToList();
+        EnvironmentConfig(new EnvironmentConfig { Authentication = auth });
+        _client.DefaultRequestHeaders.Add("X-Env-Key", "scoped-key");
+    }
+
+    [Fact]
+    public async Task EnvironmentAuth_OutOfScope_MatchesMissingEndpoint()
+    {
+        ScopedApiKey("Nope");
+
+        var existing = await _client.GetAsync("/api/700/CRM/Accounts", TestContext.Current.CancellationToken);
+        var missing = await _client.GetAsync("/api/700/Other/Thing", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Forbidden, existing.StatusCode);
+        Assert.Equal(existing.StatusCode, missing.StatusCode);
+        Assert.Equal(
+            await existing.Content.ReadAsStringAsync(TestContext.Current.CancellationToken),
+            await missing.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task EnvironmentAuth_InScope_Allowed()
+    {
+        ScopedApiKey("No*");
+
+        var response = await _client.GetAsync("/api/700/Nope/Nothing", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task EnvironmentAuth_Unset_KeepsAccessAndWarns()
+    {
+        ScopedApiKey(null);
+
+        var response = await _client.GetAsync("/api/700/Nope/Nothing", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.True(PortwayApi.Classes.EnvironmentSettingsProvider.HasUnscopedMethods(new AuthenticationSettings
+        {
+            Enabled = true,
+            Methods = [new AuthenticationMethod { Type = "ApiKey" }, new AuthenticationMethod { Type = "Bearer", AllowedEndpoints = ["CRM/*"] }]
+        }));
+        Assert.False(PortwayApi.Classes.EnvironmentSettingsProvider.HasUnscopedMethods(new AuthenticationSettings
+        {
+            Enabled = false,
+            Methods = [new AuthenticationMethod { Type = "ApiKey" }]
+        }));
+    }
 }

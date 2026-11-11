@@ -108,16 +108,7 @@ public sealed class AuthToken
         if (AllowedScopes == "*")
             return true;
 
-        var scopes = GetScopesList();
-
-        // Check for direct matches (case-insensitive)
-        if (scopes.Any(s => s.Equals("*") || s.Equals(endpointName, StringComparison.OrdinalIgnoreCase)))
-            return true;
-
-        // Check for wildcard matches (e.g., "Products*" should match "ProductsDetails")
-        return scopes.Any(s =>
-            s.EndsWith('*') &&
-            endpointName.StartsWith(s[..^1], StringComparison.OrdinalIgnoreCase));
+        return ScopeMatcher.Matches(GetScopesList(), endpointName);
     }
     public bool HasAccessToEnvironment(string environment)
     {
