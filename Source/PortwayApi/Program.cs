@@ -126,6 +126,7 @@ try
     builder.Services.AddSingleton<CompositeRequestHandler>();
     builder.Services.AddSingleton<StaticRequestHandler>();
     builder.Services.AddSingleton<SqlRequestHandler>();
+    builder.Services.AddSingleton<WebhookRequestHandler>();
     builder.Services.AddSingleton<ProxyRequestHandler>();
 
     // Configure Rate Limiting

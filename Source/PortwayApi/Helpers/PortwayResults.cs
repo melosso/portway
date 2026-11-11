@@ -63,6 +63,12 @@ public static class PortwayResults
     public static string TraceIdOf(HttpContext? context)
         => System.Diagnostics.Activity.Current?.Id ?? context?.TraceIdentifier ?? string.Empty;
 
+    /// <summary>
+    /// 201 without a Location header, for a resource that has no read route
+    /// </summary>
+    public static IActionResult Created(string message, object? id)
+        => new ObjectResult(CreatedResponse.Of(message, id: id)) { StatusCode = StatusCodes.Status201Created };
+
     public static IActionResult Create(string location, string message, object? result = null, object? id = null)
         => new CreatedResult(location, CreatedResponse.Of(message, result, id));
 

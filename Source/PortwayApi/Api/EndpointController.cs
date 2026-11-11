@@ -28,6 +28,7 @@ public sealed partial class EndpointController : ControllerBase
     private readonly ProxyRequestHandler _proxyRequestHandler;
     private readonly ISqlProviderFactory _providerFactory;
     private readonly CacheManager _cacheManager;
+    private readonly WebhookRequestHandler _webhookRequestHandler;
 
     /// <summary>
     /// Validates if the environment is allowed both globally and for the specific endpoint
@@ -72,8 +73,10 @@ public sealed partial class EndpointController : ControllerBase
         SqlRequestHandler sqlRequestHandler,
         ProxyRequestHandler proxyRequestHandler,
         ISqlProviderFactory providerFactory,
-        CacheManager cacheManager)
+        CacheManager cacheManager,
+        WebhookRequestHandler webhookRequestHandler)
     {
+        _webhookRequestHandler = webhookRequestHandler;
         _environmentSettings = environmentSettings;
         _environmentSettingsProvider = environmentSettingsProvider;
         _connectionPoolService = connectionPoolService;

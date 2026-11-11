@@ -348,7 +348,8 @@ public sealed partial class EndpointController
             switch (endpointType)
             {
                 case EndpointType.SQL:
-                    var data = JsonSerializer.Deserialize<JsonElement>(requestBody);
+                    if (!JsonBody.TryParse(requestBody, out var data))
+                        return PortwayResults.BadRequest(JsonBody.InvalidMessage);
                     // For SQL endpoints, build the full key for lookup (same as GET)
                     var sqlKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
                     return await HandleSqlPostRequest(env, sqlKey, data);
@@ -365,16 +366,7 @@ public sealed partial class EndpointController
                     return await HandleCompositeRequest(env, actualCompositeName, requestBody);
 
                 case EndpointType.Webhook:
-                    // For webhook endpoints, build the full key for lookup
-                    var webhookKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
-                    // The webhook id (topic selector) is the segment after the endpoint: prefer parsed id, fall back to remaining path
-                    string webhookId = id ?? remainingPath.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
-                    if (string.IsNullOrEmpty(webhookId))
-                    {
-                        return PortwayResults.BadRequest("Webhook id is required: use '/api/{env}/{namespace}/{name}/{id}'.");
-                    }
-                    var webhookData = JsonSerializer.Deserialize<JsonElement>(requestBody);
-                    return await HandleWebhookRequest(env, webhookKey, webhookId, webhookData);
+                    return await HandleWebhookRequest(env, catchall.Split('/', StringSplitOptions.RemoveEmptyEntries), requestBody);
 
                 default:
                     Log.Warning("Unknown endpoint type for {EndpointName}", endpointName);
@@ -417,7 +409,8 @@ public sealed partial class EndpointController
                     {
                         requestBody = await reader.ReadToEndAsync();
                     }
-                    var data = JsonSerializer.Deserialize<JsonElement>(requestBody);
+                    if (!JsonBody.TryParse(requestBody, out var data))
+                        return PortwayResults.BadRequest(JsonBody.InvalidMessage);
                     var sqlKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
                     return await HandleSqlPutRequest(env, sqlKey, data);
 

@@ -84,15 +84,7 @@ public sealed partial class DynamicEndpointDocumentFilter
                 {
                     ["201"] = new OpenApiResponse
                     {
-                        Description = "Created - Resource successfully created",
-                        Headers = new Dictionary<string, IOpenApiHeader>
-                        {
-                            ["Location"] = new OpenApiHeader
-                            {
-                                Description = "URL of the newly created resource",
-                                Schema = new OpenApiSchema { Type = JsonSchemaType.String }
-                            }
-                        },
+                        Description = "Created - Webhook stored",
                         Content = new Dictionary<string, IOpenApiMediaType>
                         {
                             ["application/json"] = new OpenApiMediaType
@@ -103,7 +95,7 @@ public sealed partial class DynamicEndpointDocumentFilter
                                     Properties = new Dictionary<string, IOpenApiSchema>
                                     {
                                         ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
-                                        ["message"] = new OpenApiSchema { Type = JsonSchemaType.String, Examples = [JsonValue.Create("Request processed successfully.")] },
+                                        ["message"] = new OpenApiSchema { Type = JsonSchemaType.String, Examples = [JsonValue.Create("Webhook stored.")] },
                                         ["result"] = new OpenApiSchema { Type = JsonSchemaType.Object | JsonSchemaType.Null },
                                         ["id"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Examples = [JsonValue.Create(12345)] }
                                     }
@@ -111,7 +103,7 @@ public sealed partial class DynamicEndpointDocumentFilter
                                 Example = new JsonObject
                                 {
                                     ["success"] = JsonValue.Create(true),
-                                    ["message"] = JsonValue.Create("Webhook processed successfully."),
+                                    ["message"] = JsonValue.Create("Webhook stored."),
                                     ["result"] = null,
                                     ["id"] = JsonValue.Create(12345)
                                 }
@@ -136,7 +128,7 @@ public sealed partial class DynamicEndpointDocumentFilter
                                 },
                                 Example = new JsonObject
                                 {
-                                    ["error"] = JsonValue.Create("Environment is not configured properly."),
+                                    ["error"] = JsonValue.Create(Helpers.JsonBody.InvalidMessage),
                                     ["success"] = JsonValue.Create(false)
                                 }
                             }
@@ -206,7 +198,7 @@ public sealed partial class DynamicEndpointDocumentFilter
                                 },
                                 Example = new JsonObject
                                 {
-                                    ["error"] = JsonValue.Create("Webhook ID 'unknown_webhook' is not configured."),
+                                    ["error"] = JsonValue.Create("Webhook not found."),
                                     ["success"] = JsonValue.Create(false)
                                 }
                             }

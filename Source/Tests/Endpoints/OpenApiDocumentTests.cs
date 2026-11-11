@@ -610,6 +610,19 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.NotNull(GetQueryParameter(paths, "/api/{env}/Inventory/ProductStock", "$select"));
     }
 
+    [Fact]
+    public async Task WebhookCreated_HasNoLocationHeader()
+    {
+        SetAllowedEnvironments("500", "700", "Synergy", "WMS");
+
+        using var doc = JsonDocument.Parse(await _client.GetStringAsync("/docs/openapi.json", TestContext.Current.CancellationToken));
+        var created = doc.RootElement.GetProperty("paths").GetProperty("/api/{env}/Webhooks/Incoming/{webhookId}")
+            .GetProperty("post").GetProperty("responses").GetProperty("201");
+
+        Assert.False(created.TryGetProperty("headers", out var headers) && headers.TryGetProperty("Location", out _));
+        Assert.Contains("Webhook stored.", created.GetRawText());
+    }
+
     // Ids derive from the route, so adding an endpoint never renames the operations of another
     [Fact]
     public async Task OperationIds_AreStable_UniqueAndDerivedFromTheRoute()

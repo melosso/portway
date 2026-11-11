@@ -113,6 +113,20 @@ public sealed class CacheConsistencyTests : ApiTestBase, IDisposable
         Assert.True(response.IsSuccessStatusCode, $"{path}: {(int)response.StatusCode} {await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)}");
     }
 
+    [Theory]
+    [InlineData("POST", "{ not json")]
+    [InlineData("POST", "")]
+    [InlineData("PUT", "{ not json")]
+    public async Task SqlWrite_MalformedJson_Returns400(string method, string body)
+    {
+        var request = new HttpRequestMessage(new HttpMethod(method), $"/api/{Env}/CacheCheck/Items") { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(1, RowCount("Items"));
+    }
+
     [Fact]
     public async Task TableWrite_RefreshesSameTableReads()
     {

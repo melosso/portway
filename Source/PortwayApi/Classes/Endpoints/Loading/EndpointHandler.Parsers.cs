@@ -15,6 +15,8 @@ public static partial class EndpointHandler
         var definition = ParseSqlEndpointDefinition(json);
         if (definition != null)
         {
+            if (definition.AllowedColumns.Count == 0)
+                throw new InvalidOperationException("Webhook endpoint requires AllowedColumns, the list of accepted webhook ids");
             definition.Type = EndpointType.Webhook;
         }
         return definition;
