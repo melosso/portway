@@ -100,6 +100,8 @@ public sealed partial class SqlRequestHandler
                     .ToList();
                 if (refused.Contains(ColumnMappingHelper.InvalidExpression))
                     return PortwayResults.BadRequest(InvalidODataMessage);
+                if (refused.Where(c => c.Contains('/')).ToList() is { Count: > 0 } navigations)
+                    return PortwayResults.BadRequest($"Navigation paths are not supported in $filter or $orderby: {string.Join(", ", navigations)}");
                 if (refused.Count > 0)
                     return PortwayResults.BadRequest($"Columns not allowed: {string.Join(", ", refused)}");
             }
