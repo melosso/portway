@@ -67,6 +67,13 @@ docker compose pull && docker compose up -d
 
 Apply the configuration changes from the release notes to `appsettings.json` and the environment files.
 
+### To v0.13.0
+
+- Configuration names deprecated before v0.13.0 are not read. Startup logs one error per former name with its current name: [Removed keys](/reference/app-settings#removed-keys). `WebUi:Enabled: false` no longer turns the console off; use `Console:Enabled` or `PORTWAY_WEBUI_ENABLED`.
+- A webhook endpoint with an empty or absent `AllowedColumns` does not load and answers `404` for every id.
+- An environment authentication method without `AllowedEndpoints` keeps access to every endpoint of its environment and logs a startup warning. See [Environment authentication](/reference/environment-auth).
+- A v0.12.0 install removes `Secrets` when it rewrites `settings.json`. Back up `settings.json` before a downgrade.
+
 ### 6. Start and verify
 
 - `GET /health/live` returns `Alive`

@@ -106,6 +106,7 @@ Table-valued functions are read-only and use no `PrimaryKey`.
 | `Url` | string | Required | Upstream URL |
 | `Methods` | string[] | Required | Allowed methods |
 | `FallbackUrls` | string[] | | Tried in order after the primary fails |
+| `Headers` | object | | Headers sent upstream; values accept `${secret:NAME}` ([Proxy headers](/guide/endpoints-proxy#endpoint-headers)) |
 | `Retry` | object | 1 attempt | `Attempts` per URL, `DelayMs` between attempts (default `200`) |
 | `ResponseTransforms` | object | | `Remove`, `Rename` and `Mask` rules on JSON fields |
 | `SupportsOData` | boolean | `false` | Documents OData parameters for the upstream |
@@ -207,7 +208,8 @@ Steps call Proxy endpoints and use their `FallbackUrls` and `Retry`; their `Resp
 |---|---|---|
 | `DatabaseObjectName` | string | Target table |
 | `DatabaseSchema` | string | Schema |
-| `AllowedColumns` | string[] | Accepted webhook ids |
+| `AllowedColumns` | string[] | Accepted webhook ids. Required |
+| `Verification` | object | Verification per webhook id ([Verification](/guide/endpoints-webhook#verification)) |
 
 ## File
 

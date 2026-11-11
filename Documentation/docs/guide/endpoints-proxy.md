@@ -43,6 +43,24 @@ DatabaseName: production
 Origin: Portway
 ```
 
+### Endpoint headers
+
+`Headers` in `entity.json` adds headers to every forwarded request. Values replace environment headers and client headers of the same name, and accept a [secret reference](/reference/secrets#secret-store). `Authorization` is allowed. Hop-by-hop, `Host`, `X-Forwarded-*` and `Content-*` names are a load error.
+
+```json
+{
+  "Url": "https://erp.internal/api/orders?company=${secret:ERP-COMPANY}",
+  "Methods": ["GET", "POST"],
+  "Headers": { "Authorization": "Bearer ${secret:ERP-TOKEN}" }
+}
+```
+
+A secret reference in `Url` or `FallbackUrls` is allowed in a query value only. A client query parameter with the same name as a configured one is dropped.
+
+### Redirects
+
+A request with a secret reference, or with an environment or endpoint header whose name contains `key`, `token`, `auth`, `secret`, `password` or a similar term, follows redirects to the same host and port, and from `http` to `https` on the same host, for at most 5 hops. Every hop is checked against the network access policy. Any other redirect is returned to the client. `303`, and `301` or `302` after a `POST`, continue as `GET` without a body; `307` and `308` keep the method and body. Other requests follow redirects as before.
+
 ### OData on proxy endpoints
 
 OData options, `$expand` included, are forwarded as written and never parsed. Portway processes `$expand` only on [SQL Table and View endpoints](/reference/expand).

@@ -75,6 +75,8 @@ Nested and array values use dot notation:
 }
 ```
 
+A whole value of `${secret:NAME}` inserts a [secret](/reference/secrets#secret-store) from the request environment. Client body fields are never resolved. Every secret value a request uses, in step URLs, step headers and transformations, is replaced with `***` in the Composite response, including failure details. An encoded or transformed value is not masked.
+
 ## Request and response format
 
 Request:

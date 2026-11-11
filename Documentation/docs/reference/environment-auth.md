@@ -20,8 +20,9 @@ The `Authentication` object in `/environments/[EnvironmentName]/settings.json`:
       {
         "Type": "ApiKey",
         "Name": "X-API-Key",
-        "Value": "your-secret-key",
-        "In": "Header"
+        "Value": "${secret:ENV-API-KEY}",
+        "In": "Header",
+        "AllowedEndpoints": ["CRM/*", "Inventory/Products"]
       }
     ]
   }
@@ -33,6 +34,8 @@ The `Authentication` object in `/environments/[EnvironmentName]/settings.json`:
 | `Enabled` | boolean | `false` | Enables the methods for this environment |
 | `OverrideGlobalToken` | boolean | `false` | `true` rejects Portway tokens in this environment |
 | `Methods` | array | `[]` | Authentication methods |
+
+Each method accepts `AllowedEndpoints`, a list of endpoint patterns in the token scope format: `*`, an exact endpoint name, or a prefix ending in `*`. A request outside the list answers as a missing endpoint (`403`). A method without `AllowedEndpoints` has access to every endpoint in the environment, and startup logs one warning per environment. `Value`, `Secret` and `ClientSecret` accept a [secret reference](/reference/secrets#secret-store). Basic and Bearer refuse an empty configured value.
 
 ## Supported authentication methods
 
@@ -102,6 +105,8 @@ With `OverrideGlobalToken: false`:
 3. Without either, the response is `401`.
 
 With `OverrideGlobalToken: true`, only the environment methods are accepted.
+
+An environment whose `settings.json` fails to load or decrypt, or whose referenced secret is missing, answers a generic `500`. It does not fall back to Portway tokens. A changed `settings.json` that fails to parse keeps the last good configuration.
 
 Requests authorized by environment methods have no Portway token and are refused on endpoints with [tenant headers](/guide/tenant-headers).
 

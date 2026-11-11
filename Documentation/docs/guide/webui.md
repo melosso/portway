@@ -19,6 +19,8 @@ The console is enabled by default and accepts client addresses from loopback and
 
 ## Accounts
 
+The `viewer` role reads every page except raw environment files and webhook deliveries. Viewers see secret names, `Set` for environment and endpoint header values, and endpoint URLs with masked query values.
+
 Accounts are created under **Users** or from the shell. First account, roles, sessions and recovery: [Accounts](/guide/accounts). OpenID Connect sign-in: [Single sign-on](/guide/sso).
 
 ## Settings changes
