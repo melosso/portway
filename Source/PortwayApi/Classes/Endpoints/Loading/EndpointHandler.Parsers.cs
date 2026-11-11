@@ -22,6 +22,8 @@ public static partial class EndpointHandler
 
             var entity = JsonSerializer.Deserialize<EndpointEntity>(json, SharedJsonOptions.CaseInsensitive);
             definition.Verification = BuildVerification(entity?.Verification, definition.AllowedColumns);
+            if (definition.Hidden && definition.Verification?.Values.Any(r => r.AcceptForm) == true)
+                throw new InvalidOperationException("AcceptForm is not allowed on a Hidden webhook endpoint");
         }
         return definition;
     }

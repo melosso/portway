@@ -37,6 +37,7 @@ public sealed record WebhookRule
     public string? DeliveryIdField { get; init; }
     public bool BodyHashKey { get; init; }
     public bool Deduplicate { get; init; }
+    public bool AcceptForm { get; init; }
     public string? Error { get; init; }
     public string? Warning { get; init; }
 
@@ -113,8 +114,8 @@ public static partial class WebhookVerifier
             errors.Add("PreviousSecret must be a ${secret:NAME} reference");
 
         var fixedFormat = Preset(scheme) is not null || scheme.Equals("StandardWebhooks", StringComparison.OrdinalIgnoreCase);
-        if (fixedFormat && config with { Scheme = null, Secret = null, PreviousSecret = null, Deduplicate = false, Unknown = null } != new WebhookVerification())
-            errors.Add($"scheme {scheme} accepts Secret, PreviousSecret and Deduplicate only");
+        if (fixedFormat && config with { Scheme = null, Secret = null, PreviousSecret = null, Deduplicate = false, AcceptForm = false, Unknown = null } != new WebhookVerification())
+            errors.Add($"scheme {scheme} accepts Secret, PreviousSecret, Deduplicate and AcceptForm only");
 
         var source = Preset(scheme) is { } preset ? preset with { Deduplicate = config.Deduplicate } : config;
         var rule = scheme.ToLowerInvariant() switch
@@ -135,6 +136,7 @@ public static partial class WebhookVerifier
 
         return rule with
         {
+            AcceptForm = config.AcceptForm,
             SecretName = secretName ?? string.Empty,
             PreviousSecretName = previousName,
             Error = errors.Count > 0 ? string.Join("; ", errors) : null,

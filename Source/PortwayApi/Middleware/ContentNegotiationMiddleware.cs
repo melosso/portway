@@ -100,6 +100,29 @@ public sealed class ContentNegotiationMiddleware
     }
 
     /// <summary>
+    /// A webhook route accepts application/*+json, and a form body for an id with AcceptForm. A Hidden webhook gets no relaxation
+    /// </summary>
+    internal static bool IsAcceptedWebhookContentType(HttpContext context, string contentType)
+    {
+        if (!HttpMethods.IsPost(context.Request.Method)
+            || !Microsoft.Net.Http.Headers.MediaTypeHeaderValue.TryParse(contentType, out var media) || media.MediaType.Value is not { } mediaType)
+            return false;
+
+        var segments = (context.Request.Path.Value ?? string.Empty).Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length < 3 || !segments[0].Equals("api", StringComparison.OrdinalIgnoreCase)
+            || !Services.WebhookRoute.TryParse(segments[1], segments[2..], context, out var route)
+            || !Classes.EndpointHandler.GetSqlWebhookEndpoints().TryGetValue(route.EndpointKey, out var endpoint)
+            || endpoint.Hidden)
+            return false;
+
+        if (mediaType.StartsWith("application/", StringComparison.OrdinalIgnoreCase) && mediaType.EndsWith("+json", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return mediaType.Equals("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase)
+            && endpoint.Verification?.GetValueOrDefault(route.Id) is { AcceptForm: true };
+    }
+
+    /// <summary>
     /// Checks if the HTTP method typically includes a request body
     /// </summary>
     private static bool IsRequestWithBody(string method)
@@ -146,7 +169,7 @@ public sealed class ContentNegotiationMiddleware
         }
 
         // JSON gate for non-proxy endpoints; proxy paths skip it via IsProxyFamilyPath
-        if (!contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
+        if (!contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase) && !IsAcceptedWebhookContentType(context, contentType))
         {
             Log.Warning("Invalid Content-Type '{ContentType}' for {Method} request from {RemoteIp}",
                 contentType, context.Request.Method, context.Connection.RemoteIpAddress);

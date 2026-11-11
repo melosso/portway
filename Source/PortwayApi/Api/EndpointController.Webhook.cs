@@ -34,8 +34,23 @@ public sealed partial class EndpointController
         if (!AcceptsVerification(route, endpoint, HttpContext.Items[Middleware.TokenAuthMiddleware.VerifiedWebhookKey]))
             return PortwayResults.Unauthorized("Authentication required");
 
-        if (!JsonBody.TryParse(requestBody, out _))
-            return PortwayResults.BadRequest(JsonBody.InvalidMessage);
+        var rule = endpoint.Verification?.GetValueOrDefault(route.Id);
+        var isForm = Microsoft.Net.Http.Headers.MediaTypeHeaderValue.TryParse(Request.ContentType, out var media)
+            && media.MediaType.Equals("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase);
+        if (isForm && rule is not { AcceptForm: true })
+            return PortwayResults.UnsupportedMediaType("Form bodies are not accepted for this webhook id.");
+
+        if (!isForm)
+        {
+            if (!JsonBody.TryParse(requestBody, out var json))
+                return PortwayResults.BadRequest(JsonBody.InvalidMessage);
+
+            // slack confirms the url with a signed challenge
+            if (rule?.Scheme == "Slack" && json.ValueKind == System.Text.Json.JsonValueKind.Object
+                && json.TryGetProperty("type", out var type) && type.ValueEquals("url_verification")
+                && json.TryGetProperty("challenge", out var challenge) && challenge.ValueKind == System.Text.Json.JsonValueKind.String)
+                return Ok(new { challenge = challenge.GetString() });
+        }
 
         try
         {

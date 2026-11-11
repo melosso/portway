@@ -25,6 +25,7 @@ public sealed record WebhookVerification
     public string? DeliveryIdField { get; init; }
     public string? DedupeKey { get; init; }
     public bool Deduplicate { get; init; }
+    public bool AcceptForm { get; init; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Unknown { get; init; }
