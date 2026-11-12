@@ -19,18 +19,21 @@ public static partial class EndpointHandler
         "Proxy", "proxy", "", "*.json", NamespaceAware: true,
         ParseProxyEndpointDefinition,
         d => !string.IsNullOrWhiteSpace(d.Url) && d.Methods.Any(),
+        "Url and at least one method are required",
         LogEndpointLoading);
 
     private static readonly EndpointLoaderSpec SqlLoaderSpec = new(
         "SQL", "SQL", "SQL ", "*.json", NamespaceAware: true,
         ParseSqlEndpointDefinition,
         d => !string.IsNullOrWhiteSpace(d.DatabaseObjectName),
+        "DatabaseObjectName is required",
         (key, d) => Log.Debug($"SQL Endpoint: {key}; Object: {d.DatabaseSchema}.{d.DatabaseObjectName}; Namespace: {d.EffectiveNamespace ?? "None"}"));
 
     private static readonly EndpointLoaderSpec StaticLoaderSpec = new(
         "Static", "static", "static ", "entity.json", NamespaceAware: true,
         ParseStaticEndpointDefinition,
         _ => true,
+        "The endpoint file is empty",
         (key, d) => Log.Debug("Static Endpoint: {Name} ({Hidden}) - {ContentType} | FullPath: {FullPath} | Namespace: {Namespace} | InferredNamespace: {InferredNamespace}",
             key,
             d.Hidden ? "Private" : "Public",
@@ -43,6 +46,7 @@ public static partial class EndpointHandler
         "File", "file", "file ", "*.json", NamespaceAware: true,
         ParseFileEndpointDefinition,
         _ => true,
+        "The endpoint file is empty",
         (key, d) => Log.Debug("File Endpoint: {Name} ({Hidden}) | Namespace: {Namespace}",
             key, d.Hidden ? "Private" : "Public", d.EffectiveNamespace ?? "None"));
 
@@ -50,6 +54,7 @@ public static partial class EndpointHandler
         "Webhook", "webhook", "webhook ", "entity.json", NamespaceAware: true,
         ParseWebhookEndpointDefinition,
         d => !string.IsNullOrWhiteSpace(d.DatabaseObjectName),
+        "DatabaseObjectName is required",
         (key, d) =>
         {
             Log.Debug("Webhook Endpoint: {Name}; Object: {Schema}.{Object}; Namespace: {Namespace}",
@@ -64,9 +69,12 @@ public static partial class EndpointHandler
         });
 
     /// <summary>
-    /// Tenancy, Stability and Badges errors for an endpoint file, using the loader's parser and rules
+    /// Load errors for an endpoint file
     /// </summary>
-    public static IReadOnlyList<string> ValidateConfig(EndpointType type, string json)
+    public static IReadOnlyList<string> ValidateConfig(EndpointType type, string json, string? file = null, string? endpointsDirectory = null) =>
+        CheckConfig(type, json, file, endpointsDirectory).Errors;
+
+    internal static (IReadOnlyList<string> Errors, IReadOnlyList<string> Warnings) CheckConfig(EndpointType type, string json, string? file = null, string? endpointsDirectory = null)
     {
         var spec = type switch
         {
@@ -78,19 +86,33 @@ public static partial class EndpointHandler
             _ => null
         };
         if (spec is null)
-            return [];
+            return ([], []);
 
         try
         {
-            return spec.Parse(json) is { } definition
-                ? [.. Helpers.TenancyRules.Validate(definition), .. Helpers.EndpointMetadataRules.Validate(definition)]
-                : [];
+            var (_, definition, errors, metadataErrors) = EndpointDirectoryLoader.Evaluate(
+                file is not null && endpointsDirectory is not null ? file : null, json, endpointsDirectory ?? "", spec);
+            errors.AddRange(metadataErrors);
+            if (type == EndpointType.Webhook)
+                errors.AddRange((definition?.AllowedColumns ?? []).Where(UnroutableWebhookId).Select(id => $"AllowedColumns id '{id}' cannot be used in a URL; remove spaces, slashes, quotes, brackets, ? # and %"));
+            var warnings = new List<string>();
+            foreach (var (id, rule) in definition?.Verification ?? new Dictionary<string, Services.WebhookRule>())
+            {
+                if (rule.Error is not null)
+                    errors.Add($"Verification.{id}: {rule.Error}");
+                if (rule.Warning is not null)
+                    warnings.Add($"Verification.{id}: {rule.Warning}");
+            }
+            return (errors, warnings);
         }
-        catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException)
+        catch (JsonException ex)
         {
-            return [ex is ArgumentException ? "Tenancy lists the same header twice" : ex.Message];
+            return ([ex.Message], []);
         }
     }
+
+    internal static bool UnroutableWebhookId(string id) =>
+        id.Length == 0 || id.Any(c => char.IsWhiteSpace(c) || "/\\()'\"?#%".Contains(c));
 
     // Resolved once; accessors read it per lookup and GetCurrentDirectory is a syscall
     private static readonly string EndpointsBasePath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints");

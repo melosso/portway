@@ -232,6 +232,19 @@ public static partial class WebUiEndpointExtensions
         });
     }
 
+    private static string? TypeFolder(string type) => type.ToLowerInvariant() switch
+    {
+        "sql" => "endpoints/SQL",
+        "proxy" or "composite" => "endpoints/Proxy",
+        "file" => "endpoints/Files",
+        "static" => "endpoints/Static",
+        "webhook" => "endpoints/Webhooks",
+        _ => null
+    };
+
+    private static string? EndpointsDirectoryOf(string type) =>
+        TypeFolder(type) is { } folder ? Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), folder)) : null;
+
     private static (string? filePath, string? error) ResolveEndpointPath(string type, string name)
     {
         // allow namespaced paths
@@ -239,22 +252,11 @@ public static partial class WebUiEndpointExtensions
             return (null, "Invalid endpoint name");
 
         var baseDir = Directory.GetCurrentDirectory();
-        var (typeDir, isFixed) = type.ToLowerInvariant() switch
-        {
-            "sql" => ("endpoints/SQL", false),
-            "proxy" => ("endpoints/Proxy", false),
-            "composite" => ("endpoints/Proxy", false),
-            "file" => ("endpoints/Files", false),
-            "static" => ("endpoints/Static", false),
-            "webhook" => ("endpoints/Webhooks", false),
-            _ => ((string?)null, false)
-        };
+        var typeDir = TypeFolder(type);
 
         if (typeDir == null) return (null, $"Unknown endpoint type: {type}");
 
-        var filePath = isFixed
-            ? Path.GetFullPath(Path.Combine(baseDir, typeDir, "entity.json"))
-            : Path.GetFullPath(Path.Combine(baseDir, typeDir, name, "entity.json"));
+        var filePath = Path.GetFullPath(Path.Combine(baseDir, typeDir, name, "entity.json"));
 
         var allowedBase = Path.GetFullPath(Path.Combine(baseDir, typeDir));
         if (!filePath.StartsWith(allowedBase + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
@@ -262,7 +264,7 @@ public static partial class WebUiEndpointExtensions
             return (null, "Invalid path");
 
         // fall back to the leaf folder for namespaced names
-        if (!isFixed && !File.Exists(filePath) && name.Contains('/') && !EndpointVersion.TryParse(name.Split('/')[^1], out _))
+        if (!File.Exists(filePath) && name.Contains('/') && !EndpointVersion.TryParse(name.Split('/')[^1], out _))
         {
             var leafName = name.Split('/')[^1];
             var fallbackPath = Path.GetFullPath(Path.Combine(baseDir, typeDir, leafName, "entity.json"));

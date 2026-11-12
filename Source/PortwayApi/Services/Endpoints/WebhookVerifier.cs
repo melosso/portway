@@ -14,9 +14,6 @@ public enum WebhookMode
     StandardWebhooks
 }
 
-/// <summary>
-/// Effective verification of one webhook id. <see cref="Error"/> set means the id answers 401.
-/// </summary>
 public sealed record WebhookRule
 {
     public required string Scheme { get; init; }
@@ -41,9 +38,6 @@ public sealed record WebhookRule
     public string? Error { get; init; }
     public string? Warning { get; init; }
 
-    /// <summary>
-    /// Header that must be present before the body is read
-    /// </summary>
     public string RequiredHeader => Mode switch
     {
         WebhookMode.StandardWebhooks => "webhook-signature",
@@ -51,9 +45,6 @@ public sealed record WebhookRule
         _ => Header ?? "Authorization"
     };
 
-    /// <summary>
-    /// Every header name this rule reads, for log redaction
-    /// </summary>
     public IEnumerable<string> HeaderNames =>
         new[] { RequiredHeader, TimestampHeader, IdHeader, DeliveryIdHeader,
             Mode == WebhookMode.StandardWebhooks ? "webhook-id" : null, Mode == WebhookMode.StandardWebhooks ? "webhook-timestamp" : null }
@@ -67,9 +58,6 @@ public readonly record struct WebhookVerifyResult(bool Verified, string Reason)
     public static WebhookVerifyResult Fail(string reason) => new(false, reason);
 }
 
-/// <summary>
-/// Builds verification rules from entity.json and verifies deliveries on raw bytes
-/// </summary>
 public static partial class WebhookVerifier
 {
     private const int DigestLength = 32;
@@ -83,6 +71,11 @@ public static partial class WebhookVerifier
 
     public static bool IsValidDeliveryId(string? value) => value is not null && DeliveryIdPattern().IsMatch(value);
 
+    private static readonly string[] PresetNames = ["GitHub", "Stripe", "Slack", "Shopify", "Jira", "Mollie", "ShipHero", "StandardWebhooks"];
+
+    public static IReadOnlyDictionary<string, WebhookRule> PresetRules() =>
+        PresetNames.ToDictionary(name => name, name => Build(new WebhookVerification { Scheme = name, Secret = "${secret:PRESET}" }));
+
     private static WebhookVerification? Preset(string scheme) => scheme.ToLowerInvariant() switch
     {
         "github" => new() { Header = "X-Hub-Signature-256", Prefix = "sha256=", Encoding = "Hex", SignedContent = "{body}", DeliveryIdHeader = "X-GitHub-Delivery" },
@@ -95,9 +88,6 @@ public static partial class WebhookVerifier
         _ => null
     };
 
-    /// <summary>
-    /// Builds the effective rule. Invalid configuration yields a rule with <see cref="WebhookRule.Error"/>.
-    /// </summary>
     public static WebhookRule Build(WebhookVerification config)
     {
         var scheme = config.Scheme ?? string.Empty;
@@ -251,9 +241,6 @@ public static partial class WebhookVerifier
         return false;
     }
 
-    /// <summary>
-    /// Verifies a delivery against each secret in turn. Every comparison is constant time.
-    /// </summary>
     public static WebhookVerifyResult Verify(WebhookRule rule, IHeaderDictionary headers, ReadOnlySpan<byte> body, IReadOnlyList<string> secrets, DateTimeOffset now)
     {
         if (rule.Error is not null)

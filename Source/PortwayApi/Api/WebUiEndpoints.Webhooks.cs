@@ -10,7 +10,17 @@ public static partial class WebUiEndpointExtensions
 {
     private static void MapWebhookRoutes(WebApplication app)
     {
-        // administrator only, payloads can hold personal data
+        app.MapGet("/_/api/webhook-presets", () => Results.Json(WebhookVerifier.PresetRules().ToDictionary(p => p.Key, p => new
+        {
+            header = p.Value.Header,
+            prefix = p.Value.Prefix,
+            signed_content = p.Value.SignedContent,
+            timestamp_header = p.Value.TimestampHeader,
+            id_header = p.Value.IdHeader,
+            delivery_id_header = p.Value.DeliveryIdHeader,
+            delivery_id_field = p.Value.DeliveryIdField
+        }))).ExcludeFromDescription();
+
         app.MapGet("/_/api/webhooks/{**name}", async (string name, string? env, HttpContext context) =>
         {
             if (context.Items[SignedInRoleKey] as string != AdminUserRoles.Administrator)

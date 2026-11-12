@@ -1340,6 +1340,89 @@ public class WebUiSecurityTests : IDisposable
         }
     }
 
+    [Theory]
+    [InlineData("proxy", "UiRefuse/NoUrl", """{"Methods":["GET"]}""", "Url and at least one method are required")]
+    [InlineData("sql", "UiRefuse/NoObject", """{"DatabaseSchema":"dbo"}""", "DatabaseObjectName is required")]
+    [InlineData("static", "UiRefuse/BadNamespace", """{"ContentType":"text/plain","ContentFile":"a.txt","Namespace":"1bad"}""", "Namespace")]
+    [InlineData("webhook", "UiRefuseFlat", """{"DatabaseObjectName":"WebhookData","AllowedColumns":["hook"],"Verification":{"hook":{"Scheme":"GitHub","Secret":"${secret:GH}"}}}""", "Verification requires a namespace")]
+    [InlineData("webhook", "UiRefuse/Hooks", """{"DatabaseObjectName":"WebhookData","AllowedColumns":["hook"],"Verification":{"hook":{"Scheme":"Bogus","Secret":"${secret:GH}"}}}""", "Verification.hook:")]
+    [InlineData("webhook", "UiRefuse/Hooks", """{"DatabaseObjectName":"WebhookData","AllowedColumns":["hook"],"Verification":{"hook":{"Scheme":"Hmac","Secret":"plain-text","Header":"X-Sig","SignedContent":"{body}"}}}""", "Secret must be a ${secret:NAME} reference")]
+    [InlineData("webhook", "UiRefuse/Hooks", """{"DatabaseObjectName":"WebhookData","AllowedColumns":["bad id/x"]}""", "cannot be used in a URL")]
+    public async Task EndpointSave_RefusesWhatTheLoaderRefuses(string type, string name, string content, string expected)
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+        var folder = type switch { "proxy" => "Proxy", "sql" => "SQL", "static" => "Static", _ => "Webhooks" };
+        var root = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", folder, name.Split('/')[0]);
+        try
+        {
+            var put = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/endpoints/{type}/{name}?raw=true", authCookie, csrfCookie, new { content }), TestContext.Current.CancellationToken);
+            var body = await put.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
+            Assert.Contains(body.GetProperty("errors").EnumerateArray(), e => e.GetString()!.Contains(expected));
+            Assert.False(File.Exists(Path.Combine(Directory.GetCurrentDirectory(), "endpoints", folder, name, "entity.json")));
+
+            var post = await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/_/api/endpoints/{type}", authCookie, csrfCookie, new { name, content }), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task WebhookPresets_ListSenderHeaders()
+    {
+        var client = CreateClient();
+        var (authCookie, _) = await LoginAsync(client);
+
+        var presets = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/webhook-presets", authCookie), TestContext.Current.CancellationToken))
+            .Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+
+        Assert.Equal("X-Hub-Signature-256", presets.GetProperty("GitHub").GetProperty("header").GetString());
+        Assert.Equal("X-GitHub-Delivery", presets.GetProperty("GitHub").GetProperty("delivery_id_header").GetString());
+        Assert.Equal("webhook-id", presets.GetProperty("StandardWebhooks").GetProperty("delivery_id_header").GetString());
+        Assert.DoesNotContain("PRESET", presets.GetRawText());
+    }
+
+    [Fact]
+    public async Task EndpointSave_ReturnsEveryError()
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+        const string content = """{"DatabaseObjectName":"WebhookData","AllowedColumns":["a","b"],"Verification":{"a":{"Scheme":"Bogus"},"b":{"Scheme":"Hmac","Secret":"${secret:B}"}}}""";
+
+        var put = await client.SendAsync(AuthedRequest(HttpMethod.Put, "/_/api/endpoints/webhook/UiEvery/Hooks?raw=true", authCookie, csrfCookie, new { content }), TestContext.Current.CancellationToken);
+        var errors = (await put.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken)).GetProperty("errors").EnumerateArray().Select(e => e.GetString()!).ToList();
+
+        Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
+        Assert.Contains(errors, e => e.StartsWith("Verification.a:"));
+        Assert.Contains(errors, e => e.StartsWith("Verification.b:"));
+        Assert.False(Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Webhooks", "UiEvery")));
+    }
+
+    [Theory]
+    [InlineData("webhook", "UiMatch", """{"DatabaseObjectName":"WebhookData","AllowedColumns":["hook"],"Verification":{"hook":{"Scheme":"GitHub","Secret":"${secret:GH}"}}}""")]
+    [InlineData("webhook", "UiMatch/Hooks", """{"DatabaseObjectName":"WebhookData","AllowedColumns":["hook"],"Verification":{"hook":{"Scheme":"Bogus"}}}""")]
+    [InlineData("proxy", "UiMatch/NoUrl", """{"Methods":["GET"]}""")]
+    public async Task ValidateRoute_MatchesSave(string type, string name, string content)
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+
+        var check = await (await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/_/api/endpoints/{type}/validate", authCookie, csrfCookie, new { name, content }), TestContext.Current.CancellationToken))
+            .Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        var save = await (await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/endpoints/{type}/{name}?raw=true", authCookie, csrfCookie, new { content }), TestContext.Current.CancellationToken))
+            .Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+
+        Assert.False(check.GetProperty("valid").GetBoolean());
+        Assert.Equal(
+            save.GetProperty("errors").EnumerateArray().Select(e => e.GetString()),
+            check.GetProperty("errors").EnumerateArray().Select(e => e.GetString()));
+    }
+
     [Fact]
     public async Task EndpointSave_KeepsInlineArrays()
     {

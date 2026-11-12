@@ -130,8 +130,9 @@ public static partial class WebUiEndpointExtensions
 
             rawContent = KeepInlineValues(StampDeprecatedSince(rawContent, existing, format), existing, format);
 
-            if (ConfigError(type, rawContent) is { } putConfigError)
-                return Results.Json(new { error = putConfigError }, statusCode: 400);
+            var (putErrors, putWarnings) = CheckEndpointConfig(type, rawContent, filePath!);
+            if (putErrors.Count > 0)
+                return ConfigErrors(putErrors);
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath!)!);
             var backupPath = Services.Configuration.ConfigBackupService.Backup(filePath!);
@@ -143,7 +144,7 @@ public static partial class WebUiEndpointExtensions
 
             Audit(context, "update", "endpoint", $"{type}/{name}", null, backupPath);
 
-            return Results.Ok(new { ok = true, last_modified = lastMod, warnings = await MissingSecretWarningsAsync(app.Services, rawContent) });
+            return Results.Ok(new { ok = true, last_modified = lastMod, warnings = (string[])[.. putWarnings, .. await MissingSecretWarningsAsync(app.Services, rawContent)] });
         }).ExcludeFromDescription();
 
         // POST /_/api/endpoints/{type} , create a new endpoint
@@ -172,8 +173,9 @@ public static partial class WebUiEndpointExtensions
             try { using var _ = JsonDocument.Parse(rawContent); }
             catch (JsonException ex) { return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400); }
 
-            if (ConfigError(type, rawContent) is { } postConfigError)
-                return Results.Json(new { error = postConfigError }, statusCode: 400);
+            var (postErrors, postWarnings) = CheckEndpointConfig(type, rawContent, filePath!);
+            if (postErrors.Count > 0)
+                return ConfigErrors(postErrors);
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath!)!);
             await File.WriteAllTextAsync(filePath!, rawContent);
@@ -182,7 +184,7 @@ public static partial class WebUiEndpointExtensions
             ReloadEndpoints(app.Services, epType);
 
             Audit(context, "create", "endpoint", $"{type}/{name}");
-            return Results.Json(new { ok = true, name, warnings = await MissingSecretWarningsAsync(app.Services, rawContent) }, statusCode: 201);
+            return Results.Json(new { ok = true, name, warnings = (string[])[.. postWarnings, .. await MissingSecretWarningsAsync(app.Services, rawContent)] }, statusCode: 201);
         }).ExcludeFromDescription();
 
         // DELETE /_/api/endpoints/{type}/{**name} , remove an endpoint
@@ -264,54 +266,33 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { valid = false, errors = new[] { $"Invalid JSON: {ex.Message}" } });
             }
 
-            var errors = new List<string>();
+            if (TypeStringToEndpointType(type) is null)
+                return Results.Json(new { error = $"Unknown endpoint type: {type}" }, statusCode: 400);
 
-            switch (type.ToLowerInvariant())
+            string? filePath = null;
+            if (body.TryGetProperty("name", out var nameEl) && nameEl.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(nameEl.GetString()))
             {
-                case "sql":
-                case "webhook":
-                    if (root.ValueKind != JsonValueKind.Object ||
-                        !root.TryGetProperty("DatabaseObjectName", out var dbo) || dbo.ValueKind != JsonValueKind.String ||
-                        string.IsNullOrWhiteSpace(dbo.GetString()))
-                        errors.Add("DatabaseObjectName is required for SQL endpoints");
-                    break;
-                case "proxy":
-                case "composite":
-                    if (root.ValueKind != JsonValueKind.Object ||
-                        !root.TryGetProperty("Url", out var url) || url.ValueKind != JsonValueKind.String ||
-                        string.IsNullOrWhiteSpace(url.GetString()))
-                        errors.Add("Url is required for Proxy endpoints");
-                    if (root.ValueKind != JsonValueKind.Object ||
-                        !root.TryGetProperty("Methods", out var methods) || methods.ValueKind != JsonValueKind.Array ||
-                        methods.GetArrayLength() == 0)
-                        errors.Add("Methods must contain at least one HTTP method");
-                    break;
-                case "file":
-                case "static":
-                    break;
-                default:
-                    return Results.Json(new { error = $"Unknown endpoint type: {type}" }, statusCode: 400);
+                var (path, pathError) = ResolveEndpointPath(type, nameEl.GetString()!);
+                if (pathError != null) return Results.Json(new { valid = false, errors = new[] { pathError }, warnings = Array.Empty<string>() });
+                filePath = path;
             }
 
-            if (TypeStringToEndpointType(type) is { } validateType)
-                errors.AddRange(EndpointHandler.ValidateConfig(validateType, rawContent));
+            var (checkErrors, checkWarnings) = CheckEndpointConfig(type, rawContent, filePath);
+            var errors = checkErrors.ToList();
 
             // Same namespace rules the loader enforces at startup (charset, length, reserved names)
-            if (root.ValueKind == JsonValueKind.Object &&
+            if (filePath is null && root.ValueKind == JsonValueKind.Object &&
                 root.TryGetProperty("Namespace", out var ns) && ns.ValueKind == JsonValueKind.String)
             {
                 errors.AddRange(DirectoryHelper.ValidateNamespaceName(ns.GetString() ?? ""));
             }
 
-            return Results.Json(new { valid = errors.Count == 0, errors });
+            return Results.Json(new { valid = errors.Count == 0, errors = errors.Distinct().ToList(), warnings = checkWarnings });
         }).ExcludeFromDescription();
 
         // Client JS errors, unauthenticated for sendBeacon and IP rate limited
     }
 
-    /// <summary>
-    /// One warning per referenced secret without a value in an environment the endpoint allows
-    /// </summary>
     internal static async Task<List<string>> MissingSecretWarningsAsync(IServiceProvider services, string json)
     {
         var names = SecretReference.Names(json);
@@ -347,10 +328,13 @@ public static partial class WebUiEndpointExtensions
         return warnings;
     }
 
-    private static string? ConfigError(string type, string json) =>
-        TypeStringToEndpointType(type) is { } endpointType && EndpointHandler.ValidateConfig(endpointType, json) is { Count: > 0 } errors
-            ? string.Join("; ", errors)
-            : null;
+    private static (IReadOnlyList<string> Errors, IReadOnlyList<string> Warnings) CheckEndpointConfig(string type, string json, string? filePath) =>
+        TypeStringToEndpointType(type) is { } endpointType
+            ? EndpointHandler.CheckConfig(endpointType, json, filePath, filePath is null ? null : EndpointsDirectoryOf(type))
+            : ([], []);
+
+    private static IResult ConfigErrors(IReadOnlyList<string> errors) =>
+        Results.Json(new { error = string.Join("; ", errors), errors }, statusCode: 400);
 
     private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
     private static readonly JsonSerializerOptions IndentedJson4 = new(IndentedJson) { IndentSize = 4 };
@@ -372,7 +356,6 @@ public static partial class WebUiEndpointExtensions
                 entity[key] = UrlRedaction.Redact(text);
             else if (key.Equals("FallbackUrls", StringComparison.OrdinalIgnoreCase) && value is JsonArray urls)
                 entity[key] = new JsonArray([.. urls.Select(u => (JsonNode?)UrlRedaction.Redact(u?.GetValue<string>()))]);
-            // a reference names a secret, a literal is the credential itself
             else if (key.Equals("Headers", StringComparison.OrdinalIgnoreCase) && value is JsonObject headers)
                 foreach (var (name, header) in headers.ToList())
                     headers[name] = header is JsonValue v && v.TryGetValue<string>(out var headerValue) && SecretReference.ExactName(headerValue) is not null ? headerValue : "Set";
@@ -396,7 +379,6 @@ public static partial class WebUiEndpointExtensions
         return entity.ToJsonString(format);
     }
 
-    // top-level values written on one line stay as written while unchanged
     private static string KeepInlineValues(string json, string? existing, JsonSerializerOptions format)
     {
         if (existing is null)
