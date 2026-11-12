@@ -15,7 +15,7 @@ environment:
   - PORTWAY_SECURE_COOKIES=true
 ```
 
-The console is enabled by default and accepts client addresses from loopback and `allowedHosts` in `environments/network-access-policy.json`. If `allowedHosts` has two or fewer entries, the IP addresses of the host are added. `PORTWAY_WEBUI_ENABLED=false` turns it off. `PORTWAY_PUBLIC_ORIGINS` (comma-separated) allows external origins. `PORTWAY_SECURE_COOKIES` restricts cookies to HTTPS. All `Console` settings: [Application settings](/reference/app-settings#console).
+The console listens on port 8081 (`PORTWAY_PORT_CONSOLE`). The API port (`PORTWAY_PORT_API`, default 8080) returns `404` for console paths. The console is enabled by default and accepts client addresses from loopback and `allowedHosts` in `environments/network-access-policy.json`. If `allowedHosts` has two or fewer entries, the IP addresses of the host are added. `PORTWAY_CONSOLE_ENABLED=false` turns it off. `PORTWAY_PUBLIC_ORIGINS` (comma-separated) allows external origins. `PORTWAY_SECURE_COOKIES` restricts cookies to HTTPS. All `Console` settings: [Application settings](/reference/app-settings#console).
 
 ## Accounts
 

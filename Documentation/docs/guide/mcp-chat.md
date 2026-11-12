@@ -30,16 +30,16 @@ The setup wizard opens on the first visit to `/_/mcp/chat` and under **Settings 
 
 ## Supply the API key via environment variable
 
-The environment variable `PORTWAY_CHAT_API_KEY` overrides the key stored in `mcp.db`:
+The environment variable `PORTWAY_MCP_CHAT_API_KEY` overrides the key stored in `mcp.db`:
 
 ::: code-group
 
 ```bash [Linux]
-export PORTWAY_CHAT_API_KEY=sk-ant-...
+export PORTWAY_MCP_CHAT_API_KEY=sk-ant-...
 ```
 
 ```powershell [Windows]
-[Environment]::SetEnvironmentVariable('PORTWAY_CHAT_API_KEY', 'sk-ant-...', 'Machine')
+[Environment]::SetEnvironmentVariable('PORTWAY_MCP_CHAT_API_KEY', 'sk-ant-...', 'Machine')
 ```
 
 :::

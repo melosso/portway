@@ -28,7 +28,7 @@ Each instance has:
 |---|---|
 | Working directory | Its own folder; `auth.db`, `endpoints/`, `environments/` and `tokens/` are per instance |
 | `PathBase` (`PORTWAY_PATH_BASE`) | Its path, e.g. `/v1` |
-| Port | Its own, e.g. `5001` (`ASPNETCORE_URLS=http://127.0.0.1:5001`) |
+| Port | Its own, e.g. `5001`. `PORTWAY_PORT_API` and `PORTWAY_PORT_CONSOLE` are both set to it: one listener serves the API and the console |
 | `ForwardedHeaders:KnownProxies` (`PORTWAY_KNOWN_PROXIES`) | The reverse proxy address ([Application Settings](/reference/app-settings#forwardedheaders)) |
 
 The proxy forwards the full path including the prefix; Portway removes it through `PathBase`. Shared data sources use a distinct name per instance (e.g. Redis `InstanceName`, SQL `ApplicationName`).

@@ -39,6 +39,7 @@ services:
     image: ghcr.io/melosso/portway:latest
     ports:
       - "8080:8080"
+      - "127.0.0.1:8081:8081"
     volumes:
       - portway_app:/app:z
       - ./environments:/app/environments:z
@@ -81,6 +82,16 @@ The first start creates `tokens/`, `log/` and `auth.db`. Checks:
 
 - `curl http://localhost:8080/health/live` returns `Alive`
 - `http://localhost:8080/docs` serves the API reference
+- `http://localhost:8081/_` serves the console sign-in
+
+## Ports
+
+| Port | Variable | Serves |
+|---|---|---|
+| `8080` | `PORTWAY_PORT_API` | API, `/docs`, `/mcp`, `/health`. `/_/*` returns `404` |
+| `8081` | `PORTWAY_PORT_CONSOLE` | Console and every API path |
+
+The compose file publishes the console port on `127.0.0.1`. A reverse proxy or a private network provides remote console access. If both variables are set to the same port: one listener serves the API and the console.
 
 ## Data persistence
 
@@ -112,7 +123,7 @@ Release notes and backup steps: [Upgrading Portway](/guide/upgrading).
 
 The container serves plain HTTP. TLS terminates at a reverse proxy (Nginx, Traefik, Caddy) or ingress. `PORTWAY_KNOWN_PROXIES` or `PORTWAY_KNOWN_NETWORKS` identifies the proxy ([ForwardedHeaders](/reference/app-settings#forwardedheaders)).
 
-`PORTWAY_USE_HTTPS=true` requires a Kestrel certificate (`Kestrel__Certificates__Default__Path`).
+`PORTWAY_HTTPS_ENABLED=true` requires a Kestrel certificate (`Kestrel__Certificates__Default__Path`).
 
 ## Troubleshooting
 
@@ -125,8 +136,8 @@ docker compose logs portway
 | Error | Likely cause | Resolution |
 |---|---|---|
 | `PORTWAY_ENCRYPTION_KEY is not set` | Missing `.env` or missing key in `.env` | Set the key ([Installation](#1-set-the-encryption-key)) |
-| `Hosting failed to start` | `PORTWAY_USE_HTTPS=true` without a certificate | Set `Kestrel__Certificates__Default__Path` or remove `PORTWAY_USE_HTTPS` ([TLS](#tls)) |
-| `port is already allocated` | Host port 8080 taken by another process | Change the host side of the `ports` mapping, e.g. `"8081:8080"` |
+| `Hosting failed to start` | `PORTWAY_HTTPS_ENABLED=true` without a certificate | Set `Kestrel__Certificates__Default__Path` or remove `PORTWAY_HTTPS_ENABLED` ([TLS](#tls)) |
+| `port is already allocated` | Host port 8080 or 8081 taken by another process | Change the host side of the `ports` mapping, e.g. `"9080:8080"` |
 
 | Log | Location |
 |---|---|

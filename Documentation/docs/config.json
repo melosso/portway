@@ -6,7 +6,7 @@
   "versions": {
     "items": [
       {
-        "text": "v0.13",
+        "text": "Latest",
         "link": "/"
       },
       {
@@ -674,7 +674,7 @@
   "brandImage": "/assets/brand-image.webp",
   "favicon": "/favicon.ico",
   "lastUpdated": true,
-  "promo": "**Announcement!** Version 0.11 is out now! Check out the [release notes](https://github.com/melosso/portway/releases).",
+  "promo": "**Announcement!** Version 0.13 is out now! Check out the [release notes](https://github.com/melosso/portway/releases).",
   "footer": "© {year} Melosso.com · Licensed under [EUPL 1.2](LICENSE). Built with [Bark](https://github.com/hawkinslabdev/bark/).",
   "editLink": {
     "pattern": "https://github.com/melosso/portway/edit/main/Documentation/docs/:path",

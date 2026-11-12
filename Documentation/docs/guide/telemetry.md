@@ -37,9 +37,9 @@ Observability platforms (Grafana Alloy, Jaeger, Datadog) use `Otlp`; a standalon
 | Key | Default | Description |
 |---|---|---|
 | `Provider` (`PORTWAY_TELEMETRY_PROVIDER`) | `None` | `None`, `Otlp` or `Prometheus` |
-| `ServiceName` (`PORTWAY_SERVICE_NAME`) | `Portway.Api` | Service name on every span and metric |
+| `ServiceName` (`PORTWAY_TELEMETRY_SERVICE_NAME`) | `Portway.Api` | Service name on every span and metric |
 | `ResourceAttributes` | none | Comma-separated `key=value` pairs added to every span and metric |
-| `Otlp:Endpoint` (`PORTWAY_OTLP_ENDPOINT`) | `http://localhost:4317` | Collector gRPC address |
+| `Otlp:Endpoint` (`PORTWAY_TELEMETRY_OTLP_ENDPOINT`) | `http://localhost:4317` | Collector gRPC address |
 
 Environment variables:
 
@@ -47,14 +47,14 @@ Environment variables:
 
 ```bash [Linux]
 export PORTWAY_TELEMETRY_PROVIDER=Otlp
-export PORTWAY_OTLP_ENDPOINT=http://otel-collector:4317
-export PORTWAY_SERVICE_NAME=portway-prod
+export PORTWAY_TELEMETRY_OTLP_ENDPOINT=http://otel-collector:4317
+export PORTWAY_TELEMETRY_SERVICE_NAME=portway-prod
 ```
 
 ```powershell [Windows]
 $env:PORTWAY_TELEMETRY_PROVIDER = "Otlp"
-$env:PORTWAY_OTLP_ENDPOINT = "http://otel-collector:4317"
-$env:PORTWAY_SERVICE_NAME = "portway-prod"
+$env:PORTWAY_TELEMETRY_OTLP_ENDPOINT = "http://otel-collector:4317"
+$env:PORTWAY_TELEMETRY_SERVICE_NAME = "portway-prod"
 ```
 
 :::
@@ -123,8 +123,8 @@ services:
     image: ghcr.io/melosso/portway:latest
     environment:
       PORTWAY_TELEMETRY_PROVIDER: Otlp
-      PORTWAY_OTLP_ENDPOINT: http://otel-collector:4317
-      PORTWAY_SERVICE_NAME: portway-prod
+      PORTWAY_TELEMETRY_OTLP_ENDPOINT: http://otel-collector:4317
+      PORTWAY_TELEMETRY_SERVICE_NAME: portway-prod
     ports:
       - "8080:8080"
 
@@ -165,7 +165,7 @@ service:
 With `PORTWAY_TELEMETRY_PROVIDER: Prometheus` the collector service is not needed; Prometheus scrapes the `portway` container.
 
 :::tip
-For Grafana Alloy or the Grafana Agent, set `PORTWAY_OTLP_ENDPOINT` to its OTLP receiver. Traces (Tempo) and metrics (Mimir/Prometheus) are sent through one pipeline.
+For Grafana Alloy or the Grafana Agent, set `PORTWAY_TELEMETRY_OTLP_ENDPOINT` to its OTLP receiver. Traces (Tempo) and metrics (Mimir/Prometheus) are sent through one pipeline.
 :::
 
 ## Windows Server and IIS
@@ -191,7 +191,7 @@ Under IIS, `<environmentVariables>` in `web.config` override `appsettings.json`:
     <aspNetCore processPath="dotnet" arguments=".\PortwayApi.dll" stdoutLogEnabled="false">
       <environmentVariables>
         <environmentVariable name="PORTWAY_TELEMETRY_PROVIDER" value="Otlp" />
-        <environmentVariable name="PORTWAY_OTLP_ENDPOINT" value="http://otel-collector.internal:4317" />
+        <environmentVariable name="PORTWAY_TELEMETRY_OTLP_ENDPOINT" value="http://otel-collector.internal:4317" />
       </environmentVariables>
     </aspNetCore>
   </system.webServer>

@@ -105,7 +105,7 @@ Portway encrypts plaintext secrets in `settings.json` at the next start (`PWENC:
 
 ## Azure Key Vault
 
-`PORTWAY_KEYVAULT_URI` adds Azure Key Vault as a source for connection strings, headers and secrets: [Azure Key Vault](/reference/secrets#azure-key-vault).
+`PORTWAY_KEY_VAULT_URI` adds Azure Key Vault as a source for connection strings, headers and secrets: [Azure Key Vault](/reference/secrets#azure-key-vault).
 
 ## Network access policy
 

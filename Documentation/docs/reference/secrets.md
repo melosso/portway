@@ -44,16 +44,16 @@ Client input is never resolved: a reference in a query string, path or body is s
 
 ### Azure Key Vault
 
-With `PORTWAY_KEYVAULT_URI` set, Key Vault values take precedence over the file:
+With `PORTWAY_KEY_VAULT_URI` set, Key Vault values take precedence over the file:
 
 ::: code-group
 
 ```powershell [Windows]
-$env:PORTWAY_KEYVAULT_URI = "https://your-keyvault.vault.azure.net/"
+$env:PORTWAY_KEY_VAULT_URI = "https://your-keyvault.vault.azure.net/"
 ```
 
 ```bash [Linux]
-export PORTWAY_KEYVAULT_URI="https://your-keyvault.vault.azure.net/"
+export PORTWAY_KEY_VAULT_URI="https://your-keyvault.vault.azure.net/"
 ```
 
 :::

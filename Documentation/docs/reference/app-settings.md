@@ -29,7 +29,7 @@ Every key on this page is editable under **Settings** or **Trace** in the consol
 | Key | Reason |
 |---|---|
 | `Serilog:WriteTo` | Sink list keyed by position |
-| `urls`, `Kestrel`, `ASPNETCORE_HTTP_PORTS` | Bind address; a wrong value leaves the gateway unreachable |
+| `Hosting:ApiPort`, `Hosting:ConsolePort`, `Kestrel` | Listener ports. A wrong value makes the gateway unreachable |
 | `OpenApi:SecurityDefinition:Name`, `In`, `Type`, `Scheme` | Bearer is the accepted token scheme |
 
 Validation rules for console writes:
@@ -212,6 +212,10 @@ A snapshot contains password hashes, token hashes and connection strings encrypt
 |---|---|---|
 | `AllowedHosts` | `*` | Accepted `Host` headers, separated by `;` (e.g. `api.example.com;*.example.com`) |
 | `PathBase` | `""` | Path prefix when hosted under a sub-path (e.g. `/portway`) |
+| `Hosting:ApiPort` | `8080` | API listener port |
+| `Hosting:ConsolePort` | `8081` | Console listener port |
+
+The API port returns `404` for `/_/*` and `/index.html`, and redirects `/` to `/docs`. The console port serves every path. If both ports are equal: one listener serves the API and the console. Portway ignores `urls`, `ASPNETCORE_URLS` and `ASPNETCORE_HTTP_PORTS`. On IIS, the site binding sets the port and both keys are ignored.
 
 ## Feature switches
 
@@ -232,40 +236,42 @@ Any key is set with `__` as separator (e.g. `RateLimiting__IpLimit`). Portway-sp
 | Variable | Configuration key | Legacy name |
 |---|---|---|
 | `PORTWAY_ENCRYPTION_KEY` | Encryption key for secrets at rest; required outside Development |  |
-| `PORTWAY_CHAT_API_KEY` | AI provider key for MCP chat; takes precedence over the stored key |  |
-| `PORTWAY_WEBUI_ENABLED` | `Console:Enabled` | `Console__Enabled` |
+| `PORTWAY_MCP_CHAT_API_KEY` | AI provider key for MCP chat; takes precedence over the stored key | `PORTWAY_CHAT_API_KEY` |
+| `PORTWAY_CONSOLE_ENABLED` | `Console:Enabled` | `PORTWAY_WEBUI_ENABLED`, `Console__Enabled` |
 | `PORTWAY_ADMIN_KEY` | `Console:AdminApiKey` (deprecated, no effect while `Console:Enabled` is set) | `Console__AdminApiKey` |
 | `PORTWAY_SECURE_COOKIES` | `Console:SecureCookies` | `Console__SecureCookies` |
 | `PORTWAY_PUBLIC_ORIGINS` | `Console:PublicOrigins` (list) | `Console__PublicOrigins__0` |
 | `PORTWAY_SEED_PASSWORD` | `Console:SeedPassword` | `Console__SeedPassword` |
 | `PORTWAY_SEED_TOKEN` | `Console:SeedToken` | `Console__SeedToken` |
 | `PORTWAY_PROMO_TEXT` | `Console:Customization:PromoText` | `Console__Customization__PromoText` |
-| `PORTWAY_PROMO_LOGIN` | `Console:Customization:PromoLogin` | `Console__Customization__PromoLogin` |
+| `PORTWAY_PROMO_LOGIN_ENABLED` | `Console:Customization:PromoLogin` | `PORTWAY_PROMO_LOGIN`, `Console__Customization__PromoLogin` |
 | `PORTWAY_LOGIN_FOOTER` | `Console:Customization:LoginFooter` | `Console__Customization__LoginFooter` |
-| `PORTWAY_OPENAPI_MARKDOWN` | `OpenApi:ServeMarkdown` | `OpenApi__ServeMarkdown` |
+| `PORTWAY_OPENAPI_MARKDOWN_ENABLED` | `OpenApi:ServeMarkdown` | `PORTWAY_OPENAPI_MARKDOWN`, `OpenApi__ServeMarkdown` |
 | `PORTWAY_OPENAPI_DESCRIPTION` | `OpenApi:Description` | `OpenApi__Description` |
 | `PORTWAY_KNOWN_PROXIES` | `ForwardedHeaders:KnownProxies` (list) | `ForwardedHeaders__KnownProxies__0` |
 | `PORTWAY_KNOWN_NETWORKS` | `ForwardedHeaders:KnownNetworks` (list) | `ForwardedHeaders__KnownNetworks__0` |
 | `PORTWAY_OIDC_ENABLED` | `Oidc:Enabled` | `Oidc__Enabled` |
 | `PORTWAY_MCP_ENABLED` | `Mcp:Enabled` | `Mcp__Enabled` |
-| `PORTWAY_CHAT_ENABLED` | `Mcp:ChatEnabled` | `Mcp__ChatEnabled` |
+| `PORTWAY_MCP_CHAT_ENABLED` | `Mcp:ChatEnabled` | `PORTWAY_CHAT_ENABLED`, `Mcp__ChatEnabled` |
 | `PORTWAY_TELEMETRY_PROVIDER` | `Telemetry:Provider` | `Telemetry__Provider` |
-| `PORTWAY_OTLP_ENDPOINT` | `Telemetry:Otlp:Endpoint` | `Telemetry__Otlp__Endpoint` |
-| `PORTWAY_SERVICE_NAME` | `Telemetry:ServiceName` | `Telemetry__ServiceName` |
+| `PORTWAY_TELEMETRY_OTLP_ENDPOINT` | `Telemetry:Otlp:Endpoint` | `PORTWAY_OTLP_ENDPOINT`, `Telemetry__Otlp__Endpoint` |
+| `PORTWAY_TELEMETRY_SERVICE_NAME` | `Telemetry:ServiceName` | `PORTWAY_SERVICE_NAME`, `Telemetry__ServiceName` |
 | `PORTWAY_ALLOWED_HOSTS` | `AllowedHosts` | `AllowedHosts` |
 | `PORTWAY_PATH_BASE` | `PathBase` | `PathBase` |
-| `PORTWAY_USE_HTTPS` | Kestrel serves HTTPS | `Use_HTTPS` |
+| `PORTWAY_PORT_API` | `Hosting:ApiPort` | `Hosting__ApiPort` |
+| `PORTWAY_PORT_CONSOLE` | `Hosting:ConsolePort` | `Hosting__ConsolePort` |
+| `PORTWAY_HTTPS_ENABLED` | Kestrel serves HTTPS | `PORTWAY_USE_HTTPS`, `Use_HTTPS` |
 | `PORTWAY_PROXY_USERNAME` | Outbound proxy user | `PROXY_USERNAME` |
 | `PORTWAY_PROXY_PASSWORD` | Outbound proxy password | `PROXY_PASSWORD` |
 | `PORTWAY_PROXY_DOMAIN` | Outbound proxy domain | `PROXY_DOMAIN` |
-| `PORTWAY_KEYVAULT_URI` | Azure Key Vault URI | `KEYVAULT_URI` |
+| `PORTWAY_KEY_VAULT_URI` | Azure Key Vault URI | `PORTWAY_KEYVAULT_URI`, `KEYVAULT_URI` |
 
 NTLM authentication at an outbound corporate proxy requires all three `PORTWAY_PROXY_*` variables. `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_CLIENT_SECRET` authenticate to Azure Key Vault ([Azure Key Vault](/reference/secrets#azure-key-vault)).
 
 A legacy name logs a deprecation warning at startup; the `PORTWAY_` name wins when both are set. For a list, set either the `PORTWAY_` name or the indexed legacy names. Indexed entries beyond the list length remain in the configuration. `WebUi__*` names are not read: [Removed keys](#removed-keys).
 
 :::warning
-`PORTWAY_USE_HTTPS=true` requires a certificate for Kestrel (e.g. `Kestrel__Certificates__Default__Path`); without one, startup fails. Leave it unset when a TLS-terminating proxy serves HTTPS.
+`PORTWAY_HTTPS_ENABLED=true` requires a certificate for Kestrel (e.g. `Kestrel__Certificates__Default__Path`); without one, startup fails. Leave it unset when a TLS-terminating proxy serves HTTPS.
 :::
 
 ## Removed keys

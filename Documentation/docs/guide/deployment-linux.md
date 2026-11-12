@@ -78,12 +78,13 @@ sudo systemctl enable --now portway
 
 The first start creates `tokens/`, `log/` and `auth.db` in `/opt/portway/`. Checks:
 
-- `curl http://localhost:5000/health/live` returns `Alive`
-- `http://localhost:5000/docs` serves the API reference
+- `curl http://localhost:8080/health/live` returns `Alive`
+- `http://localhost:8080/docs` serves the API reference
+- `http://localhost:8081/_` serves the console sign-in
 
-## Listen address
+## Ports
 
-The default listen address is `http://localhost:5000`. A systemd drop-in sets a different address with `ASPNETCORE_URLS`:
+Portway listens on all interfaces: port 8080 for the API (`PORTWAY_PORT_API`) and port 8081 for the console (`PORTWAY_PORT_CONSOLE`). The API port returns `404` for console paths. A firewall rule restricts port 8081 to a private network. A systemd drop-in sets different ports:
 
 ```bash
 sudo systemctl edit portway
@@ -91,7 +92,8 @@ sudo systemctl edit portway
 
 ```ini
 [Service]
-Environment=ASPNETCORE_URLS=http://0.0.0.0:8080
+Environment=PORTWAY_PORT_API=9080
+Environment=PORTWAY_PORT_CONSOLE=9081
 ```
 
 ```bash
@@ -185,7 +187,7 @@ sudo journalctl -u portway -e
 |---|---|---|
 | `PORTWAY_ENCRYPTION_KEY is not set` | Missing `.env` | Create `/opt/portway/.env` ([Package installation](#package-installation)) |
 | `Permission denied` on `auth.db` or `log/` | Files not owned by `portway` | `sudo chown -R portway:portway /opt/portway` |
-| `Address already in use` | Port taken by another process | Set a different `ASPNETCORE_URLS` ([Listen address](#listen-address)) |
+| `Port 8080 is already in use` | Port taken by another process | Set `PORTWAY_PORT_API` and `PORTWAY_PORT_CONSOLE` ([Ports](#ports)) |
 | `You must install or update .NET` | Archive installation without the runtime | Install the [ASP.NET Core Runtime 11](https://get.dot.net/11) |
 
 | Log | Location |
