@@ -11,9 +11,6 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>
-/// Redirect handling against real local servers: a request with a secret follows same-host redirects only
-/// </summary>
 public sealed class ProxyRedirectServerTests : ApiTestBase, IDisposable
 {
     private const string Env = "500";

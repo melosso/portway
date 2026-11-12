@@ -28,9 +28,6 @@ public sealed class EnvironmentAuthService
     public Task<bool> ValidateAsync(HttpContext context, AuthenticationSettings settings) =>
         ValidateAsync(context, settings, static template => Task.FromResult(template));
 
-    /// <summary>
-    /// Validates a request, resolving secret references of each method before it is tried. A resolve failure propagates.
-    /// </summary>
     public async Task<bool> ValidateAsync(HttpContext context, AuthenticationSettings settings, Func<string, Task<string>> resolve)
     {
         // Auth disabled: nothing to enforce, let the global token path decide

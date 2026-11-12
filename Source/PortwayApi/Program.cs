@@ -174,7 +174,6 @@ try
     // Forwarded headers for reverse proxies plus Cloudflare client IP and scheme restoration
     app.UseProxyForwardedHeaders();
 
-    // Console paths return 404 on the API port
     app.UsePortRouting();
 
     // Configure unified documentation

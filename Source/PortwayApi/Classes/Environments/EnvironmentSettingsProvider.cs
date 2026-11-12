@@ -185,7 +185,6 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             }
             catch (JsonException)
             {
-                // reported when the environment loads
             }
         }
     }

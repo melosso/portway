@@ -37,7 +37,6 @@ public sealed class PortwayMetrics : IDisposable
         _webhookVerificationFailed = _meter.CreateCounter<long>("portway.webhook.verification_failed.count", unit: "{delivery}", description: "Webhook deliveries refused by verification");
     }
 
-    // endpoint and scheme only, never payload or header values
     private static TagList WebhookTags(string endpoint, string? scheme) => new() { { "portway.endpoint", endpoint }, { "portway.webhook.scheme", scheme ?? "Bearer" } };
 
     public void WebhookStored(string endpoint, string? scheme) => _webhookStored.Add(1, WebhookTags(endpoint, scheme));

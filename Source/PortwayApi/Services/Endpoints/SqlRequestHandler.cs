@@ -503,7 +503,6 @@ public sealed partial class SqlRequestHandler
         return string.Join('.', generations);
     }
 
-    // uncached writers still invalidate
     private async Task InvalidateReadsAsync(EndpointDefinition endpoint, string env)
     {
         foreach (var key in Services.Caching.CacheGenerationKeys.SqlEndpoint(env, endpoint))

@@ -32,7 +32,6 @@ public sealed class MySqlParityFixture : ParityDatabaseFixture
 
     protected override IEnumerable<string> SchemaStatements => Schema;
 
-    // MariaDB runs the same statements
     internal static IReadOnlyList<string> Schema =>
     [
         "CREATE TABLE test.WebhookData (Id INT AUTO_INCREMENT PRIMARY KEY, WebhookId VARCHAR(100) NOT NULL, Payload TEXT NOT NULL, ReceivedAt DATETIME NOT NULL, DeliveryId VARCHAR(255) NULL, ProcessedAt DATETIME NULL)",

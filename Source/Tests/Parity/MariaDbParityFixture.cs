@@ -39,6 +39,5 @@ public sealed class MariaDbProviderParityTests(MariaDbParityFixture fixture)
 public sealed class MariaDbProviderHttpParityTests(MariaDbParityFixture fixture)
     : ProviderHttpParityTests<MariaDbParityFixture>(fixture)
 {
-    // char(36) accepts any short text
     protected override HttpStatusCode NonGuidKeyOnGuidColumnStatus => HttpStatusCode.NotFound;
 }

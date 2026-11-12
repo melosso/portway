@@ -245,7 +245,6 @@ function markBodyCapture() {
     link.insertAdjacentHTML('beforeend', '<i class="nav-dot" aria-hidden="true"></i>');
 }
 
-// script is in head, the first render waits for the DOM and the data render waits for the first
 const domReady = new Promise((resolve) => {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {

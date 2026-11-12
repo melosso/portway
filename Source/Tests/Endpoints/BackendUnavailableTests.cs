@@ -7,9 +7,6 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>
-/// An unreachable database or upstream answers 503 with no backend detail
-/// </summary>
 public sealed class BackendUnavailableTests : ApiTestBase, IDisposable
 {
     private const string Env = "500";

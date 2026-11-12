@@ -1,8 +1,5 @@
 namespace PortwayApi.Middleware;
 
-/// <summary>
-/// Listener ports for the API and the console (Hosting:ApiPort, Hosting:ConsolePort). Equal ports serve both on one listener.
-/// </summary>
 public sealed record PortRouting(int ApiPort, int ConsolePort)
 {
     public const int DefaultApiPort = 8080;
@@ -16,9 +13,6 @@ public sealed record PortRouting(int ApiPort, int ConsolePort)
 
     public bool IsApiPort(int localPort) => IsSplit && localPort == ApiPort;
 
-    /// <summary>
-    /// True for console paths and the landing page on the API port.
-    /// </summary>
     public bool IsDenied(int localPort, PathString path) =>
         IsApiPort(localPort)
         && (path.StartsWithSegments("/_", StringComparison.OrdinalIgnoreCase)
@@ -30,9 +24,6 @@ public sealed record PortRouting(int ApiPort, int ConsolePort)
 
 public static class PortRoutingExtensions
 {
-    /// <summary>
-    /// Returns the fallback 404 for console paths on the API port and redirects its root to the docs. Register before UseWebUiAuth.
-    /// </summary>
     public static WebApplication UsePortRouting(this WebApplication app)
     {
         var ports = app.Services.GetRequiredService<PortRouting>();
@@ -45,7 +36,6 @@ public static class PortRoutingExtensions
             if (ports.IsDenied(localPort, context.Request.Path))
                 return FallbackEndpointExtensions.WriteNotFoundAsync(context);
 
-            // default files would serve the console landing page for the root
             if (ports.IsApiPort(localPort) && context.Request.Path == "/")
             {
                 context.Response.Redirect($"{context.Request.PathBase}/docs");

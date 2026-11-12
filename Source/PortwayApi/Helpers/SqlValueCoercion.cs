@@ -4,14 +4,8 @@ using PortwayApi.Services.Providers;
 
 namespace PortwayApi.Helpers;
 
-/// <summary>
-/// Converts JSON scalars to the column's type before binding, so every engine accepts or refuses the same values.
-/// </summary>
 public static class SqlValueCoercion
 {
-    /// <summary>
-    /// False when <paramref name="value"/> cannot be represented in <paramref name="column"/>. Without metadata the value passes unchanged.
-    /// </summary>
     public static bool TryCoerce(ColumnMetadata? column, object? value, SqlProviderType provider, out object? coerced)
     {
         coerced = value;
@@ -33,7 +27,6 @@ public static class SqlValueCoercion
                 coerced = number;
                 return true;
 
-            // sqlite stores dates as text in the caller's format
             case "System.DateTime" when provider != SqlProviderType.Sqlite:
                 if (!DateTimeOffset.TryParse(text, invariant, DateTimeStyles.AssumeUniversal, out var local))
                     return false;

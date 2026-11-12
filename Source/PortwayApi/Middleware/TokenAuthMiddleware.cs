@@ -85,7 +85,6 @@ public sealed class TokenAuthMiddleware
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // fail closed, no token fallback
                 Log.Debug(ex, "Environment configuration for {Environment} could not be loaded", env);
                 await WriteErrorAsync(context, 500, "Internal server error");
                 return;
@@ -205,9 +204,6 @@ public sealed class TokenAuthMiddleware
     public const string AuthorizationAcceptedKey = "Portway.AuthorizationAccepted";
     public const string VerifiedWebhookKey = "Portway.VerifiedWebhook";
 
-    /// <summary>
-    /// The webhook route, endpoint and rule when the request targets an id with Verification
-    /// </summary>
     internal static (Services.WebhookRoute Route, EndpointDefinition Endpoint, Services.WebhookRule Rule)? FindVerifiedWebhook(HttpContext context, string env)
     {
         var segments = context.Request.Path.Value!.Split('/', StringSplitOptions.RemoveEmptyEntries)[2..];

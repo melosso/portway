@@ -65,7 +65,6 @@ public sealed partial class SqlRequestHandler
                 columns[tenant.Column] = TenantSql.Literal(tenant.Value);
         }
 
-        // typed by column metadata so engines agree on refusals and date binding
         var metadata = _metadataService?.GetObjectMetadata(endpointName);
         ColumnMetadata? Column(string name) => metadata?.FirstOrDefault(c => c.DatabaseColumnName.Equals(name, StringComparison.OrdinalIgnoreCase) || c.ColumnName.Equals(name, StringComparison.OrdinalIgnoreCase));
         foreach (var (name, value) in columns.ToList())

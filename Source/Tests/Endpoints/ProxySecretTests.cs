@@ -9,9 +9,6 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>
-/// Proxy and Composite endpoints send secret references from configuration and never resolve client input
-/// </summary>
 public sealed class ProxySecretTests : ApiTestBase, IDisposable
 {
     private const string Env = "500";

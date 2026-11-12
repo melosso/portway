@@ -14,9 +14,6 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>
-/// A verified webhook id accepts its own proof of identity only; bearer tokens and environment authentication do not apply
-/// </summary>
 public sealed class WebhookVerificationTests : ApiTestBase, IDisposable
 {
     private const string Env = "500";

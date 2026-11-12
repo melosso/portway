@@ -5,9 +5,6 @@ using Xunit;
 
 namespace PortwayApi.Tests.Middleware;
 
-/// <summary>
-/// The API port never serves the console; the console port and a shared port serve everything
-/// </summary>
 public class PortRoutingTests
 {
     private static readonly PortRouting Split = new(8080, 8081);

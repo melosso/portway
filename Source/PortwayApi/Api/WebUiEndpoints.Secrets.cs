@@ -8,9 +8,6 @@ using PortwayApi.Interfaces;
 
 public static partial class WebUiEndpointExtensions
 {
-    /// <summary>
-    /// One secret name in one environment, with where it is referenced. Never holds the value.
-    /// </summary>
     internal sealed record SecretUse(string Environment, string Name, bool HasValue, bool InFile, bool Failed, IReadOnlyList<string> UsedBy);
 
     private static void MapSecretRoutes(WebApplication app)

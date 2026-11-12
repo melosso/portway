@@ -10,9 +10,6 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>
-/// Deduplicate stores a delivery once per webhook id and delivery id, enforced by the table's unique index
-/// </summary>
 public sealed class WebhookDeduplicationTests : ApiTestBase, IDisposable
 {
     private const string Env = "500";

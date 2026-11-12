@@ -12,9 +12,6 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>
-/// Webhook content types: application/*+json everywhere, form bodies per accepting id, the Slack url handshake
-/// </summary>
 public sealed class WebhookContentTypeTests : ApiTestBase, IDisposable
 {
     private const string Env = "500";

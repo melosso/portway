@@ -93,9 +93,6 @@ public sealed class CacheManager : ICacheProvider
         return _provider.SetAsync(key, value, expiration);
     }
 
-    /// <summary>
-    /// Returns the read generation stored at key and creates one if the key is empty
-    /// </summary>
     public async Task<string> GetGenerationAsync(string key)
     {
         var generation = await GetUncountedAsync<string>(key);
@@ -107,9 +104,6 @@ public sealed class CacheManager : ICacheProvider
         return generation;
     }
 
-    /// <summary>
-    /// Replaces the read generation stored at a key. Reads cached under the previous generation become unreachable.
-    /// </summary>
     public Task BumpGenerationAsync(string key) => SetAsync(key, Guid.NewGuid().ToString("N"), GenerationLifetime);
 
     private static readonly TimeSpan GenerationLifetime = TimeSpan.FromDays(7);

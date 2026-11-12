@@ -37,7 +37,6 @@ public sealed class ProxyRequestHandler
     // Endpoint Urls are config-static, so the path/query split and reserved param names are computed once per Url
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Path, string Query, HashSet<string> Reserved)> _splitUrlCache = new();
 
-    // connection failures and timeouts mean the upstream is down, not the gateway
     internal static bool IsUpstreamUnavailable(Exception ex, CancellationToken aborted) => ex switch
     {
         HttpRequestException { HttpRequestError: HttpRequestError.ConnectionError or HttpRequestError.NameResolutionError } => true,
@@ -181,7 +180,6 @@ public sealed class ProxyRequestHandler
             {
                 // context.Request.QueryString.Value begins with '?' when non-empty
                 var qs = queryString.StartsWith("?") ? queryString.Substring(1) : queryString;
-                // client text never reaches the secret resolver
                 qs = qs.Replace("${", "%24{", StringComparison.Ordinal);
 
                 // Drop client params that collide with baked ones; upstreams resolving duplicates last-wins would let clients override injected credentials

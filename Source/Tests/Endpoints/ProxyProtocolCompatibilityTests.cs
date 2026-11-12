@@ -33,9 +33,6 @@ internal sealed class UpstreamCapture : IDisposable
 
     public int? ResponseStatus { get; set; }
 
-    /// <summary>
-    /// Body of every reply; the placeholder {header:Name} is replaced with that request header
-    /// </summary>
     public string? ResponseBody { get; set; }
 
     public UpstreamCapture(int port)

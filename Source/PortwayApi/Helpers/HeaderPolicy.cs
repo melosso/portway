@@ -36,9 +36,6 @@ public static class HeaderPolicy
     private static readonly string[] SensitivePatterns =
         ["password", "secret", "token", "key", "auth", "credential", "signature", "hmac", "bearer", "value", "clientsecret"];
 
-    /// <summary>
-    /// True for names that commonly carry a credential
-    /// </summary>
     public static bool IsSensitiveName(string name) =>
         SensitivePatterns.Any(p => name.Contains(p, StringComparison.OrdinalIgnoreCase));
 

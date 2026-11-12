@@ -66,9 +66,6 @@ public static class PortwayResults
     public static string TraceIdOf(HttpContext? context)
         => System.Diagnostics.Activity.Current?.Id ?? context?.TraceIdentifier ?? string.Empty;
 
-    /// <summary>
-    /// 201 without a Location header, for a resource that has no read route
-    /// </summary>
     public static IActionResult Created(string message, object? id)
         => new ObjectResult(CreatedResponse.Of(message, id: id)) { StatusCode = StatusCodes.Status201Created };
 
@@ -88,9 +85,6 @@ public static class PortwayResults
     public static IActionResult ServiceUnavailable(string error)
         => new ObjectResult(ErrorResponse.Of(error)) { StatusCode = StatusCodes.Status503ServiceUnavailable };
 
-    /// <summary>
-    /// 503 in the shared envelope with the trace id of the matching server log entry
-    /// </summary>
     public static IActionResult ServiceUnavailable(HttpContext context, string error)
         => new ObjectResult(ErrorResponse.Traced(error, TraceIdOf(context)))
         { StatusCode = StatusCodes.Status503ServiceUnavailable };

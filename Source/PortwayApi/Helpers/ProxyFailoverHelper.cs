@@ -75,15 +75,9 @@ public static class ProxyFailoverHelper
 
     public const int MaxRedirects = 5;
 
-    /// <summary>
-    /// Name of the proxy client: one without automatic redirects when the request contains a secret
-    /// </summary>
     public static string ClientName(bool sameHostRedirectsOnly) =>
         sameHostRedirectsOnly ? Middleware.ProxyHttpClientExtensions.NoRedirectClient : Middleware.ProxyHttpClientExtensions.Client;
 
-    /// <summary>
-    /// Follows redirects to the same host and port, or from http to https on the same host. Any other 3xx is returned
-    /// </summary>
     internal static async Task<HttpResponseMessage> FollowSameHostRedirectsAsync(
         HttpClient client,
         Func<string, HttpRequestMessage> buildRequest,
@@ -103,7 +97,6 @@ public static class ProxyFailoverHelper
                 return response;
             }
 
-            // the location is used as sent, never resolved
             var request = buildRequest(templateUrl);
             request.RequestUri = next;
             if ((int)response.StatusCode == 303 || ((int)response.StatusCode is 301 or 302 && method == HttpMethod.Post))

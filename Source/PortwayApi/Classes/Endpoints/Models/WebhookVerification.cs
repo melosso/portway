@@ -3,9 +3,6 @@ using System.Text.Json.Serialization;
 
 namespace PortwayApi.Classes;
 
-/// <summary>
-/// Verification of one webhook id, as written in entity.json
-/// </summary>
 public sealed record WebhookVerification
 {
     public string? Scheme { get; init; }

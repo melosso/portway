@@ -11,9 +11,6 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>
-/// Reads after a write return the written state
-/// </summary>
 public sealed class CacheConsistencyTests : ApiTestBase, IDisposable
 {
     private const string Env = "CC";

@@ -12,9 +12,6 @@ public enum SecretFailure
     InvalidCharacter
 }
 
-/// <summary>
-/// Outcome of resolving <c>${secret:NAME}</c> references in one configuration value.
-/// </summary>
 public readonly record struct SecretResolution(string Value, SecretFailure Failure, string? Name)
 {
     public bool Succeeded => Failure == SecretFailure.None;
@@ -24,18 +21,12 @@ public readonly record struct SecretResolution(string Value, SecretFailure Failu
     public static SecretResolution Fail(SecretFailure failure, string? name = null) => new(string.Empty, failure, name);
 }
 
-/// <summary>
-/// Thrown when a configuration value cannot be resolved. The message contains no secret value.
-/// </summary>
 public sealed class SecretResolutionException(SecretResolution resolution)
     : InvalidOperationException("Application configuration could not be resolved for the current environment.")
 {
     public SecretResolution Resolution { get; } = resolution;
 }
 
-/// <summary>
-/// Parses and substitutes <c>${secret:NAME}</c> references. Single pass, no nesting.
-/// </summary>
 public static partial class SecretReference
 {
     [GeneratedRegex(@"\$\{secret:([^}]*)\}")]
@@ -62,9 +53,6 @@ public static partial class SecretReference
         return names;
     }
 
-    /// <summary>
-    /// True when every reference in <paramref name="url"/> is inside a query value, so a secret never selects the destination.
-    /// </summary>
     public static bool IsQueryValueOnly(string url)
     {
         if (!ContainsReference(url))
@@ -91,9 +79,6 @@ public static partial class SecretReference
         return true;
     }
 
-    /// <summary>
-    /// The name when <paramref name="value"/> is exactly one <c>${secret:NAME}</c> reference, otherwise null.
-    /// </summary>
     public static string? ExactName(string? value) =>
         value is not null && ReferencePattern().Match(value) is { Success: true } match
             && match.Index == 0 && match.Length == value.Length && IsValidName(match.Groups[1].Value)
@@ -186,9 +171,6 @@ public static partial class SecretReference
 
 public static class SecretResolver
 {
-    /// <summary>
-    /// Fetches the referenced secrets of <paramref name="env"/> and applies <paramref name="resolve"/>. Throws <see cref="SecretResolutionException"/> on failure.
-    /// </summary>
     public static async Task<string> ResolveOrThrowAsync(
         this Interfaces.IEnvironmentSettingsProvider provider,
         string env,
@@ -197,9 +179,6 @@ public static class SecretResolver
         CancellationToken cancellationToken = default) =>
         ResolveOrThrow(env, template, await provider.FetchSecretsAsync(env, [template], cancellationToken), resolve);
 
-    /// <summary>
-    /// Fetches every secret referenced in <paramref name="templates"/>. Missing secrets are absent from the result.
-    /// </summary>
     public static async Task<IReadOnlyDictionary<string, string>> FetchSecretsAsync(
         this Interfaces.IEnvironmentSettingsProvider provider,
         string env,
@@ -215,9 +194,6 @@ public static class SecretResolver
         return values;
     }
 
-    /// <summary>
-    /// Applies <paramref name="resolve"/> to fetched values. Throws <see cref="SecretResolutionException"/> on failure.
-    /// </summary>
     public static string ResolveOrThrow(
         string env,
         string template,

@@ -6,9 +6,6 @@ using Xunit;
 
 namespace PortwayApi.Tests.Middleware;
 
-/// <summary>
-/// Environment authentication fails closed when its configuration or a referenced secret cannot be loaded
-/// </summary>
 public sealed class EnvironmentSecretAuthTests : ApiTestBase
 {
     private const string Env = "700";

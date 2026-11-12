@@ -271,7 +271,6 @@ public sealed partial class DynamicEndpointDocumentFilter
         }
     }
 
-    // header names only, secret names stay out
     private static string VerificationNote(EndpointDefinition definition) =>
         definition.Verification is not { Count: > 0 } rules
             ? string.Empty

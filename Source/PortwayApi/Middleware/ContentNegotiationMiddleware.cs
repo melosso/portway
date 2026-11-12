@@ -99,9 +99,6 @@ public sealed class ContentNegotiationMiddleware
         return false;
     }
 
-    /// <summary>
-    /// A webhook route accepts application/*+json, and a form body for an id with AcceptForm. A Hidden webhook gets no relaxation
-    /// </summary>
     internal static bool IsAcceptedWebhookContentType(HttpContext context, string contentType)
     {
         if (!HttpMethods.IsPost(context.Request.Method)

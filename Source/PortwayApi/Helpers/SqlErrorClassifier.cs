@@ -55,9 +55,6 @@ public static class SqlErrorClassifier
         _ => ex.Message
     };
 
-    /// <summary>
-    /// True when the server is unreachable at connect time: refused, unresolved or timed out
-    /// </summary>
     public static bool IsConnectionFailure(DbException ex)
     {
         for (Exception? inner = ex; inner is not null; inner = inner.InnerException)

@@ -4,14 +4,8 @@ using PortwayApi.Classes;
 
 namespace PortwayApi.Services.Caching;
 
-/// <summary>
-/// Builds the read generation keys that writes bump and cached reads include
-/// </summary>
 public static partial class CacheGenerationKeys
 {
-    /// <summary>
-    /// Endpoint property that lists the tables whose writes clear the endpoint's cached reads
-    /// </summary>
     public const string InvalidatedByProperty = "CacheInvalidatedBy";
 
     private const string DefaultSchema = "dbo";
@@ -19,21 +13,12 @@ public static partial class CacheGenerationKeys
     [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)?$")]
     private static partial Regex TableName();
 
-    /// <summary>
-    /// Key of one SQL table or view
-    /// </summary>
     public static string SqlTable(string env, string? schema, string table) =>
         $"sql:generation:{env}:{schema ?? DefaultSchema}.{table}".ToLowerInvariant();
 
-    /// <summary>
-    /// Key of one proxy endpoint
-    /// </summary>
     public static string ProxyEndpoint(string env, string endpointName) =>
         $"proxy:generation:{env}:{endpointName}".ToLowerInvariant();
 
-    /// <summary>
-    /// Keys of a SQL endpoint: its own object plus every table in <see cref="InvalidatedByProperty"/>
-    /// </summary>
     public static IReadOnlyList<string> SqlEndpoint(string env, EndpointDefinition endpoint)
     {
         var keys = new List<string> { SqlTable(env, endpoint.DatabaseSchema, endpoint.DatabaseObjectName ?? string.Empty) };
@@ -47,9 +32,6 @@ public static partial class CacheGenerationKeys
         return keys;
     }
 
-    /// <summary>
-    /// Load errors for <see cref="InvalidatedByProperty"/>; entries are table names, optionally schema qualified
-    /// </summary>
     public static IEnumerable<string> Validate(IReadOnlyDictionary<string, object>? properties)
     {
         if (properties?.TryGetValue(InvalidatedByProperty, out var value) != true)

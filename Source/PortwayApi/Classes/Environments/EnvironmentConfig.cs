@@ -30,9 +30,6 @@ public sealed class EnvironmentConfig
     /// </summary>
     public bool? Encrypt { get; set; }
 
-    /// <summary>
-    /// Named secret values referenced as <c>${secret:NAME}</c>, encrypted at rest
-    /// </summary>
     public Dictionary<string, string>? Secrets { get; set; }
 
     [System.Text.Json.Serialization.JsonExtensionData]

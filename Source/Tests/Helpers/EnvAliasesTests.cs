@@ -149,7 +149,6 @@ public sealed class EnvAliasesTests
         Assert.Null(EnvNameFor("Mcp:Enabled"));
     }
 
-    // former PORTWAY_ names, removing one breaks existing instances
     public static TheoryData<string, string> Former => new()
     {
         { "PORTWAY_WEBUI_ENABLED", "PORTWAY_CONSOLE_ENABLED" },

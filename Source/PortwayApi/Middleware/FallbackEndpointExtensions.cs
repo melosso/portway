@@ -14,9 +14,6 @@ public static class FallbackEndpointExtensions
         return app;
     }
 
-    /// <summary>
-    /// Writes the 404 response; HTML for browsers, JSON otherwise
-    /// </summary>
     public static async Task WriteNotFoundAsync(HttpContext context)
     {
         var path = context.Request.Path.Value;

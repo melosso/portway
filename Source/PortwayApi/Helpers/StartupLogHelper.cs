@@ -39,7 +39,6 @@ public static class StartupLogHelper
         {
             try
             {
-                // the same dual-mode any address ListenAnyIP binds
                 var probe = System.Net.Sockets.TcpListener.Create(port);
                 probe.Start();
                 probe.Stop();

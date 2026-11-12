@@ -9,9 +9,6 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>
-/// Webhook deliveries are validated, stored once under the configured id casing and answer without a Location header
-/// </summary>
 public sealed class WebhookEndpointTests : ApiTestBase, IDisposable
 {
     private const string Env = "500";

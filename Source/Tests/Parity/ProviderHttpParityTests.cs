@@ -93,7 +93,6 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
             .Setup(p => p.LoadEnvironmentOrThrowAsync(It.IsAny<string>()))
             .ReturnsAsync((fixture.ConnectionString, "localhost", new Dictionary<string, string>()));
 
-        // column types drive value coercion as in production
         _mockSqlMetadataService.CallBase = true;
         _mockSqlMetadataService.Object.InitializeAsync(
             EndpointHandler.GetSqlEndpoints().Where(e => e.Key.StartsWith(_namespace + "/", StringComparison.Ordinal)).ToDictionary(),

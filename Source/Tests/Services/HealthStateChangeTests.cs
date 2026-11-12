@@ -3,9 +3,6 @@ using Xunit;
 
 namespace PortwayApi.Tests.Services;
 
-/// <summary>
-/// Health warnings are logged when the set of unhealthy names changes
-/// </summary>
 public class HealthStateChangeTests
 {
     [Fact]

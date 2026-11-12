@@ -5,9 +5,6 @@ using Xunit;
 
 namespace PortwayApi.Tests.Helpers;
 
-/// <summary>
-/// A request with a secret follows same-host redirects only, http to https allowed, at most five hops
-/// </summary>
 public sealed class ProxyRedirectTests
 {
     private sealed class Upstream(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler

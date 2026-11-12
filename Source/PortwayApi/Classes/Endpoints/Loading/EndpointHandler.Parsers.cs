@@ -152,9 +152,6 @@ public static partial class EndpointHandler
         return definition;
     }
 
-    /// <summary>
-    /// Verification rules keyed by the canonical id from AllowedColumns. An id outside AllowedColumns keeps a rule with an error, so it answers 401
-    /// </summary>
     internal static IReadOnlyDictionary<string, Services.WebhookRule>? BuildVerification(Dictionary<string, WebhookVerification>? verification, List<string> allowedColumns)
     {
         if (verification is null || verification.Count == 0)

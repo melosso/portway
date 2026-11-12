@@ -19,18 +19,12 @@ public enum WebhookOutcome
 
 public readonly record struct WebhookResult(WebhookOutcome Outcome, long Id = 0);
 
-/// <summary>
-/// Stores a webhook delivery in the endpoint table under the configured id casing
-/// </summary>
 public sealed class WebhookRequestHandler(
     IEnvironmentSettingsProvider environmentSettingsProvider,
     SqlConnectionPoolService connectionPoolService,
     ISqlProviderFactory providerFactory,
     CacheManager cacheManager)
 {
-    /// <summary>
-    /// Inserts <paramref name="rawBody"/> as sent. The caller has validated it as JSON.
-    /// </summary>
     public async Task<WebhookResult> StoreAsync(WebhookRoute route, EndpointDefinition endpoint, string rawBody, IHeaderDictionary headers, CancellationToken cancellationToken)
     {
         var webhookId = endpoint.AllowedColumns.FirstOrDefault(c => c.Equals(route.Id, StringComparison.OrdinalIgnoreCase));
@@ -89,9 +83,6 @@ public sealed class WebhookRequestHandler(
 
     public sealed record Delivery(long Id, string WebhookId, string Payload, DateTime ReceivedAt);
 
-    /// <summary>
-    /// The newest deliveries of an endpoint in one environment, newest first
-    /// </summary>
     public async Task<IReadOnlyList<Delivery>> LatestAsync(string env, EndpointDefinition endpoint, CancellationToken cancellationToken)
     {
         var (connectionString, _, _) = await environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
@@ -112,9 +103,6 @@ public sealed class WebhookRequestHandler(
             r["ReceivedAt"] switch { DateTime d => d, DateTimeOffset o => o.UtcDateTime, var other => DateTime.Parse(Convert.ToString(other)!, System.Globalization.CultureInfo.InvariantCulture) }))];
     }
 
-    /// <summary>
-    /// The delivery id: the lowercase hex SHA-256 of the body, a header, or a top-level string or number field. Null when absent
-    /// </summary>
     internal static string? DeliveryId(WebhookRule rule, string rawBody, IHeaderDictionary headers)
     {
         if (rule.BodyHashKey)

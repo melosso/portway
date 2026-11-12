@@ -70,7 +70,6 @@ public static class WebHostConfigurationExtensions
                 });
             }
 
-            // after ConfigureEndpointDefaults so both listeners take its https setting
             serverOptions.ListenAnyIP(ports.ApiPort);
             if (ports.IsSplit)
                 serverOptions.ListenAnyIP(ports.ConsolePort);

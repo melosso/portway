@@ -188,7 +188,6 @@ public static partial class WebUiEndpointExtensions
             return Results.Ok(new { ok = true, last_modified = lastMod });
         }).ExcludeFromDescription();
 
-        // write-only: no route returns a secret value
         app.MapPut("/_/api/environments/{name}/secrets/{secret}", async (string name, string secret, HttpContext context) =>
         {
             if (!EnvironmentNamePattern().IsMatch(name) || !SecretReference.IsValidName(secret))
@@ -435,9 +434,6 @@ public static partial class WebUiEndpointExtensions
         return existing.Count > 0;
     }
 
-    /// <summary>
-    /// Encrypts a plaintext ConnectionString and every plaintext Secrets value unless the file sets Encrypt false. True when a value changed
-    /// </summary>
     internal static bool EncryptAtRest(System.Text.Json.Nodes.JsonObject settings)
     {
         if (settings["Encrypt"] is System.Text.Json.Nodes.JsonValue optOut && optOut.TryGetValue<bool>(out var encrypt) && !encrypt)

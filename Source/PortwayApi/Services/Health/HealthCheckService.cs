@@ -176,13 +176,9 @@ public sealed class HealthCheckService
         }
     }
 
-    // a probe never sends a secret
     internal static string ProbeUrl(string url) =>
         SecretReference.ContainsReference(url) && url.IndexOf('?') is >= 0 and var query ? url[..query] : url;
 
-    /// <summary>
-    /// Stores the sorted names in <paramref name="last"/>; true when they differ from the previous check
-    /// </summary>
     internal static bool StateChanged(ref string last, IEnumerable<string> names, out string current)
     {
         current = string.Join(", ", names.Order(StringComparer.OrdinalIgnoreCase));

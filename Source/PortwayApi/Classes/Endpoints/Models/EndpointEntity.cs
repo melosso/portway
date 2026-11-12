@@ -30,14 +30,8 @@ public sealed class EndpointEntity : EndpointEntityBase
     public List<DeletePattern>? DeletePatterns { get; set; }
     public List<string>? FallbackUrls { get; set; }
 
-    /// <summary>
-    /// Headers sent upstream. Values replace environment headers of the same name and accept <c>${secret:NAME}</c>
-    /// </summary>
     public Dictionary<string, string>? Headers { get; set; }
 
-    /// <summary>
-    /// Webhook verification per webhook id
-    /// </summary>
     public Dictionary<string, WebhookVerification>? Verification { get; set; }
 
     /// <summary>

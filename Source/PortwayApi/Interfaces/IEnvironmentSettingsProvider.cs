@@ -8,8 +8,5 @@ public interface IEnvironmentSettingsProvider
     Task<EnvironmentConfig?> GetEnvironmentConfigAsync(string env);
     void EncryptEnvironmentIfNeeded(string envName);
 
-    /// <summary>
-    /// Returns the value of secret <paramref name="name"/> in <paramref name="env"/>, or null when it is missing, empty or disabled.
-    /// </summary>
     Task<string?> GetSecretAsync(string env, string name, CancellationToken cancellationToken = default);
 }

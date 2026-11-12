@@ -16,9 +16,6 @@ public sealed partial class EndpointController
         endpoint.Verification?.Keys.FirstOrDefault(k => k.Equals(route.Id, StringComparison.OrdinalIgnoreCase)) is not { } verifiedId
         || (marker is WebhookRoute verified && verified == route with { Id = verifiedId });
 
-    /// <summary>
-    /// Routes a webhook delivery to <see cref="WebhookRequestHandler"/> and shapes the response
-    /// </summary>
     private async Task<IActionResult> HandleWebhookRequest(string env, string[] segments, string requestBody)
     {
         if (!WebhookRoute.TryParse(env, segments, HttpContext, out var route))
@@ -45,7 +42,6 @@ public sealed partial class EndpointController
             if (!JsonBody.TryParse(requestBody, out var json))
                 return PortwayResults.BadRequest(JsonBody.InvalidMessage);
 
-            // slack confirms the url with a signed challenge
             if (rule?.Scheme == "Slack" && json.ValueKind == System.Text.Json.JsonValueKind.Object
                 && json.TryGetProperty("type", out var type) && type.ValueEquals("url_verification")
                 && json.TryGetProperty("challenge", out var challenge) && challenge.ValueKind == System.Text.Json.JsonValueKind.String)

@@ -586,7 +586,6 @@ function buildFormView(name, d, headersHtml) {
     </div>`;
 }
 
-// values are write-only: the api returns names, the page never holds a value after submit
 function buildSecretsSection(name, d) {
   if (!d.exists) return '';
   state.secretEnv = name;

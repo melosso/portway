@@ -4,9 +4,6 @@ using Xunit;
 
 namespace PortwayApi.Tests.Helpers;
 
-/// <summary>
-/// CacheInvalidatedBy validation applied by console saves and endpoint loading
-/// </summary>
 public sealed class CacheInvalidatedByValidationTests
 {
     private static IReadOnlyList<string> Validate(object cacheInvalidatedBy) =>

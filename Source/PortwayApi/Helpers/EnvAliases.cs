@@ -39,7 +39,6 @@ public static class EnvAliases
         ("PORTWAY_MCP_CHAT_API_KEY", "PORTWAY_CHAT_API_KEY", null),
     ];
 
-    // former PORTWAY_ names read as fallback for the current name
     private static readonly (string FormerName, string CurrentName)[] Renamed =
     [
         ("PORTWAY_WEBUI_ENABLED", "PORTWAY_CONSOLE_ENABLED"),

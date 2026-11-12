@@ -150,7 +150,6 @@ public sealed class MetricsPersistenceService : BackgroundService
 
             if (batch.Count == 0) continue;
 
-            // a cancelled write drops a batch already read from the channel
             await WriteBatchAsync(batch, CancellationToken.None);
             flushCount++;
             batch.Clear();
