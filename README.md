@@ -62,7 +62,7 @@ Configuration and usage examples for each type are shown in the [Endpoints](http
 
 ### Deploy
 
-When you're ready to deploy, follow the [deployment guide](https://melosso.github.io/portway/guide/deployment). It covers most scenario's, from containerization to application pool identity (needed for NTLM proxy scenarios), security settings, and production hardening.
+The [install guide](https://melosso.github.io/portway/guide/install) describes Docker, Linux and Windows Server installs, application pool identity for proxies, security settings and production hardening.
 
 ---
 
@@ -81,13 +81,13 @@ You can find more about this topic in the [security guide](https://melosso.githu
 The OpenAPI documentation endpoint is configurable and can be disabled.
 
 ### Interactive documentation
-The application uses [Scalar](https://github.com/scalar/scalar) to render your OpenAPI specification as interactive API documentation. `/docs` lists endpoints, request and response schemas and a request client, generated from the endpoint configuration.
+The application uses [Scalar](https://github.com/scalar/scalar) to render your OpenAPI specification as interactive API documentation. `/docs` displays endpoints, request and response schemas and a request client, generated from the endpoint configuration.
 
 ### Model Context Protocol (MCP)
 Portway is an MCP server over HTTP. Endpoints with MCP enabled are tools for any MCP client (e.g. Mistral, VS Code Copilot, custom agents or the built-in chat). MCP is opt-in per endpoint. Token authentication and environment scoping apply to every tool call. See the [MCP documentation](https://melosso.github.io/portway/guide/mcp).
 
 ### Walkthrough
-The [documentation](https://melosso.github.io/portway/) covers setup, basic usage and advanced configuration. Documentation changes are accepted as pull requests.
+The [documentation](https://melosso.github.io/portway/) describes setup, usage and advanced configuration. Documentation changes are accepted as pull requests.
 
 ## Contribution 
 
