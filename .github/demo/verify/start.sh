@@ -4,6 +4,7 @@ set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 WORK=${PORTWAY_VERIFY_DIR:-/tmp/portway-verify}
+PORT=${PORTWAY_VERIFY_PORT:-8081}
 IMAGE=localhost/portway:verify
 BUILD=0; LIMIT=true; TRAFFIC=false
 while [ $# -gt 0 ]; do
@@ -71,6 +72,10 @@ endpoint("Inventory/StockLevels", {
         {"Name": "TenantWarehouse", "Target": "Warehouse/CountryWarehouses", "LocalColumn": "WarehouseId", "TargetColumn": "Id"}],
     "Mcp": {"Exposed": True}})
 
+outage = f"{work}/config/endpoints/Proxy/Outage/Status/entity.json"
+os.makedirs(os.path.dirname(outage), exist_ok=True)
+json.dump({"Url": "http://nginx:1/status", "Methods": ["GET"], "AllowedEnvironments": ["WMS"]}, open(outage, "w"), indent=4)
+
 path = f"{work}/config/endpoints/SQL/Warehouse/Warehouses/v2/entity.json"
 d = json.load(open(path))
 d["Relationships"] = [
@@ -83,7 +88,7 @@ EOF
 $DOCKER network create portway-verify >/dev/null 2>&1 || true
 $DOCKER run -d --name test-nginx --network portway-verify --network-alias nginx \
   -v "$WORK/nginx.conf:/etc/nginx/nginx.conf:ro,z" docker.io/library/nginx:alpine >/dev/null
-$DOCKER run -d --name test-portway --network portway-verify -p 127.0.0.1:8081:8080 \
+$DOCKER run -d --name test-portway --network portway-verify -p 127.0.0.1:$PORT:8080 \
   -v "$WORK/config/environments:/app/environments:z" -v "$WORK/config/endpoints:/app/endpoints:z" \
   -v "$WORK/log:/app/log:z" -v "$WORK/data:/app/data:z" -v "$WORK/data/auth.db:/app/auth.db:z" -v "$WORK/keys:/app/.core:z" \
   -e PORTWAY_ENCRYPTION_KEY=demo-encryption-key-12345 -e "PORTWAY_ALLOWED_HOSTS=localhost;127.0.0.1" \
@@ -91,8 +96,8 @@ $DOCKER run -d --name test-portway --network portway-verify -p 127.0.0.1:8081:80
   -e RateLimiting__Enabled=$LIMIT -e RequestTrafficLogging__Enabled=$TRAFFIC -e RequestTrafficLogging__Provider=SQLite \
   "$IMAGE" >/dev/null
 
-for _ in $(seq 1 60); do curl -sf http://127.0.0.1:8081/health/live >/dev/null && break; sleep 1; done
-curl -sf http://127.0.0.1:8081/health/live >/dev/null || { echo "instance did not start" >&2; $DOCKER logs test-portway | tail -20; exit 1; }
+for _ in $(seq 1 60); do curl -sf http://127.0.0.1:$PORT/health/live >/dev/null && break; sleep 1; done
+curl -sf http://127.0.0.1:$PORT/health/live >/dev/null || { echo "instance did not start" >&2; $DOCKER logs test-portway | tail -20; exit 1; }
 
 # console accepts local clients only
 $DOCKER exec test-portway dotnet /app/PortwayApi.dll accounts create tester 'Tester-Pass-2026!' >/dev/null
@@ -102,4 +107,4 @@ tenant=$(console POST /_/api/tokens '{"username":"tenant-nl","allowed_scopes":"*
 stock=$(console POST /_/api/tokens '{"username":"scoped-stock","allowed_scopes":"Inventory/StockLevels","allowed_environments":"*"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
 printf 'TOKEN=%s\nSCOPED=%s\nTENANT=%s\nSTOCK=%s\n' "$TOKEN" "$scoped" "$tenant" "$stock" > "$WORK/tokens.env"
 
-echo "test instance on http://127.0.0.1:8081 (limit=$LIMIT traffic=$TRAFFIC, work dir $WORK)"
+echo "test instance on http://127.0.0.1:$PORT (limit=$LIMIT traffic=$TRAFFIC, work dir $WORK)"

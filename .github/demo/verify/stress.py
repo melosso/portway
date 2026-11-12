@@ -19,7 +19,7 @@ import termios
 import threading
 import time
 
-BASE = "http://127.0.0.1:8081"
+BASE = "http://127.0.0.1:" + os.environ.get("PORTWAY_VERIFY_PORT", "8081")
 WORK = os.environ.get("PORTWAY_VERIFY_DIR", "/tmp/portway-verify")
 TOKENS = dict(line.strip().split("=", 1) for line in open(f"{WORK}/tokens.env") if "=" in line)
 BINARY = os.environ.get("STRESSANAPI") or shutil.which("stressanapi")

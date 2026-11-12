@@ -2,7 +2,7 @@
 
 Scripts for an isolated Portway test instance from the demo stack. Allows us to run functional and load checks.
 
-The test instance will attempt to spawn on `127.0.0.1:8081`. Builds on containers `test-portway` and `test-nginx` and the network `portway-verify` (port 8080 not used).
+The test instance listens on `127.0.0.1:8081` (`PORTWAY_VERIFY_PORT`). Builds on containers `test-portway` and `test-nginx` and the network `portway-verify` (port 8080 not used).
 
 ## Requirements
 

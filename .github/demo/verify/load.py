@@ -16,7 +16,7 @@ import time
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 
-HOST, PORT = "127.0.0.1", 8081
+HOST, PORT = "127.0.0.1", int(os.environ.get("PORTWAY_VERIFY_PORT", "8081"))
 WORK = os.environ.get("PORTWAY_VERIFY_DIR", "/tmp/portway-verify")
 TOKEN = dict(line.strip().split("=", 1) for line in open(f"{WORK}/tokens.env") if "=" in line)["TOKEN"]
 MCP_HEADERS = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}

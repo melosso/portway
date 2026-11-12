@@ -1,5 +1,7 @@
 """Checks the test instance from start.sh. Exits with code 1 on a failed check."""
 
+import hashlib
+import hmac
 import json
 import os
 import shutil
@@ -10,7 +12,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-BASE = "http://127.0.0.1:8081"
+BASE = "http://127.0.0.1:" + os.environ.get("PORTWAY_VERIFY_PORT", "8081")
 WORK = os.environ.get("PORTWAY_VERIFY_DIR", "/tmp/portway-verify")
 TOKENS = dict(line.strip().split("=", 1) for line in open(f"{WORK}/tokens.env") if "=" in line)
 DOCKER = shutil.which("podman") or shutil.which("docker")
@@ -19,6 +21,8 @@ MCP_HEADERS = {"Content-Type": "application/json", "Accept": "application/json, 
 WAREHOUSES = "/api/WMS/v2/Warehouse/Warehouses"
 TENANT_WAREHOUSES = "/api/WMS/Warehouse/CountryWarehouses"
 STOCK = "/api/WMS/Inventory/StockLevels"
+WEBHOOK = "/api/WMS/Events/Inbound"
+WEBHOOK_SECRET = "demo-github-webhook-secret"
 
 results = []
 
@@ -65,6 +69,22 @@ def traffic_count(where):
 def nginx_hits(since, needle):
     out = subprocess.run([DOCKER, "logs", "--since", since, "test-nginx"], capture_output=True, text=True)
     return sum(needle in line for line in (out.stdout + out.stderr).splitlines())
+
+
+def console(method, path, body=None):
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "console.sh")
+    out = subprocess.run([script, method, path] + ([body] if body else []), capture_output=True, text=True)
+    try:
+        return json.loads(out.stdout)
+    except ValueError:
+        return {"raw": out.stdout}
+
+
+def github(body, secret=WEBHOOK_SECRET, delivery=None):
+    signature = "sha256=" + hmac.new(secret.encode(), body.encode(), hashlib.sha256).hexdigest()
+    headers = {"Content-Type": "application/json", "X-Hub-Signature-256": signature,
+               "X-GitHub-Delivery": delivery or f"verify-{time.time_ns()}"}
+    return http(f"{WEBHOOK}/github", None, "POST", body, headers)
 
 
 def check(area, name, ok, actual=""):
@@ -208,10 +228,58 @@ text, error = mcp("call_endpoint", {"endpointName": "crm_divisions_v2", "environ
                                     "body": '{"name":"Branch Vienna"}'})
 check("mcp", "POST succeeds", not error, text[:60])
 
+# webhooks
+payload = json.dumps({"action": "opened", "run": time.time_ns()})
+JSON = {"Content-Type": "application/json"}
+s, b, _ = github(payload)
+check("webhook", "signed github delivery returns 201", s == 201 and "Webhook stored." in b, f"{s} {b[:60]}")
+delivery = f"verify-dup-{time.time_ns()}"
+github(payload, delivery=delivery)
+s, b, _ = github(payload, delivery=delivery)
+check("webhook", "repeated delivery id returns 200 duplicate", s == 200 and "Duplicate" in b, f"{s} {b[:60]}")
+s, _, _ = github(payload, secret="wrong-secret")
+check("webhook", "wrong signature returns 401", s == 401, s)
+s, _, _ = http(f"{WEBHOOK}/github", None, "POST", payload, JSON)
+check("webhook", "unsigned github delivery returns 401", s == 401, s)
+s, _, _ = http(f"{WEBHOOK}/github", "TOKEN", "POST", payload, JSON)
+check("webhook", "bearer token on a verified id returns 401", s == 401, s)
+s, _, _ = http(f"{WEBHOOK}/partner", "TOKEN", "POST", payload, JSON)
+check("webhook", "partner delivery with token returns 201", s == 201, s)
+s, _, _ = http(f"{WEBHOOK}/partner", None, "POST", payload, JSON)
+check("webhook", "partner delivery without token returns 401", s == 401, s)
+s, _, _ = http(f"{WEBHOOK}/partner", "TOKEN", "POST", "{not json", JSON)
+check("webhook", "malformed json returns 400", s == 400, s)
+for path in (f"{WEBHOOK}/unknown", f"{WEBHOOK}/partner/extra"):
+    s, _, _ = http(path, "TOKEN", "POST", payload, JSON)
+    check("webhook", f"{path.removeprefix(WEBHOOK)} returns 404", s == 404, s)
+deliveries = console("GET", "/_/api/webhooks/Events/Inbound/deliveries?env=WMS")
+check("webhook", "console lists stored deliveries", '"github"' in json.dumps(deliveries), str(deliveries)[:80])
+
+# secrets
+environment = json.dumps(console("GET", "/_/api/environments/WMS"))
+check("secrets", "environment read lists the secret name", "GITHUB-WEBHOOK" in environment)
+check("secrets", "environment read contains no secret value", WEBHOOK_SECRET not in environment)
+overview = console("GET", "/_/api/secrets")
+row = next((r for r in overview.get("secrets", []) if r.get("name") == "GITHUB-WEBHOOK"), {})
+check("secrets", "secrets page lists the reference and value", row.get("has_value") and row.get("used_by"), row)
+on_disk = open(f"{WORK}/config/environments/WMS/settings.json").read()
+check("secrets", "settings.json stores the secret encrypted", WEBHOOK_SECRET not in on_disk and "PWENC:" in on_disk)
+
+# unreachable upstream
+s, b, _ = http("/api/WMS/Outage/Status")
+check("outage", "unreachable upstream returns 503", s == 503 and "traceId" in b, f"{s} {b[:60]}")
+check("outage", "503 body names no host or port", "nginx" not in b and ":1" not in b, b[:80])
+
+# console save checks
+saved = console("PUT", "/_/api/endpoints/proxy/Outage/Broken?raw=true", json.dumps({"content": '{"Methods":["GET"]}'}))
+check("console", "save the gateway cannot load returns errors", bool(saved.get("errors")), str(saved)[:80])
+check("console", "refused save writes no file", not os.path.exists(f"{WORK}/config/endpoints/Proxy/Outage/Broken/entity.json"))
+
 # application log
 out = subprocess.run([DOCKER, "logs", "test-portway"], capture_output=True, text=True)
 occurrences = sum((out.stdout + out.stderr).count(token) for token in TOKENS.values())
 check("log", "application log contains no token", occurrences == 0, f"{occurrences} occurrences")
+check("log", "application log contains no secret value", WEBHOOK_SECRET not in out.stdout + out.stderr)
 
 area_width = max(len(area) for area, *_ in results)
 name_width = max(len(name) for _, name, _, _ in results)
