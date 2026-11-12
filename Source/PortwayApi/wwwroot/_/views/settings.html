@@ -778,7 +778,7 @@ async function loadAiConfig() {
       apiKeyHtml = `Saved`;
     }
 
-    const envDesc = cfg.api_key_source === 'environment' ? 'Read from PORTWAY_CHAT_API_KEY. Overrides the stored key.' : null;
+    const envDesc = cfg.api_key_source === 'environment' ? 'Read from PORTWAY_MCP_CHAT_API_KEY. Overrides the stored key.' : null;
 
     aiBody.innerHTML = [
       settingItemRaw('Provider', providerLabel, 'AI provider for the chat console.'),

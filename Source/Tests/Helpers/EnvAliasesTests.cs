@@ -32,7 +32,7 @@ public sealed class EnvAliasesTests
     [Fact]
     public void DirectReadAliasIsNotAConfigKey()
     {
-        var config = Resolve(("PORTWAY_USE_HTTPS", "true"));
+        var config = Resolve(("PORTWAY_HTTPS_ENABLED", "true"));
 
         Assert.Empty(config);
     }
@@ -41,33 +41,34 @@ public sealed class EnvAliasesTests
     public static TheoryData<string, string, string?> All => new()
     {
         { "PORTWAY_ADMIN_KEY", "Console__AdminApiKey", "Console:AdminApiKey" },
-        { "PORTWAY_WEBUI_ENABLED", "Console__Enabled", "Console:Enabled" },
+        { "PORTWAY_CONSOLE_ENABLED", "Console__Enabled", "Console:Enabled" },
         { "PORTWAY_ALLOWED_HOSTS", "AllowedHosts", "AllowedHosts" },
         { "PORTWAY_PATH_BASE", "PathBase", "PathBase" },
         { "PORTWAY_SECURE_COOKIES", "Console__SecureCookies", "Console:SecureCookies" },
-        { "PORTWAY_OPENAPI_MARKDOWN", "OpenApi__ServeMarkdown", "OpenApi:ServeMarkdown" },
+        { "PORTWAY_OPENAPI_MARKDOWN_ENABLED", "OpenApi__ServeMarkdown", "OpenApi:ServeMarkdown" },
         { "PORTWAY_OPENAPI_DESCRIPTION", "OpenApi__Description", "OpenApi:Description" },
         { "PORTWAY_PUBLIC_ORIGINS", "Console__PublicOrigins__0", "Console:PublicOrigins[]" },
         { "PORTWAY_SEED_PASSWORD", "Console__SeedPassword", "Console:SeedPassword" },
         { "PORTWAY_SEED_TOKEN", "Console__SeedToken", "Console:SeedToken" },
         { "PORTWAY_PROMO_TEXT", "Console__Customization__PromoText", "Console:Customization:PromoText" },
         { "PORTWAY_LOGIN_FOOTER", "Console__Customization__LoginFooter", "Console:Customization:LoginFooter" },
-        { "PORTWAY_PROMO_LOGIN", "Console__Customization__PromoLogin", "Console:Customization:PromoLogin" },
+        { "PORTWAY_PROMO_LOGIN_ENABLED", "Console__Customization__PromoLogin", "Console:Customization:PromoLogin" },
         { "PORTWAY_KNOWN_PROXIES", "ForwardedHeaders__KnownProxies__0", "ForwardedHeaders:KnownProxies[]" },
         { "PORTWAY_KNOWN_NETWORKS", "ForwardedHeaders__KnownNetworks__0", "ForwardedHeaders:KnownNetworks[]" },
         { "PORTWAY_OIDC_ENABLED", "Oidc__Enabled", "Oidc:Enabled" },
         { "PORTWAY_MCP_ENABLED", "Mcp__Enabled", "Mcp:Enabled" },
-        { "PORTWAY_CHAT_ENABLED", "Mcp__ChatEnabled", "Mcp:ChatEnabled" },
+        { "PORTWAY_MCP_CHAT_ENABLED", "Mcp__ChatEnabled", "Mcp:ChatEnabled" },
         { "PORTWAY_TELEMETRY_PROVIDER", "Telemetry__Provider", "Telemetry:Provider" },
-        { "PORTWAY_OTLP_ENDPOINT", "Telemetry__Otlp__Endpoint", "Telemetry:Otlp:Endpoint" },
-        { "PORTWAY_SERVICE_NAME", "Telemetry__ServiceName", "Telemetry:ServiceName" },
+        { "PORTWAY_TELEMETRY_OTLP_ENDPOINT", "Telemetry__Otlp__Endpoint", "Telemetry:Otlp:Endpoint" },
+        { "PORTWAY_TELEMETRY_SERVICE_NAME", "Telemetry__ServiceName", "Telemetry:ServiceName" },
         { "PORTWAY_PORT_API", "Hosting__ApiPort", "Hosting:ApiPort" },
         { "PORTWAY_PORT_CONSOLE", "Hosting__ConsolePort", "Hosting:ConsolePort" },
-        { "PORTWAY_USE_HTTPS", "Use_HTTPS", null },
+        { "PORTWAY_HTTPS_ENABLED", "Use_HTTPS", null },
         { "PORTWAY_PROXY_USERNAME", "PROXY_USERNAME", null },
         { "PORTWAY_PROXY_PASSWORD", "PROXY_PASSWORD", null },
         { "PORTWAY_PROXY_DOMAIN", "PROXY_DOMAIN", null },
-        { "PORTWAY_KEYVAULT_URI", "KEYVAULT_URI", null },
+        { "PORTWAY_KEY_VAULT_URI", "KEYVAULT_URI", null },
+        { "PORTWAY_MCP_CHAT_API_KEY", "PORTWAY_CHAT_API_KEY", null },
     };
 
     [Fact]
@@ -146,5 +147,41 @@ public sealed class EnvAliasesTests
     public void EnvNameForIsNullWhenNothingIsSet()
     {
         Assert.Null(EnvNameFor("Mcp:Enabled"));
+    }
+
+    // former PORTWAY_ names, removing one breaks existing instances
+    public static TheoryData<string, string> Former => new()
+    {
+        { "PORTWAY_WEBUI_ENABLED", "PORTWAY_CONSOLE_ENABLED" },
+        { "PORTWAY_OPENAPI_MARKDOWN", "PORTWAY_OPENAPI_MARKDOWN_ENABLED" },
+        { "PORTWAY_PROMO_LOGIN", "PORTWAY_PROMO_LOGIN_ENABLED" },
+        { "PORTWAY_CHAT_ENABLED", "PORTWAY_MCP_CHAT_ENABLED" },
+        { "PORTWAY_OTLP_ENDPOINT", "PORTWAY_TELEMETRY_OTLP_ENDPOINT" },
+        { "PORTWAY_SERVICE_NAME", "PORTWAY_TELEMETRY_SERVICE_NAME" },
+        { "PORTWAY_USE_HTTPS", "PORTWAY_HTTPS_ENABLED" },
+        { "PORTWAY_KEYVAULT_URI", "PORTWAY_KEY_VAULT_URI" },
+    };
+
+    [Fact]
+    public void RenamedTableIncludesEveryFormerName() =>
+        Assert.Equal(Former.Select(row => row.Data).ToHashSet(), EnvAliases.RenamedEntries.ToHashSet());
+
+    [Theory]
+    [MemberData(nameof(Former))]
+    public void FormerNameAppliesWhenCurrentNameIsUnset(string formerName, string currentName)
+    {
+        var configKey = EnvAliases.Entries.First(e => e.NewName == currentName).ConfigKey;
+
+        if (configKey is null)
+        {
+            Assert.Equal("old", EnvAliases.GetDirect(currentName, n => n == formerName ? "old" : null));
+            Assert.Equal("new", EnvAliases.GetDirect(currentName, n => n == currentName ? "new" : n == formerName ? "old" : null));
+        }
+        else
+        {
+            Assert.Equal("old", Resolve((formerName, "old"))[configKey]);
+            Assert.Equal("new", Resolve((formerName, "old"), (currentName, "new"))[configKey]);
+            Assert.Equal(formerName, EnvNameFor(configKey, formerName));
+        }
     }
 }

@@ -10,7 +10,7 @@ using Serilog;
 public sealed class McpConfigService
 {
     // Environment variable that overrides the DB api key; checked first
-    private const string ApiKeyEnvVar = "PORTWAY_CHAT_API_KEY";
+    private const string ApiKeyEnvVar = "PORTWAY_MCP_CHAT_API_KEY";
 
     private readonly IDbContextFactory<McpConfigDbContext> _dbFactory;
 
@@ -40,7 +40,7 @@ public sealed class McpConfigService
     }
 
     /// <summary>
-    /// Returns the current config snapshot, reading from DB on the first call and after each <see cref="SaveConfigAsync"/> call. The environment variable <c>PORTWAY_CHAT_API_KEY</c> overrides the stored API key
+    /// Returns the current config snapshot, reading from DB on the first call and after each <see cref="SaveConfigAsync"/> call. The environment variable <c>PORTWAY_MCP_CHAT_API_KEY</c> overrides the stored API key
     /// </summary>
     public async Task<ConfigSnapshot> GetConfigAsync(CancellationToken ct = default)
     {
@@ -64,7 +64,7 @@ public sealed class McpConfigService
         }
 
         // Environment variable takes priority over DB for the API key
-        var apiKey = Environment.GetEnvironmentVariable(ApiKeyEnvVar);
+        var apiKey = EnvAliases.GetDirect(ApiKeyEnvVar);
         if (string.IsNullOrWhiteSpace(apiKey))
             apiKey = Resolve("ApiKey").NullIfEmpty();
         else
@@ -140,7 +140,7 @@ public sealed class McpConfigService
             provider = cfg.Provider,
             model = cfg.Model,
             has_api_key = !string.IsNullOrWhiteSpace(cfg.ApiKey),
-            api_key_source = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(ApiKeyEnvVar))
+            api_key_source = !string.IsNullOrWhiteSpace(EnvAliases.GetDirect(ApiKeyEnvVar))
                                ? "environment"
                                : (string.IsNullOrWhiteSpace(cfg.ApiKey) ? "none" : "database")
         };

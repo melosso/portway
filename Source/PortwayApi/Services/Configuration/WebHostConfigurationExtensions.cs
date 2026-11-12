@@ -13,8 +13,8 @@ public static class WebHostConfigurationExtensions
 {
     public static WebApplicationBuilder ConfigurePortwayWebHost(this WebApplicationBuilder builder)
     {
-        // In Docker HTTPS is opt-in (PORTWAY_USE_HTTPS=true); on Windows Server/IIS it is on by default unless =false
-        var useHttpsEnv = EnvAliases.GetDirect("PORTWAY_USE_HTTPS");
+        // In Docker HTTPS is opt-in (PORTWAY_HTTPS_ENABLED=true); on Windows Server/IIS it is on by default unless =false
+        var useHttpsEnv = EnvAliases.GetDirect("PORTWAY_HTTPS_ENABLED");
         var runningInContainer = string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
         bool useHttps;
         if (runningInContainer)
