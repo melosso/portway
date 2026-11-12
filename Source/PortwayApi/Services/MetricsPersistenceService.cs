@@ -150,7 +150,8 @@ public sealed class MetricsPersistenceService : BackgroundService
 
             if (batch.Count == 0) continue;
 
-            await WriteBatchAsync(batch, ct);
+            // a cancelled write drops a batch already read from the channel
+            await WriteBatchAsync(batch, CancellationToken.None);
             flushCount++;
             batch.Clear();
 
@@ -212,7 +213,7 @@ public sealed class MetricsPersistenceService : BackgroundService
             if (deleted > 0)
                 Log.Debug("MetricsPersistenceService: pruned {Count} old metric rows", deleted);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Log.Error(ex, "MetricsPersistenceService: error pruning old rows");
         }
