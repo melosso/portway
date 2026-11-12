@@ -60,6 +60,7 @@ files=(
     "config/endpoints/SQL/CRM/Industries/entity.json"
     "config/endpoints/SQL/CRM/ContactRoles/entity.json"
     "config/endpoints/SQL/CRM/OpportunityStages/entity.json"
+    "config/endpoints/Webhooks/Events/Inbound/entity.json"
     "data/demo.db"
     "data/auth.db"
 )
@@ -92,5 +93,10 @@ curl -s -o /dev/null -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: 
 curl -s -o /dev/null http://localhost:8080/api/WMS/v2/CRM/Divisions
 curl -s -o /dev/null -H "Authorization: Bearer $TOKEN" -H "X-Country: NL" http://localhost:8080/api/WMS/Warehouse/CountryWarehouses
 curl -s -o /dev/null -X QUERY -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "{\"filter\":\"country eq 'NL'\",\"top\":5}" http://localhost:8080/api/WMS/v2/Warehouse/Warehouses
+
+BODY='{"action":"opened","repository":"portway"}'
+SIG="sha256=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac demo-github-webhook-secret | sed 's/.* //')"
+curl -s -o /dev/null -X POST -H "Content-Type: application/json" -H "X-Hub-Signature-256: $SIG" -H "X-GitHub-Delivery: demo-$(date +%s)" -d "$BODY" http://localhost:8080/api/WMS/Events/Inbound/github
+curl -s -o /dev/null -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"order":"SO-1001","status":"shipped"}' http://localhost:8080/api/WMS/Events/Inbound/partner
 
 echo "Demo reset successfully!"
