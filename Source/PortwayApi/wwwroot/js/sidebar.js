@@ -245,14 +245,22 @@ function markBodyCapture() {
     link.insertAdjacentHTML('beforeend', '<i class="nav-dot" aria-hidden="true"></i>');
 }
 
+function lastMcpEnabled() {
+    try {
+        return sessionStorage.getItem('portway_mcp_enabled') === 'true';
+    } catch (e) {
+        return false;
+    }
+}
+
 const domReady = new Promise((resolve) => {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
-            renderSidebar(false);
+            renderSidebar(lastMcpEnabled());
             resolve();
         });
     } else {
-        renderSidebar(false);
+        renderSidebar(lastMcpEnabled());
         resolve();
     }
 });
@@ -265,6 +273,9 @@ Promise.all([
 ])
     .then(([d, settings, me]) => {
         const mcpEnabled = settings?.mcp?.enabled ?? false;
+        try {
+            sessionStorage.setItem('portway_mcp_enabled', String(mcpEnabled));
+        } catch (e) {}
 
         if (!mcpEnabled && location.pathname.startsWith((window.PortwayBase || '') + '/_/mcp')) {
             location.href = (window.PortwayBase || '') + '/_/dashboard';
