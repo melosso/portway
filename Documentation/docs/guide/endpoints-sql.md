@@ -17,7 +17,7 @@ Supported providers are:
 The provider is detected from the connection string in the environment's `settings.json`; endpoint configuration is the same for every provider. Provider differences: [SQL Providers](/reference/sql-providers#capabilities).
 
 ::: tip
-Portway restricts columns through `AllowedColumns` only. Columns outside the list are not returned and not accepted in request bodies. Leave credentials, personal identifiers and internal system fields out of the list, and grant the connection account only the permissions the endpoints use ([SQL Server permissions](/guide/security#sql-server-permissions)).
+`AllowedColumns` defines the exposed columns. Columns outside the list are not returned and not accepted in request bodies. Leave credentials, personal identifiers and internal system fields out of the list, and grant the connection account only the permissions the endpoints use ([SQL Server permissions](/guide/security#sql-server-permissions)).
 :::
 
 ## Configuration
@@ -172,19 +172,19 @@ BEGIN
     IF @Method = 'INSERT'
         -- insert logic
     ELSE IF @Method = 'UPDATE'
-        -- update logic; use ISNULL(@Field, Field) to handle partial updates
+        -- update logic; use ISNULL(@Field, Field) for partial updates
     ELSE IF @Method = 'DELETE'
         -- delete logic
 END
 ```
 
 :::info
-Stored procedures handle writes only. GET requests query `DatabaseObjectName` through OData.
+Stored procedures run writes. GET requests query `DatabaseObjectName` through OData.
 :::
 
 ## Table write mode
 
-With `WriteMode: Table`, writes go directly to the table, without a stored procedure. This is the write path on SQLite.
+`WriteMode: Table` writes to the table without a stored procedure. SQLite endpoints use this mode for writes.
 
 ```json
 {
@@ -199,9 +199,10 @@ With `WriteMode: Table`, writes go directly to the table, without a stored proce
 
 Portway generates parameterized `INSERT`, `UPDATE` and `DELETE` statements with the OData query compiler. Rules:
 
-* `AllowedColumns` and `PrimaryKey` are required; without either, all writes are refused and a configuration error is logged at startup.
+* `AllowedColumns` and `PrimaryKey` are required. Without either, Portway refuses every write and logs a configuration error at startup.
 * A payload field outside `AllowedColumns` rejects the request.
-* Updates and deletes filter on the primary key; an unmatched key returns `404`.
+* Values and keys are converted to the column type from the schema metadata before the statement runs. A value that does not fit a numeric column returns `400 Invalid column value`; a key that does not fit returns `400 Invalid record ID`. Date and time strings are written as date values, in UTC for time-zone-aware columns. SQLite stores date strings as sent.
+* Updates and deletes filter on the primary key. An unmatched key returns `404`.
 * `WriteMode` and `Procedure` are mutually exclusive.
 
 Table mode works on every provider. Example: `WMS/Bins` in the SQLite demo environment.
@@ -270,8 +271,9 @@ Settings and invalidation rules: [Caching](/reference/caching#cache-invalidation
 
 | Symptom | Resolution |
 |---|---|
-| "Column not allowed" | Add the column to `AllowedColumns`; names are case-sensitive. |
-| "Method not allowed" | Add the method to `AllowedMethods`; a configured procedure must handle it. |
+| "Column not allowed" | Add the column to `AllowedColumns`. Names are case-sensitive. |
+| "Invalid column value" or "Invalid record ID" | The value does not match the column type. Send numbers for numeric columns and ISO 8601 dates for date columns. |
+| "Method not allowed" | Add the method to `AllowedMethods`. A configured procedure must accept the method. |
 | No results | Check the filter, the data in the target environment and the connection account's permissions. |
 | Slow queries | Index columns used in `$filter` and `$orderby`; limit with `$top`. |
 

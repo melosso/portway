@@ -59,7 +59,7 @@ Content-Type: application/json
 ```
 
 :::warning
-Separate Portway environments and separate Synergy accounts for test and production keep writes and audit trails apart.
+Separate Portway environments and separate Synergy accounts for test and production separate writes and audit trails.
 :::
 
 ## Troubleshooting
@@ -68,5 +68,5 @@ Separate Portway environments and separate Synergy accounts for test and product
 |---|---|
 | `401` or `403` from Synergy | Synergy rights of the domain account; NTLM on the Application Pool |
 | Connection refused | Synergy web service; firewall between Portway and Synergy |
-| `http` links behind HTTPS | Proxy listed in `ForwardedHeaders:KnownProxies` or `KnownNetworks` |
+| `http` links with a TLS-terminating proxy | `ForwardedHeaders:KnownProxies` or `KnownNetworks` contains the proxy |
 | Missing data | Synergy REST path in `Url` |

@@ -41,7 +41,7 @@ Globe+ uses Windows (NTLM) authentication. Under IIS, the Application Pool ident
 }
 ```
 
-Globe+ URLs in responses are rewritten to the Portway URL, e.g. `http://localhost:8020/services/Exact.Entity.REST.EG/Account(guid'123')` to `https://api.company.com/api/500/Account(guid'123')`. Behind a TLS-terminating proxy, the scheme is taken from `X-Forwarded-Proto` only when the proxy is listed in `ForwardedHeaders` ([Application Settings](/reference/app-settings#forwardedheaders)).
+Globe+ URLs in responses are rewritten to the Portway URL, e.g. `http://localhost:8020/services/Exact.Entity.REST.EG/Account(guid'123')` to `https://api.company.com/api/500/Account(guid'123')`. With a TLS-terminating proxy, the scheme is read from `X-Forwarded-Proto` if `ForwardedHeaders` contains the proxy ([Application Settings](/reference/app-settings#forwardedheaders)).
 
 ## Composite endpoints
 
@@ -73,7 +73,7 @@ Content-Type: application/json
 }
 ```
 
-Steps run in order; a failed step stops the composite, and earlier steps are not undone. The response names the failed step. Configuration: [Composite Endpoints](/guide/endpoints-composite).
+Steps run in order; a failed step stops the composite, and earlier steps are not undone. The response contains the failed step name. Configuration: [Composite Endpoints](/guide/endpoints-composite).
 
 ## Troubleshooting
 
@@ -82,4 +82,4 @@ Steps run in order; a failed step stops the composite, and earlier steps are not
 | `401` or `403` from Globe+ | Globe+ rights of the service account; NTLM on the Application Pool |
 | Transaction errors | Globe+ logs; locked records; one `TransactionKey` across all lines |
 | Wrong or missing data | `DatabaseName` and `ServerName` headers in `settings.json` |
-| `http` links behind HTTPS | Proxy listed in `ForwardedHeaders:KnownProxies` or `KnownNetworks` |
+| `http` links with a TLS-terminating proxy | `ForwardedHeaders:KnownProxies` or `KnownNetworks` contains the proxy |

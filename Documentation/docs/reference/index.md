@@ -24,7 +24,7 @@ The namespace segment is optional.
 | Static | `/api/{env}/{namespace}/{endpoint}` | Serves a content file |
 | Composite | `/api/{env}/{namespace}/{endpoint}` | Calls several proxy endpoints in sequence |
 | Webhook | `/api/{env}/{namespace}/{name}/{id}` | Stores POST payloads in a SQL table |
-| Files | `/api/{env}/files/{namespace}/{name}` | File upload, download, delete and listing |
+| Files | `/api/{env}/files/{namespace}/{name}` | Uploads, downloads and deletes files. Returns the file list of the endpoint |
 
 ## Authentication
 
@@ -38,16 +38,25 @@ Unauthenticated paths: `/health`, `/health/live` and the Prometheus scrape path.
 
 ## Response codes
 
-| Code | Meaning |
-|------|---------|
-| 200 | OK |
-| 201 | Created |
-| 400 | Invalid request, query or tenant header |
-| 401 | Missing or invalid token |
-| 403 | Token scope, environment or tenant excludes the request |
-| 404 | Endpoint or record not found |
-| 429 | Rate limit exceeded |
-| 500 | Internal Server Error |
+| Code | Description |
+|---|---|
+| 200 | The request succeeded |
+| 201 | The request created a record, file or webhook delivery |
+| 206 | The response contains the byte range requested in the `Range` header |
+| 304 | The `If-None-Match` header matches the current `ETag`. The response has no body |
+| 400 | The request, query or tenant header is invalid |
+| 401 | The token is missing or invalid |
+| 403 | The token does not grant access to the endpoint, environment or tenant |
+| 404 | The endpoint or record does not exist |
+| 406 | The `Accept` header does not include the content type of the static endpoint |
+| 409 | The uploaded file already exists. `overwrite=true` replaces it |
+| 413 | The request body exceeds the size limit of the endpoint |
+| 415 | The endpoint does not accept the request content type or file extension |
+| 416 | The `Range` header requests bytes beyond the end of the file |
+| 422 | The request body fails validation. `details` contains each failed field |
+| 429 | The client exceeded the rate limit. `Retry-After` contains the wait in seconds |
+| 500 | The request failed on the server. `traceId` identifies the log entry |
+| 503 | The endpoint is disabled (`Enabled: false`) |
 
 ## Error format
 
@@ -94,10 +103,10 @@ A `500` adds `traceId`, which identifies the matching server log entry:
 | Proxy | pass-through | `400` `401` `403` `404` `500` `503` |
 | Static | `200` | `400` `401` `403` `404` `406` `500` `503` |
 | Composite | `200` | `400` `401` `403` `404` `422` `500` `503` |
-| Webhook | `201` | `400` `401` `403` `404` `500` `503` |
+| Webhook | `200` `201` | `400` `401` `403` `404` `500` `503` |
 | Files | `200` `201` `206` | `400` `401` `403` `404` `409` `413` `415` `416` `500` `503` |
 
-Any endpoint can return `429`. A `503` with `Retry-After` means the endpoint is disabled (`Enabled: false`).
+Any endpoint can return `429`. A `503` includes `Retry-After`. A webhook returns `200` for a duplicate delivery ([Deduplication](/guide/endpoints-webhook#deduplication)).
 
 | Endpoint type | Success body |
 |---|---|
@@ -109,7 +118,7 @@ Any endpoint can return `429`. A `503` with `Retry-After` means the endpoint is 
 
 ## OData query parameters
 
-SQL and Static endpoints accept `$select`, `$filter`, `$orderby`, `$top`, `$skip` and `$count`.
+SQL and Static endpoints accept `$select`, `$filter`, `$orderby`, `$top`, `$skip` and `$count`. SQL endpoints also accept `$expand`.
 
 ```http
 GET /api/prod/Products?$select=Name,Price&$filter=Price gt 100&$orderby=Name desc&$top=50

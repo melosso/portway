@@ -69,7 +69,7 @@ Content-Type: application/json
 
 - Filtering and paging use AFAS parameters (`skip`, `take`, `filterfieldids`, `filtervalues`, `operatortypes`), not OData.
 - Fields are defined by the connector in AFAS.
-- The app connector should grant only the connectors the integration uses.
+- The app connector grants the connectors the integration uses and no others.
 
 ## Troubleshooting
 
@@ -78,4 +78,4 @@ Content-Type: application/json
 | `401` from AFAS | `AfasToken` value, token validity in the app connector, base64 encoding |
 | `401` from Portway | Portway token and its scope |
 | Connector not found | Connector id in `Url`; member number |
-| Filters ignored | AFAS parameters instead of `$filter` |
+| Filters ignored | Use AFAS parameters. `$filter` is not supported |

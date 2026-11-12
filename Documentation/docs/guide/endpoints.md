@@ -11,13 +11,13 @@ An endpoint is a folder with an `entity.json` file under `endpoints/`. Each endp
 - [SQL Endpoints](/guide/endpoints-sql)
   Tables, views, stored procedures and table-valued functions with OData filtering.
 - [Proxy Endpoints](/guide/endpoints-proxy)
-  Internal HTTP and HTTPS services behind one authenticated gateway URL.
+  Internal HTTP and HTTPS services through one authenticated gateway URL.
 - [Composite Endpoints](/guide/endpoints-composite)
   Several proxy calls in sequence from one request, with values passed between steps.
 - [Static Endpoints](/guide/endpoints-static)
   Pre-defined JSON, XML or CSV files with optional OData filtering.
 - [File Endpoints](/guide/endpoints-file)
-  File upload, download and listing through authenticated API calls.
+  File upload, download and deletion through authenticated API calls, with a file list per endpoint.
 - [Webhook Endpoints](/guide/endpoints-webhook)
   Inbound HTTP POST payloads stored in a SQL table.
 :::

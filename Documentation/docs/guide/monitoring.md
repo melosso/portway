@@ -26,99 +26,20 @@ Traffic logging records per-request metadata (path, status, duration, user, clie
   "RequestTrafficLogging": {
     "Enabled": true,
     "Provider": "File",
-    "LogDirectory": "log/traffic",
-    "MaxFileSizeMB": 50,
-    "MaxFileCount": 5,
-    "FilePrefix": "proxy_traffic_",
-    "BatchSize": 100,
-    "FlushIntervalMs": 1000,
-    "CaptureRequestBodies": false,
-    "CaptureResponseBodies": false,
-    "MaxBodyCaptureSizeBytes": 4096,
-    "CaptureHeaders": true
+    "LogDirectory": "log/traffic"
   }
 }
 ```
 
-All fields, including SQLite storage and retention: [Audit and traffic logging](/reference/audit#configuration).
+Fields, entry format, SQLite storage and example queries: [Audit and traffic logging](/reference/audit).
 
 :::warning
-With `CaptureRequestBodies` and `CaptureResponseBodies`, bodies are logged unfiltered. Redacted: the `Authorization` and `Cookie` headers, and the credential headers and query parameters defined in the environment's `Authentication.Methods`.
+`CaptureRequestBodies` and `CaptureResponseBodies` write bodies unfiltered. Webhook request bodies are never captured. Redacted headers: [Header sanitization](/reference/audit#header-sanitization).
 :::
-
-### Log entry format
-
-```json
-{
-  "Timestamp": "2025-05-03T10:30:00Z",
-  "Method": "GET",
-  "Path": "/api/prod/Products",
-  "QueryString": "?$top=10",
-  "Environment": "prod",
-  "EndpointName": "Products",
-  "StatusCode": 200,
-  "DurationMs": 125,
-  "Username": "api-user",
-  "ClientIp": "192.168.1.100",
-  "TraceId": "a1b2c3d4",
-  "RequestHeaders": {
-    "Accept": "application/json",
-    "Authorization": "[REDACTED]"
-  }
-}
-```
-
-### SQLite storage
-
-SQLite storage:
-
-```json
-{
-  "RequestTrafficLogging": {
-    "Provider": "Sqlite",
-    "SqlitePath": "log/traffic_logs.db"
-  }
-}
-```
-
-Example queries:
-
-```sql
--- Top endpoints by request count (last hour)
-SELECT EndpointName, COUNT(*) AS RequestCount
-FROM TrafficLogs
-WHERE Timestamp > datetime('now', '-1 hour')
-GROUP BY EndpointName
-ORDER BY RequestCount DESC
-LIMIT 10;
-
--- Slowest requests
-SELECT Path, QueryString, DurationMs, StatusCode
-FROM TrafficLogs
-WHERE DurationMs > 1000 AND Timestamp > datetime('now', '-1 hour')
-ORDER BY DurationMs DESC
-LIMIT 20;
-```
 
 ## Log levels
 
-The `Serilog` section of `appsettings.json` sets log levels. The `Default` level applies to Portway's events; `Override` entries apply to framework namespaces:
-
-```json
-{
-  "Serilog": {
-    "MinimumLevel": {
-      "Default": "Information",
-      "Override": {
-        "Microsoft.AspNetCore": "Warning",
-        "Microsoft.EntityFrameworkCore": "Warning"
-      }
-    }
-  }
-}
-```
-
-Overrides match a log event's source context. Portway's events have no source context and follow `Default`; `Debug` enables detailed traces.
+The `Serilog` section of `appsettings.json` sets log levels. `Debug` enables detailed traces. Levels and overrides: [Logging](/reference/logging#levels).
 
 Application logs rotate daily (`portwayapi-20250503.log`); traffic logs rotate by file size (`proxy_traffic_20250503_143000.json`).
 
@@ -139,5 +60,5 @@ Metrics for Prometheus and OTLP: [Telemetry](/guide/telemetry).
 | Symptom | Resolution |
 |---|---|
 | No traffic logs | Check `Enabled: true`, write access to the log directory and `QueueCapacity`. |
-| Health check degraded | `GET /health/details` names the failing check; common causes are [disk space](/guide/troubleshooting#disk-space) and proxy targets. |
+| Health check degraded | The `GET /health/details` response contains the failing check; common causes are [disk space](/guide/troubleshooting#disk-space) and proxy targets. |
 | High response times | Log traffic to SQLite and query `DurationMs` per endpoint. |

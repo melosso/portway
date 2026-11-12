@@ -20,7 +20,7 @@ description: "Request and response headers Portway reads or writes: authenticati
 
 Client headers are forwarded to proxy upstreams, except:
 
-| Headers | Handling |
+| Headers | Behaviour |
 |---|---|
 | `Host`, `Connection`, `Keep-Alive`, `Proxy-Authenticate`, `Proxy-Authorization`, `TE`, `Trailers`, `Transfer-Encoding`, `Upgrade` | Not forwarded (hop-by-hop) |
 | `X-Forwarded-For`, `X-Forwarded-Host`, `X-Forwarded-Proto`, `X-Forwarded-Port`, `X-Real-IP`, `X-Original-For`, `Forwarded` | Not forwarded; `X-Forwarded-For` is set from the verified client address |
@@ -54,7 +54,7 @@ Responses under `/_` also include `Cross-Origin-Opener-Policy: same-origin` and 
 | `X-RateLimit-Reset` | Unix time of full replenishment | `1616161616` |
 | `X-RateLimit-Resource` | Limit that produced the values: `ip` or `token` | `token` |
 | `X-RateLimit-Used` | Requests used in the window | `5` |
-| `Retry-After` | Seconds until retry; `429` only | `60` |
+| `Retry-After` | Seconds until retry; Sent with `429` | `60` |
 
 ## Caching headers
 
@@ -75,7 +75,7 @@ Responses are compressed with Brotli (`br`) or Gzip (`gzip`) according to `Accep
 
 ## CORS
 
-Outside Development, cross-origin requests are allowed only from `Console:CorsOrigins`, with any method and header and with credentials. Without configured origins, cross-origin requests are refused. In Development, any origin is allowed.
+Outside Development, Portway allows cross-origin requests from `Console:CorsOrigins`, with any method and header and with credentials. Without configured origins, cross-origin requests are refused. In Development, any origin is allowed.
 
 ## Related topics
 

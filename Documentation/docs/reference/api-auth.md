@@ -1,6 +1,6 @@
 ---
 title: Authentication
-description: "Token properties, scope patterns, and the authentication flow for Portway API requests"
+description: "Token properties, scope patterns, and request authentication for the Portway API"
 ---
 
 # Authentication

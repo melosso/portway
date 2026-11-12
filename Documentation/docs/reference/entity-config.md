@@ -28,10 +28,10 @@ endpoints/
 | `Sunset` | date | | `Sunset` response header |
 | `Stability` | string | | `Stable` or `Experimental`. Label on the operations in the API reference. `Deprecated: true` takes precedence. Invalid values are ignored at load and logged; a console save returns `400`. |
 | `Badges` | object[] | | Labels on the operations in the API reference. Fields: `Name` (required, 32 characters maximum), `Position` (`before` or `after`, default `after`), `Color` (CSS keyword, hex, `rgb`, `rgba`, `hsl` or `hsla`). Invalid values are ignored at load and logged; a console save returns `400`. |
-| `Namespace` | string | Folder | [Namespaces](/reference/namespaces) |
-| `NamespaceDisplayName` | string | | Namespace label in the documentation |
-| `NamespaceDescription` | string | | Namespace group description in the OpenAPI document ([OpenAPI tags](/reference/namespaces#openapi-tags)) |
-| `DisplayName` | string | | Endpoint label |
+| `Namespace` | string | Folder | [Namespace properties](/reference/namespaces#properties) |
+| `NamespaceDisplayName` | string | | [Namespace properties](/reference/namespaces#properties) |
+| `NamespaceDescription` | string | | [Namespace properties](/reference/namespaces#properties) |
+| `DisplayName` | string | | [Namespace properties](/reference/namespaces#properties) |
 | `Documentation` | object | | [OpenAPI settings](/reference/openapi-settings#endpoint-documentation) |
 | `Mcp` | object | | [MCP exposure](/guide/mcp) |
 | `Tenancy` | object | | [Tenant headers](/guide/tenant-headers) |
@@ -59,13 +59,13 @@ endpoints/
 | `PrimaryKey` | string | `Id` | Key for `/{id}` requests |
 | `AllowedMethods` | string[] | `["GET"]` | `GET`, `QUERY`, `POST`, `PUT`, `PATCH`, `MERGE` (alias of `PATCH`), `DELETE` |
 | `Procedure` | string | | Stored procedure for writes |
-| `WriteMode` | string | | `Table` writes directly to the table instead of a procedure |
+| `WriteMode` | string | | `Table` writes to the table without a stored procedure |
 | `RequiredColumns` | string[] | | Columns required on create |
 | `ColumnValidation` | object | | Validation rules per column |
 | `Relationships` | array | | To-one navigations for [`$expand`](/reference/expand) |
 | `FunctionParameters` | array | | Table-valued function parameters |
 | `ResponseTransforms` | object | | `Remove`, `Rename` and `Mask` rules on result rows, including `/{id}` and table-valued function results. Field names are public names (aliases). Rules: [Proxy](#proxy) |
-| `Properties` | object | | `MaxPageSize` (upper limit for `$top`), `DefaultSort` (`$orderby` when none is given), `CacheEnabled` (`false` bypasses the response cache), `CacheDurationMinutes` (cache TTL), `CacheInvalidatedBy` (tables whose writes invalidate cached reads, [Caching](/reference/caching#per-endpoint-settings)) |
+| `Properties` | object | | `MaxPageSize` (upper limit for `$top`), `DefaultSort` (`$orderby` when none is given), `CacheEnabled` (`false` bypasses the response cache), `CacheDurationMinutes` (cache TTL), `CacheInvalidatedBy` (tables that invalidate cached reads on write, [Caching](/reference/caching#per-endpoint-settings)) |
 
 Writes, validation and table-valued functions: [SQL Endpoints](/guide/endpoints-sql).
 
@@ -176,7 +176,7 @@ Transforms apply in the order `Remove`, `Mask`, `Rename`. They apply to top-leve
 }
 ```
 
-Steps call Proxy endpoints and use their `FallbackUrls` and `Retry`; their `ResponseTransforms` apply to the final response only. Steps run in order and are not a transaction.
+Steps call Proxy endpoints and use their `FallbackUrls` and `Retry`; their `ResponseTransforms` apply to the final response and not to step results. Steps run in order and are not a transaction.
 
 | Step property | Description |
 |---|---|

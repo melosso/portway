@@ -120,7 +120,7 @@ A webhook id without `Verification` requires a Portway Bearer token. A sender th
 
 ## Verification
 
-`Verification` sets one mode per webhook id. A verified id accepts its signature or credential only: Portway tokens and [environment authentication](/reference/environment-auth) do not apply to it. `Verification` requires an endpoint with a namespace.
+`Verification` sets one mode per webhook id. A verified id requires its signature or credential. Portway tokens and [environment authentication](/reference/environment-auth) do not apply to a verified id. `Verification` requires an endpoint with a namespace.
 
 ```json [endpoints/Webhooks/Billing/Events/entity.json]
 {
@@ -134,7 +134,7 @@ A webhook id without `Verification` requires a Portway Bearer token. A sender th
 }
 ```
 
-`Secret` and `PreviousSecret` are [secret references](/reference/secrets#secret-store) in the request environment. A literal value, an unknown scheme or an invalid field makes that id answer `401` and logs one startup error. Use one secret per sender: two ids with the same secret log a startup warning.
+`Secret` and `PreviousSecret` are [secret references](/reference/secrets#secret-store) in the request environment. A literal value, an unknown scheme or an invalid field makes that id return `401` and logs one startup error. Use one secret per sender: two ids with the same secret log a startup warning.
 
 ### Modes
 
@@ -175,13 +175,13 @@ Rules:
 
 - Signatures are compared in constant time on the raw body. `PreviousSecret` is tried after `Secret`.
 - A key shorter than 16 bytes, a repeated signature, timestamp or id header, and a timestamp outside the window are refused.
-- SHA-256 is the only hash. A mode that signs neither a timestamp nor an id logs a startup warning: a captured delivery can be replayed.
-- A failed verification answers `401`, the same as a request without credentials. The log entry contains the scheme and the reason.
-- Verification header names are redacted in traffic logs. The OpenAPI document lists verified ids with their header names.
+- The hash is SHA-256. A mode that signs neither a timestamp nor an id logs a startup warning: a captured delivery can be replayed.
+- A failed verification returns `401`, the same as a request without credentials. The log entry contains the scheme and the reason.
+- Verification header names are redacted in traffic logs. The OpenAPI document names verified ids with their header names.
 
 ## Deduplication
 
-`Deduplicate: true` stores a delivery once per webhook id and delivery id. A duplicate answers `200` with `Duplicate delivery ignored.` A missing delivery id, or one longer than 255 characters, answers `400`.
+`Deduplicate: true` stores a delivery once per webhook id and delivery id. A duplicate returns `200` with `Duplicate delivery ignored.` A missing delivery id, or one longer than 255 characters, returns `400`.
 
 The table requires a `DeliveryId` column and a unique index:
 
@@ -204,7 +204,7 @@ CREATE UNIQUE INDEX UX_WebhookData_Delivery ON WebhookData (WebhookId, DeliveryI
 ```
 :::
 
-Without the unique index, `Deduplicate` stores duplicates. The index also covers concurrent deliveries and multiple instances.
+Without the unique index, `Deduplicate` stores duplicates. The index applies to concurrent deliveries and to multiple instances.
 
 :::warning
 A header delivery id removes sender retries. It does not stop a replay with a changed id. `DedupeKey: BodyHash` blocks that replay and also drops two legitimate deliveries with an identical body.
@@ -212,13 +212,13 @@ A header delivery id removes sender retries. It does not stop a replay with a ch
 
 ## Content types
 
-Webhook routes accept `application/json` and `application/*+json`. `AcceptForm: true` on a verified id stores an `application/x-www-form-urlencoded` body as raw text; the signature covers the raw body. Other content types answer `415`. A `Hidden` endpoint accepts `application/json` only, and `AcceptForm` on a `Hidden` endpoint is a load error.
+Webhook routes accept `application/json` and `application/*+json`. `AcceptForm: true` on a verified id stores an `application/x-www-form-urlencoded` body as raw text; the signature is computed over the raw body. Other content types return `415`. A `Hidden` endpoint accepts `application/json` only, and `AcceptForm` on a `Hidden` endpoint is a load error.
 
-A `Slack` id answers a signed `url_verification` request with its challenge and stores nothing.
+A `Slack` id returns the challenge of a signed `url_verification` request and stores nothing.
 
 ## Deliveries in the console
 
-**Endpoints** > webhook > **Deliveries** lists the latest 50 rows per environment, with the payload on expand. The view requires an administrator account.
+**Endpoints** > webhook > **Deliveries** displays the latest 50 rows per environment, with the payload on expand. The view requires an administrator account.
 
 ## Processing and retention
 
@@ -267,7 +267,7 @@ ORDER BY ReceivedAt DESC;
 
 ## Limitations
 
-- POST only
+- Method: `POST`
 - JSON payloads, plus form bodies on ids with `AcceptForm`
 - No validation beyond JSON syntax and the webhook id. A malformed or empty body returns `400`.
 - No retry on insert failure; the sender retry is the recovery path

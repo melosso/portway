@@ -129,7 +129,7 @@ Failure response:
 }
 ```
 
-The response status is the failing step's status. `details` contains the step's upstream error body; a non-JSON body is truncated to 200 characters. `completedSteps` lists the steps completed before the failure.
+The response status is the failing step's status. `details` contains the step's upstream error body; a non-JSON body is truncated to 200 characters. `completedSteps` contains the steps completed before the failure.
 
 ## Troubleshooting
 

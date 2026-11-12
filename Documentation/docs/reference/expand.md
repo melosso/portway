@@ -9,7 +9,7 @@ A relationship declared in `entity.json` makes the related row available through
 
 ## When it applies
 
-Portway processes `$expand` on SQL Table and View endpoints only:
+`$expand` applies to SQL Table and View endpoints:
 
 | Endpoint type | `$expand` | Behaviour |
 |---|:---:|---|
@@ -21,7 +21,7 @@ Portway processes `$expand` on SQL Table and View endpoints only:
 
 ## Declaring a relationship
 
-Each `Relationships` entry names a navigation and a target SQL endpoint; the target's schema, table and `AllowedColumns` apply:
+Each `Relationships` entry defines a navigation and a target SQL endpoint; the target's schema, table and `AllowedColumns` apply:
 
 ```json
 {
@@ -77,7 +77,7 @@ The `Category` navigation joins `Assortments` on `Assortment = AssortmentID`; th
 }
 ```
 
-Only the target's `AllowedColumns` are returned. Filters, selection, ordering and paging apply to the base entity, including filters on the foreign key.
+The expanded object contains the target's `AllowedColumns`. Filters, selection, ordering and paging apply to the base entity, including filters on the foreign key.
 
 ## Join behavior
 
@@ -104,7 +104,7 @@ To-one navigations use an `INNER JOIN`; base rows without a match are omitted. T
 | Table-valued function endpoint | `400` |
 | Nested options, e.g. `$expand=Category($select=Name)` | `400` |
 | Endpoint without `AllowedColumns` | `400` |
-| Unknown navigation | `400`, naming the navigation |
+| Unknown navigation | `400`. The message contains the navigation name |
 | Target endpoint with `Tenancy` | `400` |
 
 ## Related topics

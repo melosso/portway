@@ -25,7 +25,7 @@ Setting `Mcp:Enabled: true` in `appsettings.json` enables the server at `Mcp:Pat
 | `Path` | No | string | Server path (default `/mcp`) |
 | `ChatEnabled` | No | bool | Enables the Chat UI and `/_/api/mcp/chat`; provider credentials are set in the setup wizard (default `false`) |
 
-Every MCP request requires a Portway Bearer token. Tools run with the scope of the caller's token. `Mcp:RequireAuthentication` has no effect.
+Every MCP request requires a Portway Bearer token. Tools run with the scope of the caller's token.
 
 ## Expose an endpoint as an MCP tool
 
@@ -47,16 +47,16 @@ Setting `Mcp.Exposed: true` in `entity.json` registers one tool per HTTP method 
 | Field | Required | Type | Description |
 |---|---|---|---|
 | `Exposed` | Yes | bool | Registers the endpoint as MCP tools (default `false`) |
-| `Instruction` | No | string | Text appended to the tool description for the model, e.g. required filters or data shape |
+| `Instruction` | No | string | Text appended to the tool description for the model, e.g. required filters or the response format |
 | `AllowedMethods` | No | string[] | Methods the MCP tool accepts. Methods outside the endpoint's methods are ignored. Default: the first method of the endpoint. |
 
-Tool names follow `{namespace}_{name}_{method}`, or `{name}_{method}` without a namespace (e.g. `products_GET`). `Instruction` changes only the model-facing description, not the Explorer summary.
+Tool names follow `{namespace}_{name}_{method}`, or `{name}_{method}` without a namespace (e.g. `products_GET`). `Instruction` changes the model-facing description. The Explorer summary stays unchanged.
 
 Tools for endpoints with [tenant headers](/guide/tenant-headers) list them in `GetEndpointInfo` (`TenantHeaders`) and accept their values in the `tenants` argument of `CallEndpoint`, e.g. `{"X-Company-Id": "ACME"}`.
 
 ## Namespaces
 
-The Explorer and `ListEndpoints` group tools by `Namespace`; tools without one are listed under `default`.
+The Explorer and `ListEndpoints` group tools by `Namespace`; tools without one are grouped under `default`.
 
 ```json
 {
@@ -96,5 +96,5 @@ Scope agent tokens to the required endpoints and environments: [Access Tokens](/
 
 Console views under **MCP**:
 
-- **Explorer** (`/_/mcp/explorer`): registered tools by namespace, with methods and endpoint links; requires only `Mcp:Enabled: true`
+- **Explorer** (`/_/mcp/explorer`): registered tools by namespace, with methods and endpoint links; requires `Mcp:Enabled: true`
 - **Chat** (`/_/mcp/chat`): an AI model calling Portway tools; requires [Chat configuration](/guide/mcp-chat)

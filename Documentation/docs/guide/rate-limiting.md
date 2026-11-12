@@ -34,7 +34,7 @@ Rate limiting runs before token authentication. Invalid tokens consume from thei
 | `Provider` | Bucket storage backend, `Memory` or `Redis` | `Memory` |
 | `Redis:ConnectionString` | Connection string for the Redis store | none |
 
-The `Memory` store keeps bucket state in process memory; behind a load balancer, limits apply per instance.
+The `Memory` store stores bucket state in process memory. With a load balancer and several instances, limits apply per instance.
 
 ## Per-token limits
 
@@ -95,7 +95,7 @@ An IP address that exceeds its bucket is blocked for the full window. For a toke
 
 ## Observing the limiter
 
-The console dashboard's Rate Limiting card lists the active store, the limits and blocked IP addresses and tokens. JSON: `/_/api/ratelimits`.
+The console dashboard's Rate Limiting card displays the active store, the limits and blocked IP addresses and tokens. JSON: `/_/api/ratelimits`.
 
 ## Troubleshooting
 
@@ -103,7 +103,7 @@ The console dashboard's Rate Limiting card lists the active store, the limits an
 |---|---|
 | Legitimate clients receive `429` | Raise `IpLimit`, or give the affected token its own limit. |
 | No rate limiting | Check `"Enabled": true` and restart. |
-| Limits reset | The `Memory` store resets on restart; the Redis store keeps state. |
+| Limits reset | The `Memory` store resets on restart; the Redis store retains state. |
 
 Rate limit events are logged at `Warning`:
 

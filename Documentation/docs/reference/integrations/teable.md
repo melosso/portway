@@ -71,4 +71,4 @@ Content-Type: application/json
 | `401` from Teable | `Authorization` value in the environment; token validity |
 | `401` from Portway | `X-API-Key` value; `Authentication.Enabled` |
 | Bearer tokens rejected in the environment | `OverrideGlobalToken: true` applies to the whole environment |
-| Filters ignored | Teable parameters instead of `$filter` |
+| Filters ignored | Use Teable parameters. `$filter` is not supported |

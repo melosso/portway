@@ -104,7 +104,7 @@ CREATE INDEX idx_timestamp ON TrafficLogs (Timestamp);
 }
 ```
 
-`Id` is present in SQLite storage only. `TargetUrl` is set for proxy requests. Body fields are `null` unless body capture is enabled.
+SQLite storage includes `Id`. `TargetUrl` is set for proxy requests. Body fields are `null` unless body capture is enabled.
 
 ## Security features
 
@@ -114,7 +114,7 @@ Redacted header values: `Authorization`, `Cookie`, `X-API-Key`, `API-Key`, `Pass
 
 ### Body capture controls
 
-Body capture is disabled by default, limited to `MaxBodyCaptureSizeBytes` (longer bodies end with `...`) and applies to JSON and XML content only.
+Body capture is disabled by default, limited to `MaxBodyCaptureSizeBytes` (longer bodies end with `...`) and applies to JSON and XML content. Webhook request bodies are never captured.
 
 ### Storage access
 
@@ -129,7 +129,7 @@ Entries are queued and written in background batches. Tuning for high volume:
 | `CaptureRequestBodies` / `CaptureResponseBodies` | Disabled outside debugging |
 | `BatchSize` | Higher (e.g. 500) for fewer writes |
 | `FlushIntervalMs` | Higher (e.g. 5000) when I/O is the bottleneck |
-| `QueueCapacity` | Higher when the application log reports a full queue |
+| `QueueCapacity` | Higher if the application log contains a full-queue warning |
 | `Provider` | `File` has higher throughput than `Sqlite` |
 
 ## Querying traffic logs

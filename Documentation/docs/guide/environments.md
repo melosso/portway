@@ -5,7 +5,7 @@ description: "Route API requests to different servers, databases, and configurat
 
 # Environments
 
-The environment segment in `/api/{environment}/{endpoint}` selects a folder under `environments/` with the connection string, server name, headers and authentication for that target.
+The environment segment in `/api/{environment}/{endpoint}` selects a folder under `environments/`. The folder contains the connection string, server name, headers, secrets and authentication for that target.
 
 ## Directory structure
 
@@ -27,7 +27,7 @@ Environment names are free-form (e.g. `dev`, `prod`, `WMS`, `500`). The folder n
 
 ### Global settings
 
-The global file lists the routable environments:
+`AllowedEnvironments` in the global file defines the routable environments:
 
 ```json [environments/settings.json]
 {
@@ -41,7 +41,7 @@ The global file lists the routable environments:
 `ServerName` is the default server name in forwarded headers. Property reference: [Environment settings](/reference/environment-settings#global-settings).
 
 :::warning
-An environment folder is routed only when its name is listed in `AllowedEnvironments`.
+An environment folder is routed only when `AllowedEnvironments` contains its name.
 :::
 
 ### Environment settings
@@ -59,11 +59,7 @@ Each environment folder contains its own `settings.json`:
 }
 ```
 
-| Field | Required | Description |
-|---|---|---|
-| `ServerName` | No | Overrides the global server name for this environment |
-| `ConnectionString` | No | Database connection string. Required for SQL and Webhook endpoints |
-| `Headers` | No | Headers added to forwarded proxy requests; they replace client headers of the same name |
+Properties: [Environment settings](/reference/environment-settings#environment-settings).
 
 ## Connection strings
 
@@ -93,46 +89,27 @@ An `Authentication` block in the environment's `settings.json` adds API key, Bas
       {
         "Type": "ApiKey",
         "Name": "X-Custom-Auth",
-        "Value": "your-secret-key",
-        "In": "Header"
+        "Value": "${secret:CUSTOM-AUTH}",
+        "In": "Header",
+        "AllowedEndpoints": ["CRM/*"]
       }
     ]
-  }
+  },
+  "Secrets": { "CUSTOM-AUTH": "PWENC:..." }
 }
 ```
 
-`OverrideGlobalToken: true` rejects Portway bearer tokens and accepts only the configured methods. Requests authenticated by these methods have no Portway token and are refused on endpoints with `Tenancy`. Method fields for `ApiKey`, `Basic`, `Bearer`, `JWT` and `HMAC`: [Environment Authentication](/reference/environment-auth).
+`OverrideGlobalToken: true` rejects Portway Bearer tokens in the environment. `AllowedEndpoints` limits a method to matching endpoints. Requests authenticated by these methods have no Portway token, and endpoints with `Tenancy` refuse them. Method fields for `ApiKey`, `Basic`, `Bearer`, `JWT` and `HMAC`: [Environment Authentication](/reference/environment-auth).
 
-Plaintext secrets in `settings.json` are encrypted at the next start (`PWENC:...`). `"Encrypt": false` keeps an environment plaintext, for non-production credentials only. Keys and backup: [Secret Encryption](/reference/secrets).
+Portway encrypts plaintext secrets in `settings.json` at the next start (`PWENC:...`). Keys and backup: [Secrets](/reference/secrets#encryption).
 
 ## Azure Key Vault
 
-Connection strings and other secrets can be read from Azure Key Vault instead of `settings.json`:
-
-1. Set the Key Vault URI:
-
-   ::: code-group
-
-   ```powershell [Windows]
-   $env:PORTWAY_KEYVAULT_URI = "https://your-keyvault.vault.azure.net/"
-   ```
-
-   ```bash [Linux]
-   export PORTWAY_KEYVAULT_URI="https://your-keyvault.vault.azure.net/"
-   ```
-
-   :::
-
-2. Create secrets per environment:
-   - `{environment}-ConnectionString`
-   - `{environment}-ServerName`
-   - `{environment}-Headers` (JSON string)
-
-The secrets are read at startup and used like file-based values. Authentication uses the Azure SDK `DefaultAzureCredential`, which reads `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_CLIENT_SECRET`.
+`PORTWAY_KEYVAULT_URI` adds Azure Key Vault as a source for connection strings, headers and secrets: [Azure Key Vault](/reference/secrets#azure-key-vault).
 
 ## Network access policy
 
-The file `environments/network-access-policy.json` lists the upstream hosts proxy endpoints may call (SSRF protection). It is created at first start.
+The file `environments/network-access-policy.json` defines the upstream hosts proxy endpoints may call (SSRF protection). It is created at first start.
 
 ```json
 {
@@ -179,6 +156,8 @@ The `ASPNETCORE_DOMAIN` environment variable adds a host name to the allowed lis
 |---|---|
 | "Environment not in the allowed list" | Add the name to `AllowedEnvironments` in `environments/settings.json`. |
 | "Settings.json not found for environment" | Create `environments/{name}/settings.json`. |
+| `500` on every request in one environment | `settings.json` fails to load or decrypt, or a referenced secret has no value. The log entry contains the cause. |
+| "Secret NAME has no value in environment" | Add the secret under **Environments** or in `Secrets`. |
 | "Access denied to environment" | Grant the environment to the token in the [console](/guide/webui) under **Access Tokens**. |
 | Proxy blocked, host not allowed | Add the host to `allowedHosts` in `network-access-policy.json` and restart. |
 | Proxy blocked, IP in blocked range | The host resolves to an address in `blockedIpRanges`; change the range only for a trusted target. |

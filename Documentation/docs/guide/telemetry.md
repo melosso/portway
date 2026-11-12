@@ -98,7 +98,7 @@ The Prometheus provider exports no traces.
 | SQL query | SqlClient | Child span per database round trip, with statement text when available |
 | Outbound HTTP | HttpClient | Child span per proxy call, with target URL and status code |
 
-Errors handled by Portway's exception handler are recorded on the active span with `exception.type`, `exception.message` and `exception.stacktrace`.
+Errors caught by Portway's exception handler are recorded on the active span with `exception.type`, `exception.message` and `exception.stacktrace`.
 
 ### Metrics (both providers)
 
@@ -107,8 +107,11 @@ Errors handled by Portway's exception handler are recorded on the active span wi
 | `portway.request.duration` | Histogram | `s` | `http.method`, `http.response.status_code`, `portway.request_source`, `portway.endpoint` |
 | `portway.cache.hit.count` | Counter | `{hit}` | None |
 | `portway.cache.miss.count` | Counter | `{miss}` | None |
+| `portway.webhook.stored.count` | Counter | `{delivery}` | `portway.endpoint`, `portway.webhook.scheme` |
+| `portway.webhook.duplicate.count` | Counter | `{delivery}` | `portway.endpoint`, `portway.webhook.scheme` |
+| `portway.webhook.verification_failed.count` | Counter | `{delivery}` | `portway.endpoint`, `portway.webhook.scheme` |
 
-The `portway.request_source` dimension is `api` for `/api` calls, `ui` for console calls and `other` for the rest. The `portway.endpoint` dimension contains the configured endpoint name with namespace and version for API calls (e.g. `Products`, `CRM/Accounts`, `Inventory/Products@v2`, `composite/SalesOrder`) and is empty for other requests and for paths that match no configured endpoint. `http.method` is `OTHER` for methods outside `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `MERGE`, `QUERY`, `HEAD` and `OPTIONS`.
+The `portway.request_source` dimension is `api` for `/api` calls, `ui` for console calls and `other` for the rest. The `portway.endpoint` dimension contains the configured endpoint name with namespace and version for API calls (e.g. `Products`, `CRM/Accounts`, `Inventory/Products@v2`, `composite/SalesOrder`) and is empty for other requests and for paths that match no configured endpoint. `portway.webhook.scheme` is the `Verification` scheme of the webhook id, or `Bearer`. Webhook metrics contain no payload or header values. `http.method` is `OTHER` for methods outside `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `MERGE`, `QUERY`, `HEAD` and `OPTIONS`.
 
 ## Docker Compose
 

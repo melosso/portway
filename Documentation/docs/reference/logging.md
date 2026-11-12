@@ -58,7 +58,7 @@ Portway logs through Serilog, configured in the `Serilog` section of `appsetting
 |---|---|
 | `Debug` | Queries, endpoint trees, pool and provider details, per-endpoint health failures |
 | `Information` | Startup summary and operational events |
-| `Warning` | Handled problems: rate limit blocks, configuration fallbacks, unhealthy upstreams |
+| `Warning` | Recovered problems: rate limit blocks, configuration fallbacks, unhealthy upstreams |
 | `Error` | Failures and exceptions |
 | `Fatal` | Startup failures |
 

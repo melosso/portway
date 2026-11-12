@@ -1,6 +1,6 @@
 ---
 title: Instances
-description: "Run multiple Portway versions side by side behind Nginx, Caddy or IIS, each under its own path"
+description: "Run multiple Portway versions side by side with Nginx, Caddy or IIS as reverse proxy, each under its own path"
 ---
 
 # Instances
@@ -83,9 +83,9 @@ api.example.com {
 
 :::
 
-The forwarded request keeps the `/v1` prefix: Nginx `proxy_pass` has no trailing path, and Caddy uses `handle`, not `handle_path`. Caddy sets `X-Forwarded-For` and `X-Forwarded-Proto` and obtains the certificate itself.
+The forwarded request includes the `/v1` prefix: Nginx `proxy_pass` has no trailing path, and Caddy uses `handle`, not `handle_path`. Caddy sets `X-Forwarded-For` and `X-Forwarded-Proto` and obtains the certificate itself.
 
-With Docker, each container publishes its own host port (e.g. `127.0.0.1:5001:8080`) and sets `PORTWAY_PATH_BASE`. Requests from a host proxy originate from the Docker bridge. `ForwardedHeaders:KnownNetworks` (`PORTWAY_KNOWN_NETWORKS`) lists the bridge range (e.g. `172.16.0.0/12`).
+With Docker, each container publishes its own host port (e.g. `127.0.0.1:5001:8080`) and sets `PORTWAY_PATH_BASE`. Requests from a host proxy originate from the Docker bridge. `ForwardedHeaders:KnownNetworks` (`PORTWAY_KNOWN_NETWORKS`) contains the bridge range (e.g. `172.16.0.0/12`).
 
 ## Windows (IIS)
 
@@ -125,7 +125,7 @@ Files in the site root (e.g. `C:\path\to\your\PortwayApi`):
 </configuration>
 ```
 
-The first rule lists the version paths in use and passes them through. The second redirects every other path, the root included, to the default version. Portway sets the security headers (`Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options` and others). Headers added in `web.config` duplicate them.
+The first rule matches the version paths in use and passes them through. The second redirects every other path, the root included, to the default version. Portway sets the security headers (`Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options` and others). Headers added in `web.config` duplicate them.
 
 ### 3. Path base
 

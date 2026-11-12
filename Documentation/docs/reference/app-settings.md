@@ -30,7 +30,7 @@ Every key on this page is editable under **Settings** or **Trace** in the consol
 |---|---|
 | `Serilog:WriteTo` | Sink list keyed by position |
 | `urls`, `Kestrel`, `ASPNETCORE_HTTP_PORTS` | Bind address; a wrong value leaves the gateway unreachable |
-| `OpenApi:SecurityDefinition:Name`, `In`, `Type`, `Scheme` | The gateway accepts Bearer tokens only |
+| `OpenApi:SecurityDefinition:Name`, `In`, `Type`, `Scheme` | Bearer is the accepted token scheme |
 
 Validation rules for console writes:
 
@@ -80,19 +80,17 @@ A setting saved from the console replaces anything configured in your `appsettin
 |---|---|---|---|
 | `Enabled` | boolean | `true` | Serves the console at `/_` |
 | `AdminApiKey` | string | `""` | Deprecated enable switch; not a password. The first account is named `admin` when set |
-| `SeedPassword` | string | `""` | Fixed password for the first account, without a forced change; demo instances only |
-| `SeedToken` | string | `""` | Fixed full-access token created on first start when no token exists; 32 or more characters; demo instances only |
+| `SeedPassword` | string | `""` | Fixed password for the first account, without a forced change. For demo instances |
+| `SeedToken` | string | `""` | Fixed full-access token created on first start when no token exists; 32 or more characters. For demo instances |
 | `PublicOrigins` | string[] | `[]` | Origins allowed to reach `/_` from outside the local network; one `*` per segment |
 | `CorsOrigins` | string[] | `[]` | Browser origins allowed by CORS |
-| `SecureCookies` | boolean | `false` | Session cookies over HTTPS only |
+| `SecureCookies` | boolean | `false` | Restricts session cookies to HTTPS |
 | `Customization.LandingPageEnabled` | boolean | `true` | Landing page at `/`; `false` redirects `/` to `/docs` |
 | `Customization.PromoText` | string | `""` | Markdown banner |
 | `Customization.PromoLogin` | boolean | `false` | Shows the banner on `/login` |
 | `Customization.LoginFooter` | string | `""` | Markdown below the sign-in form |
 
-`WebUi` is the deprecated name of this section and is still read, with a warning at startup. The source with the highest priority wins, whichever name it uses. Within one file, `Console` takes precedence over `WebUi`. Console saves are written under `Console`.
-
-`PublicOrigins` is matched against the client-supplied `Origin` header and does not authenticate; keep the console behind a proxy, VPN or firewall when it is not meant to be public.
+`PublicOrigins` is matched against the client-supplied `Origin` header and does not authenticate. A console that is not public requires a proxy, VPN or firewall rule in front of Portway.
 
 ## ForwardedHeaders
 
@@ -110,7 +108,7 @@ A setting saved from the console replaces anything configured in your `appsettin
 | `KnownProxies` | string[] | `[]` | Trusted proxy addresses |
 | `KnownNetworks` | string[] | `[]` | Trusted proxy ranges (CIDR) |
 
-Portway honors `X-Forwarded-For` only from a listed proxy. With both lists empty, the connecting address is the client address; behind a proxy, per-IP rate limiting, the sign-in lockout and the console network gate then apply to the proxy address. **Settings → Security → Client addresses** shows the address Portway resolved and warns about an untrusted forwarded address. Cloudflare client addresses are restored from `CF-Connecting-IP` for requests from Cloudflare ranges, without an entry here.
+Portway reads `X-Forwarded-For` from a proxy in `KnownProxies` or `KnownNetworks` and ignores it from other addresses. If both are empty: the connecting address is the client address. With a reverse proxy, per-IP rate limiting, the sign-in lockout and the console network gate then apply to the proxy address. **Settings → Security → Client addresses** shows the address Portway resolved and warns about an untrusted forwarded address. Cloudflare client addresses are restored from `CF-Connecting-IP` for requests from Cloudflare ranges, without an entry here.
 
 ## SqlConnectionPooling
 
@@ -198,11 +196,11 @@ Portway honors `X-Forwarded-For` only from a listed proxy. With both lists empty
 | `FreePageRatioThreshold` | number | `0.25` | `VACUUM` runs when free pages reach this fraction of the file |
 | `RunOnStartup` | boolean | `false` | Adds one run shortly after start |
 | `Backup.Enabled` | boolean | `true` | Writes a snapshot archive at the same time |
-| `Backup.Retention` | integer | `7` | Number of archives kept, 1 to 100 |
+| `Backup.Retention` | integer | `7` | Number of archives retained, 1 to 100 |
 
 A database that fails `quick_check` is skipped for `ANALYZE` and `VACUUM` and logged as an error. **Settings → Maintenance** displays the result per database. **Run now** starts a run.
 
-A snapshot is a `.zip` in `.backups/snapshots/` with `auth.db`, `mcp.db`, `environments/` and `endpoints/`. The databases are copied with `VACUUM INTO` and are consistent while Portway runs. `metrics.db` and `tokens/` are not included. **Settings → Backups** creates, lists, downloads and restores snapshots. Downloading and restoring require the administrator role and are recorded in the audit trail. `Backup.Enabled` is independent of `Enabled`.
+A snapshot is a `.zip` in `.backups/snapshots/` with `auth.db`, `mcp.db`, `environments/` and `endpoints/`. The databases are copied with `VACUUM INTO` and are consistent while Portway runs. `metrics.db` and `tokens/` are not included. **Settings → Backups** creates, displays, downloads and restores snapshots. Downloading and restoring require the administrator role and are recorded in the audit trail. `Backup.Enabled` is independent of `Enabled`.
 
 A snapshot contains password hashes, token hashes and connection strings encrypted with `PORTWAY_ENCRYPTION_KEY`. The same key is required to read the connection strings after a restore.
 
@@ -233,17 +231,19 @@ Any key is set with `__` as separator (e.g. `RateLimiting__IpLimit`). Portway-sp
 
 | Variable | Configuration key | Legacy name |
 |---|---|---|
-| `PORTWAY_ENCRYPTION_KEY` | Encryption key for secrets at rest; required outside Development | |
-| `PORTWAY_CHAT_API_KEY` | AI provider key for MCP chat; takes precedence over the stored key | |
-| `PORTWAY_WEBUI_ENABLED` | `Console:Enabled` | `WebUi__Enabled` |
-| `PORTWAY_ADMIN_KEY` | `Console:AdminApiKey` (deprecated, no effect while `Console:Enabled` is set) | `WebUi__AdminApiKey` |
-| `PORTWAY_SECURE_COOKIES` | `Console:SecureCookies` | `WebUi__SecureCookies` |
+| `PORTWAY_ENCRYPTION_KEY` | Encryption key for secrets at rest; required outside Development |  |
+| `PORTWAY_CHAT_API_KEY` | AI provider key for MCP chat; takes precedence over the stored key |  |
+| `PORTWAY_WEBUI_ENABLED` | `Console:Enabled` | `Console__Enabled` |
+| `PORTWAY_ADMIN_KEY` | `Console:AdminApiKey` (deprecated, no effect while `Console:Enabled` is set) | `Console__AdminApiKey` |
+| `PORTWAY_SECURE_COOKIES` | `Console:SecureCookies` | `Console__SecureCookies` |
+| `PORTWAY_PUBLIC_ORIGINS` | `Console:PublicOrigins` (list) | `Console__PublicOrigins__0` |
+| `PORTWAY_SEED_PASSWORD` | `Console:SeedPassword` | `Console__SeedPassword` |
+| `PORTWAY_SEED_TOKEN` | `Console:SeedToken` | `Console__SeedToken` |
+| `PORTWAY_PROMO_TEXT` | `Console:Customization:PromoText` | `Console__Customization__PromoText` |
+| `PORTWAY_PROMO_LOGIN` | `Console:Customization:PromoLogin` | `Console__Customization__PromoLogin` |
+| `PORTWAY_LOGIN_FOOTER` | `Console:Customization:LoginFooter` | `Console__Customization__LoginFooter` |
 | `PORTWAY_OPENAPI_MARKDOWN` | `OpenApi:ServeMarkdown` | `OpenApi__ServeMarkdown` |
-| `PORTWAY_PUBLIC_ORIGINS` | `Console:PublicOrigins` (list) | `WebUi__PublicOrigins__0` |
-| `PORTWAY_SEED_PASSWORD` | `Console:SeedPassword` | `WebUi__SeedPassword` |
-| `PORTWAY_SEED_TOKEN` | `Console:SeedToken` | `WebUi__SeedToken` |
-| `PORTWAY_PROMO_TEXT` | `Console:Customization:PromoText` | `WebUi__Customization__PromoText` |
-| `PORTWAY_LOGIN_FOOTER` | `Console:Customization:LoginFooter` | `WebUi__Customization__LoginFooter` |
+| `PORTWAY_OPENAPI_DESCRIPTION` | `OpenApi:Description` | `OpenApi__Description` |
 | `PORTWAY_KNOWN_PROXIES` | `ForwardedHeaders:KnownProxies` (list) | `ForwardedHeaders__KnownProxies__0` |
 | `PORTWAY_KNOWN_NETWORKS` | `ForwardedHeaders:KnownNetworks` (list) | `ForwardedHeaders__KnownNetworks__0` |
 | `PORTWAY_OIDC_ENABLED` | `Oidc:Enabled` | `Oidc__Enabled` |
@@ -260,13 +260,43 @@ Any key is set with `__` as separator (e.g. `RateLimiting__IpLimit`). Portway-sp
 | `PORTWAY_PROXY_DOMAIN` | Outbound proxy domain | `PROXY_DOMAIN` |
 | `PORTWAY_KEYVAULT_URI` | Azure Key Vault URI | `KEYVAULT_URI` |
 
-NTLM authentication at an outbound corporate proxy requires all three `PORTWAY_PROXY_*` variables. `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_CLIENT_SECRET` authenticate to Azure Key Vault ([Azure Key Vault](/guide/environments#azure-key-vault)).
+NTLM authentication at an outbound corporate proxy requires all three `PORTWAY_PROXY_*` variables. `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_CLIENT_SECRET` authenticate to Azure Key Vault ([Azure Key Vault](/reference/secrets#azure-key-vault)).
 
-A legacy name logs a deprecation warning at startup; the `PORTWAY_` name wins when both are set. For a list, set either the `PORTWAY_` name or the indexed legacy names: indexed entries beyond the list length are kept.
+A legacy name logs a deprecation warning at startup; the `PORTWAY_` name wins when both are set. For a list, set either the `PORTWAY_` name or the indexed legacy names. Indexed entries beyond the list length remain in the configuration. `WebUi__*` names are not read: [Removed keys](#removed-keys).
 
 :::warning
-`PORTWAY_USE_HTTPS=true` requires a certificate for Kestrel (e.g. `Kestrel__Certificates__Default__Path`); without one, startup fails. Leave it unset behind a TLS-terminating proxy.
+`PORTWAY_USE_HTTPS=true` requires a certificate for Kestrel (e.g. `Kestrel__Certificates__Default__Path`); without one, startup fails. Leave it unset when a TLS-terminating proxy serves HTTPS.
 :::
+
+## Removed keys
+
+Portway does not read these names. Startup logs one error per name found, with the source file and the current name.
+
+| Former name | Current name |
+|---|---|
+| `WebUi` section | `Console` section |
+| `RateLimiting:IpWindow` | `RateLimiting:IpWindowSeconds` |
+| `RateLimiting:TokenWindow` | `RateLimiting:TokenWindowSeconds` |
+| `RateLimiting:Store` | `RateLimiting:Provider` |
+| `RateLimiting:RedisConnectionString` | `RateLimiting:Redis:ConnectionString` |
+| `SqlConnectionPooling:ConnectionTimeout` | `SqlConnectionPooling:ConnectionTimeoutSeconds` |
+| `SqlConnectionPooling:CommandTimeout` | `SqlConnectionPooling:CommandTimeoutSeconds` |
+| `Caching:ProviderType` | `Caching:Provider` |
+| `FileStorage:MemoryCacheTimeSeconds` | `FileStorage:MemoryCacheDurationSeconds` |
+| `RequestTrafficLogging:StorageType` | `RequestTrafficLogging:Provider` |
+| `RequestTrafficLogging:IncludeRequestBodies` | `RequestTrafficLogging:CaptureRequestBodies` |
+| `RequestTrafficLogging:IncludeResponseBodies` | `RequestTrafficLogging:CaptureResponseBodies` |
+| `RequestTrafficLogging:EnableInfoLogging` | `RequestTrafficLogging:InfoLoggingEnabled` |
+| `Console:Customization:EnableLandingPage` | `Console:Customization:LandingPageEnabled` |
+| `OpenApi:ScalarTheme` | `OpenApi:Scalar:Theme` |
+| `OpenApi:ScalarLayout` | `OpenApi:Scalar:Layout` |
+| `OpenApi:ScalarShowSidebar` | `OpenApi:Scalar:ShowSidebar` |
+| `OpenApi:ScalarHideDownloadButton` | `OpenApi:Scalar:HideDownloadButton` |
+| `OpenApi:ScalarHideModels` | `OpenApi:Scalar:HideModels` |
+| `OpenApi:ScalarHideClientButton` | `OpenApi:Scalar:HideClientButton` |
+| `OpenApi:ScalarHideTestRequestButton` | `OpenApi:Scalar:HideTestRequestButton` |
+| `Mcp:RequireAuthentication` | None. Delete the key |
+| `Mcp:AppsEnabled` | None. Delete the key |
 
 ## Related topics
 

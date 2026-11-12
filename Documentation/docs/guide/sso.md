@@ -49,9 +49,9 @@ Created accounts receive the provider's role; use `viewer` when the whole direct
 Password accounts, viewers included, can bind a provider identity to their own account under **Users**.
 
 ::: warning Removing a provider
-Deleting a provider unbinds its accounts; accounts without a password can no longer sign in. Set passwords first; the console reports the affected count.
+Deleting a provider unbinds its accounts; accounts without a password cannot sign in. Set passwords first; the console displays the affected count.
 :::
 
 ## Turning it off
 
-Setting `Oidc:Enabled: false` (**Settings → Security → Deployment & Access**) disables all providers: no provider buttons, `404` on the start route, and callbacks redirect to the sign-in page with an error. The setting is read per request; provider records are kept.
+Setting `Oidc:Enabled: false` (**Settings → Security → Deployment & Access**) disables all providers: no provider buttons, `404` on the start route, and callbacks redirect to the sign-in page with an error. The setting is read per request. Provider records are not deleted.

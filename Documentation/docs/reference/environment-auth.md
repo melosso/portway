@@ -5,7 +5,7 @@ description: "Per-environment authentication methods that augment or replace the
 
 # Environment Authentication
 
-An environment's `settings.json` can define ApiKey, Basic, Bearer, JWT and HMAC authentication in addition to, or instead of, Portway tokens. A request is authorized when it satisfies any defined method. Plaintext `Value` and `Secret` fields are encrypted (`PWENC:`) at the next start.
+An environment's `settings.json` can define ApiKey, Basic, Bearer, JWT and HMAC authentication. The methods apply alongside Portway tokens, or replace them with `OverrideGlobalToken`. A request is authorized when it satisfies any defined method. Plaintext `Value` and `Secret` fields are encrypted (`PWENC:`) at the next start.
 
 ## Configuration
 
@@ -35,7 +35,7 @@ The `Authentication` object in `/environments/[EnvironmentName]/settings.json`:
 | `OverrideGlobalToken` | boolean | `false` | `true` rejects Portway tokens in this environment |
 | `Methods` | array | `[]` | Authentication methods |
 
-Each method accepts `AllowedEndpoints`, a list of endpoint patterns in the token scope format: `*`, an exact endpoint name, or a prefix ending in `*`. A request outside the list answers as a missing endpoint (`403`). A method without `AllowedEndpoints` has access to every endpoint in the environment, and startup logs one warning per environment. `Value`, `Secret` and `ClientSecret` accept a [secret reference](/reference/secrets#secret-store). Basic and Bearer refuse an empty configured value.
+Each method accepts `AllowedEndpoints`, a list of endpoint patterns in the token scope format: `*`, an exact endpoint name, or a prefix ending in `*`. A request outside the list returns `403`, the same response as a missing endpoint. A method without `AllowedEndpoints` has access to every endpoint in the environment, and startup logs one warning per environment. `Value`, `Secret` and `ClientSecret` accept a [secret reference](/reference/secrets#secret-store). Basic and Bearer refuse an empty configured value.
 
 ## Supported authentication methods
 
@@ -106,7 +106,7 @@ With `OverrideGlobalToken: false`:
 
 With `OverrideGlobalToken: true`, only the environment methods are accepted.
 
-An environment whose `settings.json` fails to load or decrypt, or whose referenced secret is missing, answers a generic `500`. It does not fall back to Portway tokens. A changed `settings.json` that fails to parse keeps the last good configuration.
+An environment whose `settings.json` fails to load or decrypt, or whose referenced secret is missing, returns a generic `500`. It does not fall back to Portway tokens. If a changed `settings.json` fails to parse: Portway uses the last valid configuration.
 
 Requests authorized by environment methods have no Portway token and are refused on endpoints with [tenant headers](/guide/tenant-headers).
 

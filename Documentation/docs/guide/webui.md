@@ -25,17 +25,17 @@ Accounts are created under **Users** or from the shell. First account, roles, se
 
 ## Settings changes
 
-Settings saved in the console are written to `appsettings.overrides.json`. Values in that file override `appsettings.json`. Environment variables override that file. A key set by an environment variable is read-only in the console and displays the variable name. A save applies all submitted keys or none, and the response states whether a restart is required. Editable keys and validation rules: [Console editing](/reference/app-settings#console-editing).
+Settings saved in the console are written to `appsettings.overrides.json`. Values in that file override `appsettings.json`. Environment variables override that file. A key set by an environment variable is read-only in the console and displays the variable name. A save applies all submitted keys or none, and the response contains whether a restart is required (`restart_required`). Editable keys and validation rules: [Console editing](/reference/app-settings#console-editing).
 
 The section **Settings → Security → Deployment & Access** sets trusted proxies, trusted proxy networks, public console origins, CORS origins, allowed hosts and the path base. A change that would exclude the current request returns `400`.
 
 Secrets (Redis connection strings, the outbound proxy password) are write-only. The console displays whether a value is set. **Clear** removes a value on save.
 
-Every console change to environments, endpoints and MCP settings is recorded in the audit trail, and the previous file version is backed up. Both are listed under **Settings → Security → Recent Configuration Changes**, with restore.
+Every console change to environments, endpoints and MCP settings is recorded in the audit trail, and the previous file version is backed up. **Settings → Security → Recent Configuration Changes** displays both, with restore.
 
 ## Health
 
-`/_/health` reports `/api` requests. Console (`/_`), documentation and `/health` requests are excluded. Data source: `GET /_/api/metrics/health`.
+`/_/health` displays `/api` requests. Console (`/_`), documentation and `/health` requests are excluded. Data source: `GET /_/api/metrics/health`.
 
 The dashboard health tiles display the last 24 hours (success rate, failures, p95, request count) and link to `/_/health`.
 
@@ -72,14 +72,14 @@ One row per environment, endpoint, version and method, with requests, success ra
 
 | Label | Recorded value |
 |---|---|
-| Environment | The route environment when listed in `AllowedEnvironments`; otherwise empty (Unmatched). |
+| Environment | The route environment if `AllowedEnvironments` contains it; otherwise empty (Unmatched). |
 | Endpoint | The configured endpoint name resolved from the route; otherwise empty (Unmatched). |
 | Version | The `v{n}` route segment of a versioned endpoint; empty for `v1`. |
 | Method | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `MERGE`, `QUERY`, `HEAD`, `OPTIONS`; any other method is `OTHER`. |
 
 ### Retention and clearing
 
-Retention: 31 days in `metrics.db`; 31 days and at most 500,000 requests in memory, reloaded from `metrics.db` on start. Each instance keeps its own data. **Purge** (administrator role, `DELETE /_/api/metrics`) deletes every request recorded before the purge from memory and `metrics.db`, which also resets the dashboard traffic, error and top endpoint cards. The purge is recorded in the audit trail. **Clear filters** resets the environment, endpoint, version and method filters.
+Retention: 31 days in `metrics.db`; 31 days and at most 500,000 requests in memory, reloaded from `metrics.db` on start. Each instance stores its own data. **Purge** (administrator role, `DELETE /_/api/metrics`) deletes every request recorded before the purge from memory and `metrics.db`, which also resets the dashboard traffic, error and top endpoint cards. The purge is recorded in the audit trail. **Clear filters** resets the environment, endpoint, version and method filters.
 
 ## Trace
 

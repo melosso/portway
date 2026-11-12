@@ -54,7 +54,7 @@ Scopes are validated on create and update: `*`, or an endpoint key of letters, d
 | `dev,test` | Both environments |
 | `dev*` | Environments starting with `dev` |
 
-The request environment must also be listed in the endpoint's `AllowedEnvironments`:
+The endpoint's `AllowedEnvironments` must also contain the request environment:
 
 | Token environments | Endpoint `AllowedEnvironments` | Request environment | Result |
 |---|---|---|---|
@@ -79,7 +79,7 @@ The `AllowedTenants` field maps each tenant header to its permitted values, e.g.
 
 ## Rotating a token
 
-Rotation issues a new token value with the same name, scopes, environments, tenants and rate limit, and revokes the old value. Expiration keeps the remaining days. **Rotate** is in the edit panel of an active token. Rotate on a schedule and after any exposure.
+Rotation issues a new token value with the same name, scopes, environments, tenants and rate limit, and revokes the old value. The expiry date does not change. **Rotate** is in the edit panel of an active token. Rotate on a schedule and after any exposure.
 
 ## Last use
 
@@ -87,7 +87,7 @@ The token list displays the last use of each token. The value is recorded on tok
 
 ## Archiving a token
 
-Archiving revokes a token; requests with it return `401`, and its plaintext token file is deleted. Archived tokens are listed with **Show archived** and can be restored. The last token with full access cannot be archived or narrowed.
+Archiving revokes a token; requests with it return `401`, and its plaintext token file is deleted. **Show archived** displays archived tokens. Archived tokens can be restored. The last token with full access cannot be archived or narrowed.
 
 ## Token audit log
 

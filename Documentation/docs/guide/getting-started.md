@@ -5,20 +5,9 @@ description: "Install Portway, sign in to the console and make the first authent
 
 # Getting Started
 
-Portway is distributed as a container image, as `.deb` and `.rpm` packages, and as Linux and Windows archives. Each release targets x64 and arm64. Endpoint and environment configuration is identical for every installation method.
-
 ## 1. Install
 
-::: cards 3
-- [Deploying with Docker](/guide/deployment-docker)
-  Docker Compose file, encryption key, persistence, TLS and backups.
-- [Deploying on Linux](/guide/deployment-linux)
-  `.deb` or `.rpm` package, or release archive, as a systemd service.
-- [Deploying on Windows Server](/guide/deployment-windows)
-  IIS website with HTTPS and a dedicated Application Pool.
-:::
-
-Steps 2 to 6 apply to every installation method.
+Install Portway with Docker, on Linux or on Windows Server: [Install](/guide/install). Steps 2 to 6 apply to every installation method.
 
 ## 2. Record the access token
 
@@ -52,7 +41,7 @@ Environments and endpoints are configured in the console or in files. The consol
 
 **Console**: **Environments → Add Environment**. The form sets the name (e.g. `prod`), server name and connection string, and adds the name to the routable environments.
 
-**Files**: the global file lists the routable environments:
+**Files**: `AllowedEnvironments` in the global file defines the routable environments:
 
 ```json [environments/settings.json]
 {
@@ -99,4 +88,4 @@ GET /api/prod/Products
 Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
-The API reference at `/docs` lists the endpoint and accepts the token for test calls.
+The API reference at `/docs` contains the endpoint and accepts the token for test calls.

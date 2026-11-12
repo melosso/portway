@@ -5,7 +5,7 @@ description: "Restrict tokens to specific customers with request headers mapped 
 
 # Tenant Headers
 
-Tenant headers restrict a token to the rows, upstream records and files of specific customers. `Tenancy` on the endpoint maps each header to its target; `AllowedTenants` on the token lists the permitted values per header. The request header selects one permitted value and cannot add a value.
+Tenant headers restrict a token to the rows, upstream records and files of specific customers. `Tenancy` on the endpoint maps each header to its target; `AllowedTenants` on the token defines the permitted values per header. The request header selects one permitted value and cannot add a value.
 
 ```json [endpoints/SQL/Sales/Orders/entity.json]
 {
@@ -42,4 +42,4 @@ The `Tenancy` value depends on the endpoint type:
 | Proxy | Upstream header | Set to the tenant value. Client copies of the inbound and upstream headers are removed. |
 | File | Ignored | `BaseDirectory` contains a `{Header}` placeholder per tenant header. Uploads, downloads, deletes and listings are restricted to the resolved directory. |
 
-Tenancy is not supported on static, webhook or composite endpoints, on composite step targets or on `$expand` targets. Endpoints with invalid `Tenancy` are not loaded and cannot be saved in the console. The OpenAPI document lists tenant headers as optional header parameters; MCP tools accept them in the `tenants` argument.
+Tenancy is not supported on static, webhook or composite endpoints, on composite step targets or on `$expand` targets. Endpoints with invalid `Tenancy` are not loaded and cannot be saved in the console. The OpenAPI document declares tenant headers as optional header parameters; MCP tools accept them in the `tenants` argument.

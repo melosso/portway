@@ -40,13 +40,15 @@ Write requests (`POST`, `PUT`, `PATCH`, `DELETE`) send the `portway_csrf` cookie
 | `GET`, `PUT`, `DELETE` | `/_/api/endpoints/{type}/{name}` | Reads, saves or deletes an `entity.json` |
 | `POST` | `/_/api/endpoints/{type}` | Creates an endpoint |
 | `POST` | `/_/api/endpoints/{type}/validate` | Validates an endpoint without saving |
-| `GET`, `POST` | `/_/api/environments` | Lists or creates environments |
+| `GET`, `POST` | `/_/api/environments` | Returns or creates environments |
 | `PUT` | `/_/api/environments/settings` | Saves `environments/settings.json` |
 | `GET`, `PUT`, `DELETE` | `/_/api/environments/{name}` | Reads, saves or deletes an environment |
 | `GET`, `PUT` | `/_/api/environments/{name}/raw` | Environment file as JSON text |
 | `POST` | `/_/api/environments/{name}/test` | Tests the connection |
+| `PUT`, `DELETE` | `/_/api/environments/{name}/secrets/{secret}` | Sets (`{ "value": "..." }`) or deletes a secret. No route returns a secret value |
+| `GET` | `/_/api/webhooks/{name}/deliveries` | Latest stored deliveries (`env` required). Administrator only |
 | `GET`, `PUT` | `/_/api/settings` | Application settings; writes go to `appsettings.overrides.json` |
-| `GET`, `POST` | `/_/api/tokens` | Lists or creates tokens |
+| `GET`, `POST` | `/_/api/tokens` | Returns or creates tokens |
 | `PUT`, `DELETE` | `/_/api/tokens/{id}` | Updates or archives a token |
 | `POST` | `/_/api/tokens/{id}/rotate` | Rotates a token |
 | `POST` | `/_/api/tokens/{id}/unarchive` | Restores an archived token |
@@ -65,7 +67,7 @@ Fields accepted by `POST /_/api/tokens` and `PUT /_/api/tokens/{id}`:
 
 | Field | Type | Description |
 |---|---|---|
-| `username` | string | Token name; create only, required |
+| `username` | string | Token name. Required on create |
 | `description` | string | Description |
 | `allowed_scopes` | string | Endpoint patterns, comma-separated; default `*` |
 | `allowed_environments` | string | Environment patterns, comma-separated; default `*` |
@@ -75,7 +77,7 @@ Fields accepted by `POST /_/api/tokens` and `PUT /_/api/tokens/{id}`:
 | `rate_limit_requests` | integer | Per-token request limit |
 | `rate_limit_window_seconds` | integer | Window for that limit |
 
-Create returns `{ "ok": true, "token": "..." }`; the token value is returned only in this response. A change that narrows the last full-access token returns `409`.
+Create returns `{ "ok": true, "token": "..." }`; No other response contains the token value. A change that narrows the last full-access token returns `409`.
 
 ## Related topics
 

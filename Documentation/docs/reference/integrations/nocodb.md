@@ -20,7 +20,7 @@ The API token is created in NocoDB under **Account Settings → API Tokens**:
 }
 ```
 
-Each environment can point the same endpoints at a different NocoDB instance with its own token.
+Each environment can target a different NocoDB instance with its own token.
 
 ## Endpoints
 
@@ -73,5 +73,5 @@ Content-Type: application/json
 |---|---|
 | `401` from NocoDB | `xc-token` value; token not revoked in NocoDB |
 | Empty result | Table id in `Url`; workspace access of the token |
-| Filters ignored | NocoDB syntax (`where=(Field,eq,Value)`) instead of `$filter` |
+| Filters ignored | Use NocoDB syntax (`where=(Field,eq,Value)`). `$filter` is not supported |
 | Stale data | [Caching](/reference/caching) |

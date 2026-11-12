@@ -5,7 +5,7 @@ description: "Release a breaking change as a new endpoint version, move clients 
 
 # Endpoint Versions
 
-This guide releases a breaking change to an endpoint as `v2`, keeps `v1` running for existing clients and retires `v1` on a fixed date. The example is the SQL endpoint `Inventory/Products`. The same steps apply to Proxy, Composite, Static, Webhook and Files endpoints.
+This guide releases a breaking change to an endpoint as `v2`, serves `v1` to existing clients and retires `v1` on a fixed date. The example is the SQL endpoint `Inventory/Products`. The same steps apply to Proxy, Composite, Static, Webhook and Files endpoints.
 
 | Version | Change |
 |---|---|
@@ -25,7 +25,7 @@ Without a version folder, the current endpoint file is `v1`:
 }
 ```
 
-Existing clients call `/api/prod/Inventory/Products`. That URL keeps serving `v1` through every step of this guide.
+Existing clients call `/api/prod/Inventory/Products`. That URL serves `v1` in every step of this guide.
 
 ## 2. Create v2
 

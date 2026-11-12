@@ -73,7 +73,7 @@ endpoints/SQL/Inventory/Products/
 | `v1` folder | Optional. `v1/entity.json` defines v1 and takes precedence over the `entity.json` beside it, which is skipped with a warning |
 | Endpoint types | SQL, Proxy, Composite, Static, Webhook and Files |
 | Token scope | `Inventory/Products` grants v1, `Inventory/Products@v2` grants v2, `Inventory/Products*` grants every version ([Endpoint scopes](/guide/tokens#endpoint-scopes)) |
-| Composite steps | A step names a version with `@v2`, e.g. `"Endpoint": "Sales/OrderLine@v2"` |
+| Composite steps | A step selects a version with `@v2`, e.g. `"Endpoint": "Sales/OrderLine@v2"` |
 | MCP | Each exposed version registers its own tool, with the version in the tool name |
 | Namespace named `v2` | Resolves as before; a versioned endpoint with the same path takes precedence, logged at load |
 
@@ -114,7 +114,7 @@ The console's **New version** action copies `entity.json` and its sibling files 
 }
 ```
 
-A composite step names a namespaced endpoint by its path, e.g. `"Endpoint": "Account/Customers"`.
+A composite step references a namespaced endpoint by its path, e.g. `"Endpoint": "Account/Customers"`.
 
 ## Naming rules
 
@@ -139,9 +139,9 @@ An endpoint without a namespace is placed in the `ns:{DefaultGroup}` group (`Ope
 | Group (`ns:CRM`) | `NamespaceDisplayName`, else the last namespace segment | `NamespaceDescription` |
 | Endpoint (`CRM/Accounts`) | `DisplayName`, else the endpoint folder | `Documentation.TagDescription` |
 
-Endpoints in one namespace should share one `NamespaceDisplayName` and one `NamespaceDescription`. Set them on every endpoint in the namespace or on one. With conflicting values the ordinal first value is used, and startup logs a warning naming the namespace, the setting and its values.
+Endpoints in one namespace should share one `NamespaceDisplayName` and one `NamespaceDescription`. Set them on every endpoint in the namespace or on one. With conflicting values the ordinal first value is used, and startup logs a warning with the namespace, the setting and its values.
 
-Within each group, endpoints are listed before subgroups, each ordered by title. A namespace named like `DefaultGroup` shares its group.
+Within each group, endpoints precede subgroups. Both are ordered by title. A namespace named like `DefaultGroup` shares its group.
 
 ```json
 {
@@ -157,7 +157,7 @@ Within each group, endpoints are listed before subgroups, each ordered by title.
 
 | Error | Resolution |
 |---|---|
-| `Namespace segment 'X' must start with a letter and contain only letters, numbers, and underscores` | Rename the segment, e.g. `Account_Mgmt` instead of `Account-Mgmt` |
+| `Namespace segment 'X' must start with a letter and contain only letters, numbers, and underscores` | Rename the segment, e.g. `Account_Mgmt` for `Account-Mgmt` |
 | `'api' is a reserved namespace name` | Choose another name |
 | Endpoint served under an unexpected namespace | An explicit `Namespace` overrides the folder; align both |
 

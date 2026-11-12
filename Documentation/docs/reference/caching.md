@@ -11,8 +11,8 @@ Successful GET and QUERY responses from SQL, proxy and static endpoints are cach
 
 | Provider | Use case |
 |----------|----------|
-| `Memory` | Single instance; cleared on restart. Each process keeps its own entries: a write on one instance does not clear the cache of another instance. Startup logs a notice when `Memory` is active |
-| `Redis` | Shared across instances; kept across restarts |
+| `Memory` | Single instance; cleared on restart. Each process stores its own entries: a write on one instance does not clear the cache of another instance. Startup logs a notice when `Memory` is active |
+| `Redis` | Shared across instances; retained across restarts |
 
 ## Configuration
 
@@ -74,7 +74,7 @@ Successful GET and QUERY responses from SQL, proxy and static endpoints are cach
 | `Database` | integer | `0` | Redis logical database index |
 | `UseSsl` | boolean | `false` | Use TLS for the Redis connection |
 | `ConnectTimeoutMs` | integer | `5000` | Connection timeout in milliseconds |
-| `AbortOnConnectFail` | boolean | `false` | Throw on connection failure instead of retrying |
+| `AbortOnConnectFail` | boolean | `false` | `true` throws on connection failure. `false` retries |
 | `FallbackToMemoryCache` | boolean | `true` | Fall back to in-process memory cache if Redis is unavailable |
 | `MaxRetryAttempts` | integer | `3` | Retry attempts on transient Redis errors |
 | `RetryDelayMs` | integer | `200` | Delay between retry attempts in milliseconds |
@@ -95,8 +95,8 @@ Entries expire after their TTL. Writes invalidate cached reads before the TTL ex
 
 | Write | Invalidated reads |
 |-------|-------------------|
-| SQL write (table or procedure) | Every SQL endpoint on the same table or view, plus every endpoint that lists the table in `CacheInvalidatedBy` |
-| Webhook insert | Every SQL endpoint on the webhook table, plus every endpoint that lists the table in `CacheInvalidatedBy` |
+| SQL write (table or procedure) | Every SQL endpoint on the same table or view, plus every endpoint with the table in `CacheInvalidatedBy` |
+| Webhook insert | Every SQL endpoint on the webhook table, plus every endpoint with the table in `CacheInvalidatedBy` |
 | Proxy write (POST, PUT, PATCH, MERGE, DELETE, SOAP) | The proxy endpoint |
 | Composite write step | The proxy endpoint of the step |
 
@@ -110,7 +110,7 @@ SQL endpoints accept these keys in `Properties` ([Entity configuration](/referen
 |-----|------|---------|-------------|
 | `CacheEnabled` | boolean | `true` | `false` bypasses the response cache for this endpoint |
 | `CacheDurationMinutes` | integer | `5` | TTL for this endpoint's cached reads |
-| `CacheInvalidatedBy` | string[] | | Tables whose writes invalidate this endpoint's cached reads. Entries are `Table` or `Schema.Table`; `Table` uses the endpoint's `DatabaseSchema` |
+| `CacheInvalidatedBy` | string[] | | Tables that invalidate this endpoint's cached reads on write. Entries are `Table` or `Schema.Table`; `Table` uses the endpoint's `DatabaseSchema` |
 
 A view, table-valued function or procedure endpoint reads or writes tables other than its `DatabaseObjectName`. List those tables in `CacheInvalidatedBy`:
 
@@ -124,7 +124,7 @@ A view, table-valued function or procedure endpoint reads or writes tables other
 }
 ```
 
-A procedure endpoint that writes `dbo.Items` lists `dbo.Items`; its writes then invalidate every read that depends on `dbo.Items`. An entry that is not a table name prevents the endpoint from loading.
+A procedure endpoint that writes `dbo.Items` sets `CacheInvalidatedBy` to `dbo.Items`. Its writes invalidate every read that depends on `dbo.Items`. An entry that is not a table name prevents the endpoint from loading.
 
 ### Client caching
 

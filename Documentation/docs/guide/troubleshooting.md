@@ -98,11 +98,11 @@ When the direct request succeeds, compare the endpoint's `Url` and the environme
 
 ## Health checks
 
-The detailed health check (`GET /health/details`, with a token) names the failing check. The startup log lists unhealthy proxy endpoints in one `Health check status: Unhealthy proxy endpoints detected` warning; the reason per endpoint is logged at `Debug`.
+The detailed health check (`GET /health/details`, with a token) returns the failing check. The startup log contains unhealthy proxy endpoints in one `Health check status: Unhealthy proxy endpoints detected` warning; the reason per endpoint is logged at `Debug`.
 
 ### Disk space
 
-Low disk space reports `Unhealthy` and eventually stops log writes:
+Low disk space sets the status to `Unhealthy`. A full disk stops log writes:
 
 ::: code-group
 
@@ -124,7 +124,7 @@ Traffic log rotation is set by `RequestTrafficLogging:MaxFileSizeMB` and `MaxFil
 
 ## Performance
 
-Durations above `1000ms` indicate a database, network or host problem. Slow request queries: [SQLite storage](/guide/monitoring#sqlite-storage).
+Durations above `1000ms` indicate a database, network or host problem. Slow request queries: [SQLite storage](/reference/audit#sqlite-storage).
 
 ## Logs
 

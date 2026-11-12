@@ -5,7 +5,7 @@ description: "Token authentication, scope control, network restrictions, and enc
 
 # Security
 
-Tokens authenticate callers; scopes, environments and tenant headers restrict what a token reaches; the network access policy restricts upstream targets.
+Tokens authenticate callers. Scopes, environments and tenant headers restrict the endpoints and rows a token reaches. The network access policy restricts upstream targets.
 
 ## Authentication
 
@@ -16,6 +16,15 @@ Authorization: Bearer your-token-here
 ```
 
 Tokens are cryptographically random values, stored hashed in `auth.db`, and bound to a username for auditing.
+
+Two other credentials replace the Bearer token on specific routes:
+
+| Credential | Scope | Reference |
+|---|---|---|
+| Environment authentication method | The environment, limited to `AllowedEndpoints` | [Environment Authentication](/reference/environment-auth) |
+| Webhook `Verification` | One webhook id. Bearer tokens are refused on a verified id | [Webhook verification](/guide/endpoints-webhook#verification) |
+
+An environment whose `settings.json` fails to load or decrypt, or whose referenced secret is missing, returns `500` and does not accept Bearer tokens.
 
 ### Console accounts
 
@@ -51,25 +60,15 @@ A request must pass both the token and the endpoint restrictions. Matrix: [Acces
 
 ### Upstream hosts
 
-Proxy targets are restricted by `environments/network-access-policy.json`: [Network access policy](/guide/environments#network-access-policy).
+`environments/network-access-policy.json` restricts Proxy and Composite targets: [Network access policy](/guide/environments#network-access-policy). A request with a secret follows same-host redirects and returns any other redirect to the client: [Redirects](/guide/endpoints-proxy#redirects).
 
 ### Security headers
 
-Response headers:
-
-| Header | Value |
-|---|---|
-| `X-Content-Type-Options` | `nosniff` |
-| `X-Frame-Options` | `DENY` |
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` (HTTPS requests) |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` |
-| `Content-Security-Policy` | `default-src 'self'; object-src 'none'; frame-ancestors 'none'; ...` |
-
-Console pages at `/_` also send `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Policy` (`same-origin`). Full list: [Headers](/reference/headers).
+Every response includes `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` and `Content-Security-Policy`. HTTPS responses add `Strict-Transport-Security`. Values: [Security headers](/reference/headers#security-headers).
 
 ## Secrets management
 
-Plaintext connection strings and authentication values in environment `settings.json` files are encrypted at the next start (`PWENC:...`). The chat API key in `mcp.db` is encrypted. `appsettings.json` is not rewritten: values there remain plaintext. Keys and replacement: [Secret Encryption](/reference/secrets). Azure Key Vault as a secret source: [Environments](/guide/environments#azure-key-vault).
+Credentials belong in the `Secrets` object of an environment `settings.json`. Configuration refers to them as `${secret:NAME}`: [Secrets](/reference/secrets#secret-store). Portway encrypts connection strings, sensitive header values, authentication values and every `Secrets` value at the next start (`PWENC:...`). The chat API key in `mcp.db` is encrypted. Portway does not rewrite `appsettings.json`: values there stay plaintext. Azure Key Vault as a secret source: [Secrets](/reference/secrets#azure-key-vault).
 
 ## SQL Server permissions
 
@@ -97,7 +96,7 @@ GRANT VIEW DEFINITION TO [DOMAIN\USER_NAME];               -- Schema metadata
 GO
 ```
 
-Grant only the roles the endpoints use; read-only deployments need only `db_datareader`.
+Grant the roles the endpoints use. A read-only deployment requires `db_datareader`.
 
 ## Logging and auditing
 
@@ -110,7 +109,9 @@ Invalid tokens are logged at `Debug`, rate limit blocks at `Warning`. Per-reques
 - [ ] Console account with a strong password; legacy `PORTWAY_ADMIN_KEY` removed
 - [ ] `PORTWAY_KNOWN_PROXIES` set to the reverse proxy (client addresses for rate limiting, sign-in lockout and the console network gate)
 - [ ] Read-only console users have the `viewer` role
-- [ ] `portway.key` kept with the deployment and out of shared backups
+- [ ] `portway.key` stored with the deployment and excluded from shared backups
+- [ ] Credentials stored in `Secrets` and referenced as `${secret:NAME}`
+- [ ] `AllowedEndpoints` set on every environment authentication method
 - [ ] Azure Key Vault configured (if applicable)
 - [ ] Initial token file removed from disk
 - [ ] Tokens created with specific scopes and environments

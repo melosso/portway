@@ -19,7 +19,7 @@ Each endpoint is defined in its own `entity.json`:
 }
 ```
 
-The target host must be listed in `allowedHosts` of `environments/network-access-policy.json` ([Network access policy](/guide/environments#network-access-policy)). Backends with NTLM authentication (e.g. Exact Globe+, Exact Synergy) require a domain service account ([Deploying on Windows Server](/guide/deployment-windows#3-configure-iis)).
+`allowedHosts` must contain the target host of `environments/network-access-policy.json` ([Network access policy](/guide/environments#network-access-policy)). Backends with NTLM authentication (e.g. Exact Globe+, Exact Synergy) require a domain service account ([Deploying on Windows Server](/guide/deployment-windows#3-configure-iis)).
 
 Fallback URLs, retries, response transforms, delete patterns and method translation: [Entity configuration](/reference/entity-config#proxy).
 
@@ -55,15 +55,15 @@ Origin: Portway
 }
 ```
 
-A secret reference in `Url` or `FallbackUrls` is allowed in a query value only. A client query parameter with the same name as a configured one is dropped.
+A secret reference in `Url` or `FallbackUrls` must be a query value. A reference in any other position is a load error. A client query parameter with the same name as a configured one is dropped.
 
 ### Redirects
 
-A request with a secret reference, or with an environment or endpoint header whose name contains `key`, `token`, `auth`, `secret`, `password` or a similar term, follows redirects to the same host and port, and from `http` to `https` on the same host, for at most 5 hops. Every hop is checked against the network access policy. Any other redirect is returned to the client. `303`, and `301` or `302` after a `POST`, continue as `GET` without a body; `307` and `308` keep the method and body. Other requests follow redirects as before.
+A request with a secret reference, or with an environment or endpoint header whose name contains `key`, `token`, `auth`, `secret`, `password` or a similar term, follows redirects to the same host and port, and from `http` to `https` on the same host, for at most 5 hops. Every hop is checked against the network access policy. Any other redirect is returned to the client. `303`, and `301` or `302` after a `POST`, continue as `GET` without a body; `307` and `308` resend the method and body. Other requests follow redirects.
 
 ### OData on proxy endpoints
 
-OData options, `$expand` included, are forwarded as written and never parsed. Portway processes `$expand` only on [SQL Table and View endpoints](/reference/expand).
+OData options, `$expand` included, are forwarded as written and never parsed. `$expand` processing applies to [SQL Table and View endpoints](/reference/expand).
 
 The `SupportsOData` flag documents `$select`, `$top` and `$filter` on the endpoint's GET operation. Without it, the operation documents that query parameters are forwarded unchanged.
 

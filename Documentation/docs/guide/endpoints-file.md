@@ -145,7 +145,7 @@ Invoke-WebRequest -Uri "https://your-api/api/500/files/Documents/abc123fileId" `
 
 ## File type restrictions
 
-Only extensions in `AllowedExtensions` are accepted. The following extensions are always blocked: `.exe`, `.dll`, `.bat`, `.sh`, `.cmd`, `.msi`, `.vbs`.
+Portway accepts the extensions in `AllowedExtensions` and always refuses these extensions: `.exe`, `.dll`, `.bat`, `.sh`, `.cmd`, `.msi`, `.vbs`.
 
 The default maximum file size is 50MB (`FileStorage:MaxFileSizeBytes`).
 
@@ -160,6 +160,6 @@ File endpoints require the `Authorization` header. `<img src>` and `<embed src>`
 | Empty file list | A folder named `{env}` means the placeholder was not resolved; move the files to the folder named after the environment. |
 | "File size exceeds maximum" | Raise `FileStorage:MaxFileSizeBytes` or reduce the file size. |
 | "Extension not allowed" | Add the extension to `AllowedExtensions`. |
-| "File not found" on download | Use the `fileId` from a list response, the same environment, and a file that still exists. |
+| "File not found" on download | Use the `fileId` from a list response, the same environment, and a file that exists. |
 
 Upload and download events are logged in `log/portwayapi-[date].log`.

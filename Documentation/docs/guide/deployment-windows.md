@@ -49,7 +49,7 @@ Extract the release (`<tag>-Windows_x64.zip` or `<tag>-Windows_arm64.zip`) to th
    ```
 
 :::info
-For NTLM pass-through on proxy endpoints (e.g. Exact Globe+, AFAS Profit), run the Application Pool as a domain user with the required network access instead of ApplicationPoolIdentity.
+For NTLM pass-through on proxy endpoints (e.g. Exact Globe+, AFAS Profit), run the Application Pool as a domain user with the required network access. ApplicationPoolIdentity authenticates on the network as the machine account.
 :::
 
 ### 4. Start and verify

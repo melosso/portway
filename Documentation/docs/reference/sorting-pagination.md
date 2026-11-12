@@ -17,7 +17,7 @@ GET /api/prod/Products?$orderby=Price desc
 GET /api/prod/Orders?$orderby=CustomerCode,OrderDate desc,Priority asc
 ```
 
-Ascending is the default; fields are applied in the listed order, before paging. Only columns in `AllowedColumns` can be sorted on. Null placement follows the database.
+Ascending is the default; fields are applied in the order given, before paging. `$orderby` accepts columns in `AllowedColumns`. Null placement follows the database.
 
 ## Paging with $top and $skip
 

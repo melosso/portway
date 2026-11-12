@@ -108,8 +108,8 @@ The package marks `appsettings*.json`, `endpoints/` and `environments/` as confi
 
 | Format | Behavior for a modified configuration file |
 |---|---|
-| `.deb` | `dpkg` prompts if the new release changes the file. `-o Dpkg::Options::=--force-confold` keeps the local file without a prompt. |
-| `.rpm` | `rpm` keeps the local file and writes the release version as `<file>.rpmnew`. |
+| `.deb` | `dpkg` prompts if the new release changes the file. `-o Dpkg::Options::=--force-confold` retains the local file without a prompt. |
+| `.rpm` | `rpm` retains the local file and writes the release version as `<file>.rpmnew`. |
 
 Release notes and backup steps: [Upgrading Portway](/guide/upgrading).
 

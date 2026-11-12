@@ -64,7 +64,7 @@ volumes:
 | Variable | Purpose |
 |---|---|
 | `PORTWAY_ENCRYPTION_KEY` | Encrypts secrets in environment settings. Required. |
-| `PORTWAY_PUBLIC_ORIGINS` | Allows console access from the listed external origins. |
+| `PORTWAY_PUBLIC_ORIGINS` | Allows console access from these external origins. |
 | `PORTWAY_SECURE_COOKIES` | Marks console cookies as secure. `true` requires TLS in front of the container. |
 
 All `PORTWAY_*` variables: [Environment variables](/reference/app-settings#environment-variables).
@@ -87,7 +87,7 @@ The first start creates `tokens/`, `log/` and `auth.db`. Checks:
 | Data | Location |
 |---|---|
 | `environments/`, `endpoints/` | Bind mounts, editable on the host |
-| `tokens/` (written only with the console disabled) | `portway_app` volume |
+| `tokens/` (written when the console is disabled) | `portway_app` volume |
 | Application and traffic logs | `./log` |
 | `auth.db`, `metrics.db`, `mcp.db`, `portway.key` | `portway_app` volume |
 | `appsettings.overrides.json` (settings saved in the console) | `portway_app` volume |
@@ -110,7 +110,7 @@ Release notes and backup steps: [Upgrading Portway](/guide/upgrading).
 
 ## TLS
 
-The container serves plain HTTP. TLS terminates at a reverse proxy (Nginx, Traefik, Caddy) or ingress. `PORTWAY_KNOWN_PROXIES` or `PORTWAY_KNOWN_NETWORKS` lists the proxy ([ForwardedHeaders](/reference/app-settings#forwardedheaders)).
+The container serves plain HTTP. TLS terminates at a reverse proxy (Nginx, Traefik, Caddy) or ingress. `PORTWAY_KNOWN_PROXIES` or `PORTWAY_KNOWN_NETWORKS` identifies the proxy ([ForwardedHeaders](/reference/app-settings#forwardedheaders)).
 
 `PORTWAY_USE_HTTPS=true` requires a Kestrel certificate (`Kestrel__Certificates__Default__Path`).
 

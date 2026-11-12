@@ -27,7 +27,7 @@ GET /api/prod/Products?$select=ItemCode,Description&$filter=Price gt 50&$orderby
 $select=field1,field2
 ```
 
-Only columns in `AllowedColumns` (public names) can be selected; other names return `400`. Without `$select`, all allowed columns are returned.
+`$select` accepts columns in `AllowedColumns` (public names). Other names return `400`. Without `$select`, all allowed columns are returned.
 
 ## $filter
 
@@ -103,7 +103,7 @@ A request by id (`/api/prod/Products/PROD001`) returns the row without the envel
 
 ## Errors
 
-Malformed options return `400` with "Invalid OData query. Check $filter, $select, $orderby and $expand syntax."; columns outside `AllowedColumns` in `$select` return `400` with "Selected columns not allowed: …".
+Malformed options return `400` with "Invalid OData query. Check $filter, $select, $orderby and $expand syntax."; columns outside `AllowedColumns` in `$select` return `400` with "Selected columns not allowed: …". A navigation path in `$filter` or `$orderby` (`Category/Name`) returns `400` with "Navigation paths are not supported in $filter or $orderby: …". Related rows are read with [`$expand`](/reference/expand).
 
 ## Related topics
 

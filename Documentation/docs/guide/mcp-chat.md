@@ -44,7 +44,7 @@ export PORTWAY_CHAT_API_KEY=sk-ant-...
 
 :::
 
-With the variable set, the wizard and the status endpoint report `api_key_source: environment`. PWENC encryption: [Secret Encryption](/reference/secrets).
+With the variable set, the wizard displays and the status endpoint returns `api_key_source: environment`. PWENC encryption: [Secrets](/reference/secrets#encryption).
 
 ## Supported providers
 
@@ -67,4 +67,4 @@ Each chat turn runs up to five tool rounds:
 
 ## Environment selector
 
-The environment selector lists the environments from `GET /_/api/environments`. A tool call uses the environment the model passes, or the selected environment. An environment outside the endpoint's `AllowedEnvironments` is replaced by the endpoint's first allowed environment.
+The environment selector contains the environments from `GET /_/api/environments`. A tool call uses the environment the model passes, or the selected environment. An environment outside the endpoint's `AllowedEnvironments` is replaced by the endpoint's first allowed environment.

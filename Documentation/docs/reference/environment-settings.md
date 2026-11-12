@@ -5,7 +5,7 @@ description: "Global and per-environment settings files and the network access p
 
 # Environment Settings
 
-Environment files define the routable environments, each environment's database connection and headers, and the hosts proxy endpoints may call.
+Environment files define the routable environments, the database connection, headers, secrets and authentication per environment, and the hosts proxy endpoints may call.
 
 ## File structure
 
@@ -46,55 +46,28 @@ File: `/environments/[EnvironmentName]/settings.json`
   "ConnectionString": "Server=SERVERNAME;Database=prod;Trusted_Connection=True;Connection Timeout=15;TrustServerCertificate=true;",
   "Headers": {
     "DatabaseName": "prod",
-    "ServerName": "SERVERNAME",
     "Origin": "Portway"
-  }
+  },
+  "Secrets": { "CRM-KEY": "PWENC:..." }
 }
 ```
 
 | Property | Type | Required | Description |
 |---|---|---|---|
-| `ServerName` | string | No | Server name for display and health checks; defaults to the global `ServerName` |
-| `ConnectionString` | string | For SQL and webhook endpoints | Database connection string; also selects the SQL provider |
-| `Headers` | object | No | Headers added to proxy requests; they replace client headers of the same name |
+| `ServerName` | string | No | Server name for display and health checks. Defaults to the global `ServerName` |
+| `ConnectionString` | string | For SQL and webhook endpoints | Database connection string. Selects the SQL provider ([SQL providers](/reference/sql-providers#connection-strings)) |
+| `Headers` | object | No | Headers added to proxy requests. They replace client headers of the same name. Endpoint `Headers` replace environment headers of the same name ([Endpoint headers](/guide/endpoints-proxy#endpoint-headers)) |
+| `Secrets` | object | No | Named values referenced as `${secret:NAME}` ([Secrets](/reference/secrets#secret-store)) |
 | `Authentication` | object | No | Environment authentication ([Environment Authentication](/reference/environment-auth)) |
-| `Encrypt` | boolean | No | `false` keeps secrets plaintext (default `true`) |
+| `Encrypt` | boolean | No | Default `true`. `false` stores secrets in plaintext. For non-production credentials |
 
-Common headers: `DatabaseName`, `ServerName`, `Origin`; any header name is accepted.
+SQLite paths in `ConnectionString` are relative to the working directory. SQLite connection strings contain no credentials and are not encrypted or masked. Production SQL Server connections use `Encrypt=true;TrustServerCertificate=false` and credentials per environment.
+
+Portway encrypts plaintext connection strings, authentication values and `Secrets` values at the next start (`PWENC:`): [Encryption](/reference/secrets#encryption). Azure Key Vault is an alternative source: [Azure Key Vault](/reference/secrets#azure-key-vault).
 
 ## Network access policy
 
-File: `/environments/network-access-policy.json`
-
-```json
-{
-  "allowedHosts": [
-    "localhost",
-    "127.0.0.1"
-  ],
-  "blockedIpRanges": [
-    "10.0.0.0/8",
-    "172.16.0.0/12",
-    "192.168.0.0/16",
-    "169.254.0.0/16"
-  ]
-}
-```
-
-| Property | Type | Description |
-|---|---|---|
-| `allowedHosts` | array | Host names proxy endpoints may call |
-| `blockedIpRanges` | array | CIDR ranges refused after DNS resolution |
-
-## Connection strings
-
-The provider is detected from `ConnectionString`. Per-provider examples, parameters, detection rules and capability differences: [SQL providers](/reference/sql-providers#connection-strings).
-
-SQLite paths are relative to the working directory. SQLite connection strings contain no credentials and are neither encrypted nor masked.
-
-## Secrets
-
-Plaintext connection strings and authentication values are encrypted at the next start (`PWENC:`). Azure Key Vault is an alternative source ([Environments, Azure Key Vault](/guide/environments#azure-key-vault)). Production SQL Server connections use `Encrypt=true;TrustServerCertificate=false` and credentials per environment.
+File: `/environments/network-access-policy.json`. Fields, matching rules and examples: [Network access policy](/guide/environments#network-access-policy).
 
 ## Related topics
 

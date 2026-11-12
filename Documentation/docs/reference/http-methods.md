@@ -5,7 +5,7 @@ description: "HTTP methods per endpoint type: GET, QUERY, POST, PUT, PATCH, DELE
 
 # HTTP Methods
 
-Each endpoint lists its accepted methods in `AllowedMethods` (SQL) or `Methods` (proxy) in `entity.json`.
+`AllowedMethods` (SQL) or `Methods` (proxy) in `entity.json` sets the accepted methods of an endpoint.
 
 ## Overview
 
@@ -13,7 +13,7 @@ Each endpoint lists its accepted methods in `AllowedMethods` (SQL) or `Methods` 
 |---|---|:---:|:---:|:---:|:---:|:---:|
 | `GET` | Read with OData query parameters | ✅ | ✅ | ❌ | ✅ | ✅ |
 | `QUERY` | Read with the query in the request body | ✅ | ✅ | ❌ | ✅ | ❌ |
-| `POST` | Create a record, or invoke a composite flow | ✅ | ✅ | ✅ | ❌ | ✅ |
+| `POST` | Create a record, or call a composite endpoint | ✅ | ✅ | ✅ | ❌ | ✅ |
 | `PUT` | Full update | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `PATCH` | Partial update | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `DELETE` | Remove a record or file | ✅ | ✅ | ❌ | ❌ | ✅ |
@@ -50,7 +50,7 @@ Content-Type: application/json
 
 Body fields: `select`, `filter`, `orderby`, `top`, `skip`. The response equals the corresponding GET.
 
-* Only `Content-Type: application/json` is accepted; other types return `415`.
+* The accepted content type is `application/json`. Other types return `415`.
 * Responses are cacheable; the cache key includes a hash of the body.
 * The response includes `Content-Location` with the equivalent GET URL.
 * Composite and webhook endpoints return `405`.
@@ -74,7 +74,7 @@ Proxy endpoints forward these methods unchanged unless a translation applies.
 
 ## MERGE and method translation
 
-The `MERGE` method is the OData name for a partial update and an alias of `PATCH` when listed in `AllowedMethods`. Stored procedures receive `@Method` as `PATCH` for both. The OpenAPI document lists `MERGE` under `additionalOperations`.
+The `MERGE` method is the OData name for a partial update and an alias of `PATCH` if `AllowedMethods` contains it. Stored procedures receive `@Method` as `PATCH` for both. The OpenAPI document declares `MERGE` under `additionalOperations`.
 
 Proxy endpoints translate methods for backends that expect other verbs (e.g. classic OData services expecting `MERGE`):
 
