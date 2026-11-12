@@ -197,7 +197,7 @@ public sealed partial class SqlRequestHandler
             // Step 3: Extract endpoint details
             var schema = endpoint.DatabaseSchema ?? "dbo";
             var objectName = endpoint.DatabaseObjectName;
-            var allowedColumns = endpoint.AllowedColumns ?? new List<string>();
+            var allowedColumns = endpoint.AllowedColumns;
             var allowedMethods = endpoint.Methods ?? new List<string> { "GET" };
 
             // Check if the incoming read method (GET or QUERY) is allowed

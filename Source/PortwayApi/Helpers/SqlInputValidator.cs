@@ -37,7 +37,7 @@ public static class SqlInputValidator
         }
 
         // Check allowed columns (with alias support)
-        if (endpoint.AllowedColumns != null && endpoint.AllowedColumns.Count > 0)
+        if (endpoint.AllowedColumns.Count > 0)
         {
             // Parse allowed columns to handle aliases (e.g., "EmployeeId;ID")
             var allowedFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

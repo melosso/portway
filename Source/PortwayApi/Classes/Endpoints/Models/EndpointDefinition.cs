@@ -73,7 +73,7 @@ public sealed class EndpointDefinition
     /// </summary>
     public string? DatabaseObjectName { get; set; }
     public string? DatabaseSchema { get; set; }
-    public List<string>? AllowedColumns { get; set; }
+    public List<string> AllowedColumns { get; set; } = [];
     public List<string>? RequiredColumns { get; set; }
     public Dictionary<string, ColumnValidationRule>? ColumnValidation { get; set; }
     public string? Procedure { get; set; }

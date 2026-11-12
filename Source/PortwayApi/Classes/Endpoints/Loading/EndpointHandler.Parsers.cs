@@ -221,7 +221,7 @@ public static partial class EndpointHandler
             Type = EndpointType.SQL,
             DatabaseObjectName = entity.DatabaseObjectName,
             DatabaseSchema = schema,
-            AllowedColumns = entity.AllowedColumns ?? new List<string>(),
+            AllowedColumns = entity.AllowedColumns ?? [],
             Procedure = entity.Procedure,
             PrimaryKey = entity.PrimaryKey,
             WriteMode = entity.WriteMode,

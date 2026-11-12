@@ -109,7 +109,7 @@ public class SqlMetadataService
     // settings that metadata loading reads; a refresh skips endpoints with an unchanged signature
     private static string Signature(Classes.EndpointDefinition d) => string.Join('|',
         d.DatabaseSchema, d.DatabaseObjectName, d.DatabaseObjectType, d.Procedure,
-        string.Join(',', d.AllowedColumns ?? []), string.Join(',', d.AllowedEnvironments ?? []));
+        string.Join(',', d.AllowedColumns), string.Join(',', d.AllowedEnvironments ?? []));
 
     // one line per load, not per endpoint, so an unreachable database does not flood the log
     private static void LogFailures(MetadataLoadResult[] results)
@@ -341,7 +341,7 @@ public class SqlMetadataService
     private List<Services.Database.ColumnMetadata> ProcessColumnMetadata(List<Services.Database.ColumnMetadata> columns, Classes.EndpointDefinition definition, string endpointName)
     {
         var primaryKey = definition.PrimaryKey;
-        var allowedColumns = definition.AllowedColumns ?? new List<string>();
+        var allowedColumns = definition.AllowedColumns;
 
         if (!string.IsNullOrEmpty(primaryKey))
         {
