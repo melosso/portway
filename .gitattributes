@@ -3,7 +3,7 @@
 
 # Exclude directory from GitHub language statistics
 Pages/* linguist-vendored
-Documentation/* linguist-vendored
+.kb/* linguist-vendored
 # And now for the individual file types
 *.html linguist-vendored=true
 *.htm linguist-vendored=true

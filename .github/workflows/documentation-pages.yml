@@ -4,8 +4,8 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'Documentation/docs/**'
-      - 'Documentation/wwwroot/**'
+      - '.kb/docs/**'
+      - '.kb/wwwroot/**'
       - '.github/workflows/documentation-pages.yml'
   workflow_dispatch: {}
 
@@ -39,7 +39,6 @@ jobs:
           https://github.com/hawkinslabdev/bark.git 'v0.0.*' | head -1 | sed 's#.*/##')
         [ -n "$tag" ] || { echo "::error::No v0.0.* tag on hawkinslabdev/bark"; exit 1; }
         echo "tag=$tag" >> "$GITHUB_OUTPUT"
-        echo "Building docs with Bark $tag"
 
     - name: Checkout Bark
       uses: actions/checkout@v7
@@ -56,22 +55,22 @@ jobs:
     - name: Build Bark
       run: |
         dotnet publish ${{ github.workspace }}/bark/Bark/src/Bark/Bark.csproj \
-          -c Release -o ${{ github.workspace }}/publish
+          -c Release -o ${{ github.workspace }}/publish --nologo -v quiet
 
     - name: Copy docs and wwwroot
       run: |
         rm -rf ${{ github.workspace }}/publish/docs
-        cp -r ${{ github.workspace }}/portway/Documentation/docs ${{ github.workspace }}/publish/docs
+        cp -r ${{ github.workspace }}/portway/.kb/docs ${{ github.workspace }}/publish/docs
         # Overlay brand assets on top of Bark's wwwroot; replacing it wholesale
         # drops framework assets (js/mermaid.min.js, social icons) from the export
-        cp -r ${{ github.workspace }}/portway/Documentation/wwwroot/. ${{ github.workspace }}/publish/wwwroot/
+        cp -r ${{ github.workspace }}/portway/.kb/wwwroot/. ${{ github.workspace }}/publish/wwwroot/
 
     - name: Generate static site
       working-directory: ${{ github.workspace }}/publish
       run: |
         ./Bark --export ${{ github.workspace }}/site \
           --base-url https://melosso.github.io \
-          --base-path /portway
+          --base-path /portway > /dev/null
 
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v5
