@@ -4,10 +4,20 @@
         display: flex;
         flex-direction: column;
     }
+
+    @media (max-width: 768px) {
+        main {
+            overflow-y: auto;
+        }
+
+        main > .main-content-fill {
+            flex: none;
+        }
+    }
 </style>
 
 <main>
-    <div class="page-header">
+    <div class="page-header ep-page-header">
         <div class="page-title">
             <div class="page-heading">
                 <h1 class="select-none">Endpoints</h1>
@@ -15,7 +25,7 @@
             </div>
         </div>
         <div class="page-actions">
-            <button class="btn btn-outline" onclick="refreshAll()">
+            <button class="btn btn-outline ep-refresh" onclick="refreshAll()" aria-label="Refresh">
                 <svg
                     width="13"
                     height="13"
@@ -30,7 +40,7 @@
                     <polyline points="1 20 1 14 7 14" />
                     <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
                 </svg>
-                Refresh
+                <span class="ep-btn-text">Refresh</span>
             </button>
             <button class="btn btn-primary" onclick="openCreateDrawer()">
                 <svg
@@ -173,27 +183,27 @@ const ENDPOINT_TYPES = [
   {
     key: 'sql', label: 'SQL', dotClass: 'dot-sql',
     fields: ['name','methods','schema','object_name','object_type','allowed_columns','hidden','enabled','deprecated','is_mcp_exposed','allowed_environments','documentation'],
-    defaultContent: { DatabaseObjectName: '', DatabaseSchema: 'dbo', DatabaseObjectType: 'Table', AllowedMethods: ['GET'], Hidden: false, Enabled: true, IsMcpExposed: false }
+    defaultContent: { DatabaseObjectName: '', DatabaseSchema: 'dbo', DatabaseObjectType: 'Table', AllowedMethods: ['GET'], Hidden: false, Enabled: true }
   },
   {
     key: 'proxy', label: 'Proxy', dotClass: 'dot-proxy',
     fields: ['name','url','methods','hidden','enabled','deprecated','is_mcp_exposed','allowed_environments','documentation'],
-    defaultContent: { Url: '', AllowedMethods: ['GET'], Hidden: false, Enabled: true, IsMcpExposed: false }
+    defaultContent: { Url: '', AllowedMethods: ['GET'], Hidden: false, Enabled: true }
   },
   {
     key: 'composite', label: 'Composite', dotClass: 'dot-composite',
     fields: ['name','methods','hidden','enabled','deprecated','is_mcp_exposed','allowed_environments','composite_steps','documentation'],
-    defaultContent: { Type: 'Composite', AllowedMethods: ['GET'], Hidden: false, Enabled: true, IsMcpExposed: false, CompositeConfig: { Steps: [] } }
+    defaultContent: { Type: 'Composite', AllowedMethods: ['GET'], Hidden: false, Enabled: true, CompositeConfig: { Steps: [] } }
   },
   {
     key: 'file', label: 'File', dotClass: 'dot-file',
     fields: ['name','methods','storage_type','base_directory','allowed_extensions','hidden','enabled','deprecated','is_mcp_exposed','allowed_environments'],
-    defaultContent: { StorageType: 'Local', BaseDirectory: '', AllowedExtensions: ['.jpg','.png','.pdf'], AllowedMethods: ['GET','POST'], Hidden: false, Enabled: true, IsMcpExposed: false }
+    defaultContent: { StorageType: 'Local', BaseDirectory: '', AllowedExtensions: ['.jpg','.png','.pdf'], AllowedMethods: ['GET','POST'], Hidden: false, Enabled: true }
   },
   {
     key: 'static', label: 'Static', dotClass: 'dot-static',
     fields: ['name','methods','hidden','enabled','deprecated','is_mcp_exposed','allowed_environments'],
-    defaultContent: { AllowedMethods: ['GET'], Hidden: false, Enabled: true, IsMcpExposed: false }
+    defaultContent: { AllowedMethods: ['GET'], Hidden: false, Enabled: true }
   },
   {
     key: 'webhook', label: 'Webhook', dotClass: 'dot-webhook',
@@ -211,8 +221,20 @@ let _rawMode = false;
 let _renaming = false;
 let _createType = 'sql';
 let _confirmingDelete = false;
+let _allowedEnvs = [];
+let _webhookPresets = {};
 
-function markDirty() { _dirty = true; }
+function markDirty() { _dirty = true; syncDirty(); }
+
+function syncDirty() {
+  const label = document.getElementById('epDirty');
+  if (label) label.hidden = !_dirty;
+}
+
+function stateBadges(c) {
+  return [[c?.Enabled === false, 'Disabled'], [c?.Hidden === true, 'Hidden'], [c?.Deprecated === true, 'Deprecated']]
+    .filter(([on]) => on).map(([, label]) => `<span class="badge badge-warning ep-state">${label}</span>`).join('');
+}
 
 function confirmNavigate(onConfirm) {
   if (!_dirty) {
@@ -245,6 +267,9 @@ async function refreshAll() {
   confirmNavigate(async () => {
     try {
       const d = await api('/_/api/endpoints', { silent: true });
+      if (!_allowedEnvs.length) {
+        try { _allowedEnvs = (await api('/_/api/environments', { silent: true })).allowed_environments ?? []; } catch (e) {}
+      }
       _allData = {
         sql:       (d.sql ?? []).map(e => ({ ...e, _type: 'sql' })),
         proxy:     (d.proxy ?? []).map(e => ({ ...e, _type: 'proxy' })),
@@ -255,7 +280,7 @@ async function refreshAll() {
       };
       renderTabs();
       renderList();
-      if (_selected) selectEndpoint(_selected.type, _selected.name, false);
+      if (_selected) selectEndpoint(_selected.type, _selected.name, false, 'none');
     } catch(e) {
       toast('Failed to load endpoints: ' + e.message, 'error');
     }
@@ -394,10 +419,63 @@ function filterList() {
   renderList();
 }
 
-async function selectEndpoint(type, name, scroll = true) {
+function selectionHash(type, name) {
+  return `#${type}/${name}`;
+}
+
+function selectionFromHash() {
+  const m = /^#([a-z]+)\/([A-Za-z0-9_\-\/]+)$/.exec(decodeURIComponent(location.hash));
+  return m && ENDPOINT_TYPES.some(t => t.key === m[1]) ? { type: m[1], name: m[2] } : null;
+}
+
+function syncSplit() {
+  document.querySelector('.ep-split')?.classList.toggle('has-selection', !!_selected);
+}
+
+function clearSelection() {
+  _selected = null;
+  _detailData = null;
+  _dirty = false;
+  _renaming = false;
+  document.getElementById('epDetail').innerHTML = `<div class="ep-empty">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      <span>Select an endpoint</span>
+    </div>`;
+  renderList();
+  syncSplit();
+}
+
+function closeDetail() {
+  confirmNavigate(() => {
+    if (history.state?.fromList) { history.back(); return; }
+    clearSelection();
+    history.replaceState(null, '', location.pathname + location.search);
+  });
+}
+
+window.addEventListener('popstate', () => {
+  const target = selectionFromHash();
+  if (target && _selected && target.type === _selected.type && target.name === _selected.name) return;
+  if (_dirty && !confirmNavigateSync()) {
+    if (_selected) history.pushState({ fromList: true }, '', selectionHash(_selected.type, _selected.name));
+    return;
+  }
+  _dirty = false;
+  if (target) selectEndpoint(target.type, target.name, false, 'none');
+  else clearSelection();
+});
+
+async function selectEndpoint(type, name, scroll = true, history_ = 'push') {
   _selected = { type, name };
   _confirmingDelete = false;
   renderList();
+  syncSplit();
+  const hash = selectionHash(type, name);
+  if (history_ !== 'none' && decodeURIComponent(location.hash) !== hash) {
+    if (history_ === 'replace') history.replaceState({ fromList: history.state?.fromList === true }, '', hash);
+    else history.pushState({ fromList: true }, '', hash);
+  }
+  if (scroll && matchMedia('(max-width: 768px)').matches) document.querySelector('main')?.scrollTo(0, 0);
 
   const detail = document.getElementById('epDetail');
   detail.innerHTML = `<div class="ep-empty"><span style="font-size:0.8rem;color:hsl(var(--muted-foreground))">Loading…</span></div>`;
@@ -426,10 +504,13 @@ function renderDetail() {
        <button class="btn btn-primary btn-sm" onclick="confirmRename()">Save</button>
        <button class="btn btn-outline btn-sm" onclick="cancelRename()">Cancel</button>`
     : `<h2>${esc(version ? name.slice(0, -(version.length + 1)) : name)}</h2>
-       <span class="badge badge-muted" style="font-size:0.7rem">${esc(typeCfg?.label ?? type)}</span>`;
+       <span class="badge badge-muted" style="font-size:0.7rem">${esc(typeCfg?.label ?? type)}</span>${stateBadges(_detailData?.content)}`;
 
   detail.innerHTML = `
     <div class="ep-detail-header">
+      <button type="button" class="btn btn-ghost btn-icon ep-back" onclick="closeDetail()" aria-label="Back to endpoints" title="Back to endpoints">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
       <span class="ep-type-dot ${typeCfg?.dotClass ?? ''}"></span>
       ${nameDisplay}
       ${_renaming ? '' : `<div class="actions">
@@ -444,7 +525,7 @@ function renderDetail() {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
           Deliveries
         </button>` : ''}
-        <button class="btn btn-outline btn-sm" onclick="startDelete()" style="color:hsl(var(--destructive));border-color:hsl(var(--destructive)/0.4)" data-tooltip="Delete endpoint permanently">
+        <button class="btn btn-outline btn-sm" onclick="startDelete()" style="color:hsl(var(--destructive-text));border-color:hsl(var(--destructive)/0.4)" data-tooltip="Delete endpoint permanently">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           Delete
         </button>
@@ -454,7 +535,8 @@ function renderDetail() {
     <div class="ep-detail-body" id="epDetailBody">
       ${_rawMode ? renderRawForm(raw) : renderStructuredForm(type, content)}
     </div>
-    <div style="padding:0.75rem 1rem;border-top:1px solid hsl(var(--border));display:flex;gap:0.5rem;justify-content:flex-end;flex-shrink:0">
+    <div class="ep-save-bar" style="padding:0.75rem 1rem;border-top:1px solid hsl(var(--border));display:flex;gap:0.5rem;justify-content:flex-end;align-items:center;flex-shrink:0">
+      <span id="epDirty" class="ep-dirty" role="status" ${_dirty ? '' : 'hidden'}>Unsaved changes</span>
       <button class="btn btn-outline btn-sm" onclick="reloadDetail()">Discard</button>
       <button id="epSaveBtn" class="btn btn-primary btn-sm" onclick="saveEndpoint()">
         <span class="btn-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save</span>
@@ -464,7 +546,6 @@ function renderDetail() {
   if (isWebhook && !_rawMode) wireWebhookForm();
 }
 
-// administrator only; payloads are untrusted and escaped before display
 async function openDeliveries() {
   const name = _selected?.name;
   if (!name) return;
@@ -524,7 +605,7 @@ function renderStructuredForm(type, content) {
     case 'webhook':   inner = renderWebhookForm(c);   break;
     default:          return `<div class="ep-empty">Unknown type</div>`;
   }
-  return `<div class="ep-form">${renderLifecycleCard(c)}${inner}</div>`;
+  return `<div class="ep-form">${inner}${renderLifecycleCard(c)}</div>`;
 }
 
 function renderVersionBar(type) {
@@ -565,8 +646,8 @@ function dateValue(value) {
 
 function renderLifecycleCard(c) {
   const stability = ['Stable', 'Experimental'].find(s => s.toLowerCase() === String(c.Stability ?? '').toLowerCase()) ?? 'Not set';
-  return `<div class="card">
-    <div class="card-header"><h2 class="card-title">Lifecycle</h2></div>
+  const set = !!(c.Stability || c.Deprecated || c.DeprecatedSince || c.Sunset);
+  return accordion('Lifecycle', `
     ${fieldSelect('lcStability', 'Stability', stability, ['Not set', 'Stable', 'Experimental'])}
     ${fieldToggle('lcDeprecated', 'Deprecated', c.Deprecated ?? false)}
     <div class="ep-lifecycle-dates">
@@ -579,8 +660,7 @@ function renderLifecycleCard(c) {
         <input type="date" class="input" id="lcSunset" value="${esc(dateValue(c.Sunset))}" oninput="markDirty()">
       </div>
     </div>
-    <p class="field-hint">Sent as Deprecation, Sunset and successor-version Link headers.</p>
-  </div>`;
+    <p class="field-hint">Sent as Deprecation, Sunset and successor-version Link headers.</p>`, set);
 }
 
 function applyLifecycle(cfg) {
@@ -633,11 +713,54 @@ function readBadges() {
   return badges.length ? badges : undefined;
 }
 
-function fieldText(id, label, value, placeholder = '') {
+function fieldText(id, label, value, placeholder = '', opts = {}) {
+  const { type = 'text', required = false, min, max, hint } = opts;
+  const attrs = [
+    required ? 'aria-required="true"' : '',
+    min != null ? `min="${min}"` : '',
+    max != null ? `max="${max}"` : '',
+    type === 'number' ? 'inputmode="numeric" step="1"' : '',
+    hint ? `aria-describedby="${id}-hint"` : ''
+  ].filter(Boolean).join(' ');
   return `<div class="field">
-    <label class="field-label" for="${id}">${label}</label>
-    <input type="text" class="input" id="${id}" value="${esc(value ?? '')}" placeholder="${esc(placeholder)}" oninput="markDirty()">
+    <label class="field-label" for="${id}">${label}${required ? '<span class="field-required" aria-hidden="true">*</span>' : ''}</label>
+    <input type="${type}" class="input" id="${id}" value="${esc(value ?? '')}" placeholder="${esc(placeholder)}" ${attrs} oninput="markDirty()">
+    ${hint ? `<div class="field-help" id="${id}-hint">${esc(hint)}</div>` : ''}
   </div>`;
+}
+
+function folderNamespace() {
+  const parts = (_selected?.name ?? '').split('/');
+  if (parts.length > 1 && /^v\d+$/i.test(parts[parts.length - 1])) parts.pop();
+  return parts.slice(0, -1).join('/');
+}
+
+function fieldNamespace(c) {
+  const inferred = folderNamespace();
+  return fieldText('namespace', 'Namespace', c.Namespace ?? '', inferred || 'e.g. Sales', { hint: inferred ? `Empty uses the folder namespace ${inferred}` : '' });
+}
+
+function fieldRow(...fields) {
+  return `<div class="field-row">${fields.join('')}</div>`;
+}
+
+function fieldMetadata(c, open = false) {
+  const set = !!(c.Namespace || c.NamespaceDisplayName || c.DisplayName);
+  return accordion('Metadata', fieldRow(
+    fieldNamespace(c),
+    fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '', 'e.g. Sales orders'),
+    fieldText('displayName', 'Display Name', c.DisplayName ?? '', 'e.g. Order lines')
+  ), open || set);
+}
+
+function fieldMcp(c) {
+  return fieldToggle('isMcpExposed', 'Expose in MCP', c.Mcp?.Exposed === true);
+}
+
+function readMcp(c) {
+  const on = document.getElementById('isMcpExposed')?.checked ?? false;
+  if (c.Mcp) return on || c.Mcp.Exposed !== undefined ? { ...c.Mcp, Exposed: on } : c.Mcp;
+  return on ? { Exposed: true } : undefined;
 }
 
 function fieldSelect(id, label, value, options) {
@@ -652,15 +775,15 @@ function fieldMethods(selected, id = 'methodPicker') {
   const sel = [].concat(selected ?? ['GET']).map(m => String(m).toUpperCase());
   const all = [...new Set(['GET','POST','PUT','PATCH','MERGE','DELETE','QUERY', ...sel])];
   return `<div class="field">
-    <label class="field-label">Methods</label>
-    <div class="method-picker" id="${id}">
-      ${all.map(m => `<button type="button" class="method-btn m-${m.toLowerCase()} ${sel.includes(m) ? 'active' : ''}" onclick="toggleMethod(this); markDirty()">${m}</button>`).join('')}
+    <span class="field-label" id="${id}-label">Methods<span class="field-required" aria-hidden="true">*</span></span>
+    <div class="method-picker" id="${id}" role="group" aria-labelledby="${id}-label">
+      ${all.map(m => `<button type="button" class="method-btn m-${m.toLowerCase()} ${sel.includes(m) ? 'active' : ''}" aria-pressed="${sel.includes(m)}" onclick="toggleMethod(this); markDirty()">${m}</button>`).join('')}
     </div>
   </div>`;
 }
 
 function toggleMethod(btn) {
-  btn.classList.toggle('active');
+  btn.setAttribute('aria-pressed', String(btn.classList.toggle('active')));
 }
 
 function fieldKV(id, label, obj) {
@@ -750,32 +873,33 @@ function readKV(id) {
   return obj;
 }
 
-function fieldColumns(id, label, arr, addLabel = 'Add column', placeholder = 'ColumnName') {
-  const rows = (arr ?? []).map(col => colRow(col, placeholder)).join('');
+function fieldColumns(id, label, arr, addLabel = 'Add column', placeholder = 'ColumnName', required = false) {
+  const rows = (arr ?? []).map(col => colRow(col, placeholder, label)).join('');
   return `<div class="field">
-    <label class="field-label">${label}</label>
-    <div class="ep-col-list" id="${id}">${rows}</div>
-    <button type="button" class="ep-add-row" onclick="addColRow('${id}', '${placeholder}')">
+    <span class="field-label" id="${id}-label">${label}${required ? '<span class="field-required" aria-hidden="true">*</span>' : ''}</span>
+    <div class="ep-col-list" id="${id}" role="group" aria-labelledby="${id}-label">${rows}</div>
+    <button type="button" class="ep-add-row" onclick="addColRow('${id}', '${placeholder}', '${esc(label)}')">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       ${addLabel}
     </button>
   </div>`;
 }
 
-function colRow(val = '', placeholder = 'ColumnName') {
+function colRow(val = '', placeholder = 'ColumnName', label = 'Value') {
   return `<div class="ep-col-row">
-    <input type="text" class="input" placeholder="${placeholder}" value="${esc(val)}" oninput="markDirty()">
-    <button type="button" class="btn btn-ghost btn-icon" onclick="this.closest('.ep-col-row').remove(); markDirty()" title="Remove">
+    <input type="text" class="input" placeholder="${esc(placeholder)}" value="${esc(val)}" aria-label="${esc(label)}" spellcheck="false" oninput="markDirty()">
+    <button type="button" class="btn btn-ghost btn-icon" onclick="this.closest('.ep-col-row').remove(); markDirty()" title="Remove" aria-label="Remove ${esc(label)} ${esc(val)}">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>`;
 }
 
-function addColRow(id, placeholder) {
-  document.getElementById(id)?.insertAdjacentHTML('beforeend', colRow('', placeholder));
+function addColRow(id, placeholder, label) {
+  const list = document.getElementById(id);
+  list?.insertAdjacentHTML('beforeend', colRow('', placeholder, label));
+  list?.lastElementChild?.querySelector('input')?.focus();
 }
 
-// keep other Properties keys
 function readCacheProperties(existing) {
   const props = { ...(existing ?? {}) };
   delete props.CacheEnabled;
@@ -800,17 +924,33 @@ function readMethods(id = 'methodPicker') {
 }
 
 function fieldToggle(id, label, checked) {
-  return `<div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('${id}').click()">
-    <label class="switch" onclick="event.stopPropagation()">
+  return `<div class="toggle-row">
+    <label class="switch">
       <input type="checkbox" id="${id}" ${checked ? 'checked' : ''} onchange="markDirty()">
       <span class="slider"></span>
     </label>
-    <span style="font-size:0.8125rem;font-weight:500;">${esc(label)}</span>
+    <label for="${id}">${esc(label)}</label>
   </div>`;
 }
 
 function fieldAllowedEnvs(value) {
-  return fieldText('allowedEnvironments', 'Environments', Array.isArray(value) ? value.join(', ') : (value ?? '*'));
+  const list = (Array.isArray(value) ? value : String(value ?? '*').split(',')).map(v => String(v).trim()).filter(v => v && v !== '*');
+  const all = !list.length;
+  const names = [...new Set([..._allowedEnvs, ...list])];
+  const option = (env, checked, extra = '') => `<label class="env-option"><input type="checkbox" data-env="${esc(env)}" ${checked ? 'checked' : ''} ${extra} onchange="envChanged(this)"><span>${env === '*' ? 'All allowed' : esc(env)}</span>${env !== '*' && !_allowedEnvs.includes(env) ? '<span class="env-flag">not in the global allowlist</span>' : ''}</label>`;
+  return `<div class="field">
+    <span class="field-label" id="allowedEnvironments-label">Environments</span>
+    <div class="env-picker" id="allowedEnvironments" role="group" aria-labelledby="allowedEnvironments-label">
+      ${option('*', all)}${names.map(env => option(env, list.includes(env), all ? 'disabled' : '')).join('')}
+    </div>
+  </div>`;
+}
+
+function envChanged(input) {
+  if (input.dataset.env === '*') {
+    input.closest('.env-picker').querySelectorAll('input:not([data-env="*"])').forEach(box => { box.disabled = input.checked; });
+  }
+  markDirty();
 }
 
 function fieldJson(id, label, value, minHeight = '100px') {
@@ -872,11 +1012,13 @@ function renderSqlForm(c) {
   return `
     <div class="card">
       <div class="card-header"><h2 class="card-title">Database Object</h2></div>
-      ${fieldText('schema', 'Schema', c.DatabaseSchema ?? '', 'dbo')}
-      ${fieldText('objectName', 'Object Name', c.DatabaseObjectName ?? '')}
-      ${fieldSelect('objectType', 'Type', c.DatabaseObjectType ?? 'Table', ['Table','View','StoredProcedure','TableValuedFunction'])}
-      ${fieldText('procedure', 'Procedure', c.Procedure ?? '')}
-      ${fieldText('primaryKey', 'Primary Key', c.PrimaryKey ?? '')}
+      ${fieldRow(
+        fieldText('objectName', 'Object Name', c.DatabaseObjectName ?? '', 'e.g. Items', { required: true }),
+        fieldText('schema', 'Schema', c.DatabaseSchema ?? '', 'dbo', { hint: 'Empty uses the provider default schema' }))}
+      ${fieldRow(
+        fieldSelect('objectType', 'Type', c.DatabaseObjectType ?? 'Table', ['Table','View','StoredProcedure','TableValuedFunction']),
+        fieldText('primaryKey', 'Primary Key', c.PrimaryKey ?? '', 'e.g. ItemId'))}
+      ${fieldText('procedure', 'Procedure', c.Procedure ?? '', 'e.g. dbo.SaveItem')}
     </div>
     <div class="card">
       <div class="card-header"><h2 class="card-title">Access</h2></div>
@@ -885,26 +1027,15 @@ function renderSqlForm(c) {
       ${fieldTenancy(c.Tenancy, (c.DatabaseObjectType ?? 'Table') === 'TableValuedFunction' ? 'Parameter' : 'Column')}
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
       ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
-      <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
-        <label class="switch" onclick="event.stopPropagation()">
-          <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
-          <span class="slider"></span>
-        </label>
-        <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
-      </div>
+      ${fieldMcp(c)}
     </div>
-    <div class="card">
-      <div class="card-header"><h2 class="card-title">Metadata</h2></div>
-      ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
-      ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
-      ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
-    </div>
+    ${fieldMetadata(c)}
     ${accordion('Columns',
-        fieldColumns('allowedCols', 'Allowed Columns', c.AllowedColumns) +
+        fieldColumns('allowedCols', 'Allowed Columns', c.AllowedColumns, 'Add column', 'Column or Column;Alias') +
         fieldColumns('requiredCols', 'Required Columns', c.RequiredColumns))}
     ${accordion('Caching',
         fieldToggle('cacheEnabled', 'Cache reads', (c.Properties?.CacheEnabled ?? true) !== false) +
-        fieldText('cacheDurationMinutes', 'Duration (minutes)', c.Properties?.CacheDurationMinutes ?? '') +
+        fieldText('cacheDurationMinutes', 'Duration (minutes)', c.Properties?.CacheDurationMinutes ?? '', 'Provider default', { type: 'number', min: 1 }) +
         fieldColumns('cacheInvalidatedBy', 'Invalidated by tables', c.Properties?.CacheInvalidatedBy, 'Add table', 'Schema.Table'))}
     ${accordion('Advanced',
         fieldJson('columnValidation', 'Column Validation (JSON)', c.ColumnValidation) +
@@ -919,7 +1050,7 @@ function renderProxyForm(c) {
   return `
     <div class="card">
       <div class="card-header"><h2 class="card-title">Target</h2></div>
-      ${fieldText('url', 'URL', c.Url ?? '')}
+      ${fieldText('url', 'URL', c.Url ?? '', 'https://erp.internal/api/items', { required: true, hint: 'Checked against the network access policy on every call' })}
     </div>
     <div class="card">
       <div class="card-header"><h2 class="card-title">Access</h2></div>
@@ -928,26 +1059,16 @@ function renderProxyForm(c) {
       ${fieldTenancy(c.Tenancy, 'Upstream header')}
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
       ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
-      <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
-        <label class="switch" onclick="event.stopPropagation()">
-          <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
-          <span class="slider"></span>
-        </label>
-        <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
-      </div>
+      ${fieldMcp(c)}
     </div>
-    <div class="card">
-      <div class="card-header"><h2 class="card-title">Metadata</h2></div>
-      ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
-      ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
-      ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
-    </div>
+    ${fieldMetadata(c)}
     ${accordion('Delete Patterns',
         fieldJson('deletePatterns', 'Delete Patterns (JSON)' + fieldExampleIcon('deletePatternsExample'), c.DeletePatterns?.length ? c.DeletePatterns : null, '120px'))}
     ${accordion('Custom Properties', `
-      ${fieldText('cpContentType', 'Content-Type', cp.ContentType ?? '')}
-      ${fieldText('cpHttpMethodTranslation', 'Method Translation', cp.HttpMethodTranslation ?? '')}
-      ${fieldText('cpHttpMethodAppendHeaders', 'Method Append Headers', cp.HttpMethodAppendHeaders ?? '')}
+      ${fieldRow(
+        fieldText('cpContentType', 'Content-Type', cp.ContentType ?? '', 'e.g. application/json'),
+        fieldText('cpHttpMethodTranslation', 'Method Translation', cp.HttpMethodTranslation ?? '', 'e.g. PUT:MERGE'),
+        fieldText('cpHttpMethodAppendHeaders', 'Method Append Headers', cp.HttpMethodAppendHeaders ?? '', 'e.g. X-HTTP-Method'))}
     `, hasCp)}
     ${fieldDocumentation(c)}`;
 }
@@ -957,28 +1078,21 @@ function renderCompositeForm(c) {
   const cfg = c.CompositeConfig ?? {};
   return `
     <div class="card">
+      <div class="card-header"><h2 class="card-title">Target</h2></div>
+      ${fieldText('url', 'URL', c.Url ?? '', 'https://erp.internal/api', { required: true, hint: 'Base URL of the upstream the steps call' })}
+    </div>
+    <div class="card">
       <div class="card-header"><h2 class="card-title">Access</h2></div>
       ${fieldMethods(c.Methods ?? c.AllowedMethods)}
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
       ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
-      <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
-        <label class="switch" onclick="event.stopPropagation()">
-          <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
-          <span class="slider"></span>
-        </label>
-        <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
-      </div>
+      ${fieldMcp(c)}
     </div>
-    <div class="card">
-      <div class="card-header"><h2 class="card-title">Metadata</h2></div>
-      ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
-      ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
-      ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
-    </div>
+    ${fieldMetadata(c)}
     <div class="card">
       <div class="card-header"><h2 class="card-title">Composite Config</h2></div>
-      ${fieldText('compositeConfigName', 'Name', cfg.Name ?? '')}
+      ${fieldText('compositeConfigName', 'Name', cfg.Name ?? '', 'e.g. CreateOrder')}
       ${fieldTextarea('compositeConfigDesc', 'Description', cfg.Description ?? '', '60px')}
       ${fieldJson('compositeSteps', 'Steps (JSON)', cfg.Steps ?? [], '160px')}
     </div>
@@ -991,29 +1105,19 @@ function renderFileForm(c) {
     <div class="card">
       <div class="card-header"><h2 class="card-title">Storage</h2></div>
       ${fieldSelect('storageType', 'Storage Type', c.StorageType ?? 'Local', ['Local','AzureBlob','S3'])}
-      ${fieldText('baseDirectory', 'Base Directory', c.BaseDirectory ?? '')}
+      ${fieldRow(
+        fieldText('baseDirectory', 'Base Directory', c.BaseDirectory ?? '', 'e.g. files/documents', { required: true }),
+        fieldText('allowedExtensions', 'Allowed Extensions', (c.AllowedExtensions ?? []).join(', '), '.pdf, .png', { hint: 'Comma separated. Empty applies only the global file storage list.' }))}
       ${fieldFileTenancy(c.Tenancy)}
-      ${fieldText('allowedExtensions', 'Allowed Extensions', (c.AllowedExtensions ?? []).join(', '))}
     </div>
     <div class="card">
       <div class="card-header"><h2 class="card-title">Access</h2></div>
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
       ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
-      <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
-        <label class="switch" onclick="event.stopPropagation()">
-          <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
-          <span class="slider"></span>
-        </label>
-        <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
-      </div>
+      ${fieldMcp(c)}
     </div>
-    <div class="card">
-      <div class="card-header"><h2 class="card-title">Metadata</h2></div>
-      ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
-      ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
-      ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
-    </div>
+    ${fieldMetadata(c)}
     ${fieldDocumentation(c)}`;
 }
 
@@ -1022,8 +1126,9 @@ function renderStaticForm(c) {
   return `
     <div class="card">
       <div class="card-header"><h2 class="card-title">Content</h2></div>
-      ${fieldText('contentType', 'Content-Type', c.ContentType ?? 'application/json')}
-      ${fieldText('contentFile', 'Content File', c.ContentFile ?? '')}
+      ${fieldRow(
+        fieldText('contentFile', 'Content File', c.ContentFile ?? '', 'e.g. data.json', { required: true, hint: 'File in the endpoint folder' }),
+        fieldText('contentType', 'Content-Type', c.ContentType ?? 'application/json', 'application/json', { required: true }))}
       ${fieldToggle('enableFiltering', 'Enable OData Filtering', c.EnableFiltering ?? false)}
     </div>
     <div class="card">
@@ -1031,68 +1136,73 @@ function renderStaticForm(c) {
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
       ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
-      <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
-        <label class="switch" onclick="event.stopPropagation()">
-          <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
-          <span class="slider"></span>
-        </label>
-        <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
-      </div>
+      ${fieldMcp(c)}
     </div>
-    <div class="card">
-      <div class="card-header"><h2 class="card-title">Metadata</h2></div>
-      ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
-      ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
-      ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
-    </div>
+    ${fieldMetadata(c)}
     ${fieldDocumentation(c)}`;
 }
 
-// Webhook fields in entity.json order
 function renderWebhookForm(c) {
   return `
     <div class="card">
-      <div class="card-header"><h2 class="card-title">Database Object</h2></div>
-      ${fieldText('objectName', 'Object Name', c.DatabaseObjectName ?? '')}
-      ${fieldText('schema', 'Schema', c.DatabaseSchema ?? '', 'dbo')}
+      <div class="card-header"><h2 class="card-title">Webhook IDs</h2>
+        <a class="card-doc" href="https://melosso.github.io/portway/guide/endpoints-webhook" target="_blank" rel="noopener noreferrer" aria-label="Webhook documentation" title="Documentation"></a></div>
+      <div class="field-help">Senders post to <code>/api/{env}/${esc(_selected?.name ?? '')}/{id}</code>. Each ID uses a Portway token or the signature its mode names.</div>
+      ${fieldColumns('allowedCols', 'IDs', c.AllowedColumns, 'Add webhook ID', 'e.g. github', true)}
+      <div id="verificationList" class="wh-verify-list">${renderVerificationRows(c.AllowedColumns ?? [], c.Verification ?? {})}</div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Storage</h2></div>
+      ${fieldRow(
+        fieldText('objectName', 'Object Name', c.DatabaseObjectName ?? '', 'WebhookData', { required: true, hint: 'Table that receives each delivery' }),
+        fieldText('schema', 'Schema', c.DatabaseSchema ?? '', 'dbo', { hint: 'Empty uses the provider default schema' }))}
     </div>
     <div class="card">
       <div class="card-header"><h2 class="card-title">Access</h2></div>
-      ${fieldMethods(c.AllowedMethods)}
-      ${fieldColumns('allowedCols', 'Webhook IDs', c.AllowedColumns, 'Add webhook ID', 'webhook-id')}
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
       ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
-      <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
-        <label class="switch" onclick="event.stopPropagation()">
-          <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
-          <span class="slider"></span>
-        </label>
-        <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
-      </div>
+      ${fieldMcp(c)}
     </div>
-    <div class="card">
-      <div class="card-header"><h2 class="card-title">Metadata</h2></div>
-      ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
-      ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
-      ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
-    </div>
-    <div class="card">
-      <div class="card-header"><h2 class="card-title">Verification</h2></div>
-      <div class="field-help" style="margin-bottom:0.5rem">An ID with a mode accepts its signature or credential only. An ID without a mode requires a Bearer token.</div>
-      <div id="verificationList" class="wh-verify-list">${renderVerificationRows(c.AllowedColumns ?? [], c.Verification ?? {})}</div>
-    </div>
+    ${fieldMetadata(c, true)}
     ${fieldDocumentation(c)}`;
 }
 
 const WEBHOOK_PRESETS = ['GitHub', 'Stripe', 'Slack', 'Shopify', 'Jira', 'Mollie', 'ShipHero', 'StandardWebhooks'];
 const WEBHOOK_MODES = ['None', ...WEBHOOK_PRESETS, 'SharedSecret', 'Hmac'];
+const WEBHOOK_MODE_LABELS = { None: 'Portway token', SharedSecret: 'Shared secret', Hmac: 'HMAC signature', StandardWebhooks: 'Standard Webhooks' };
 const HMAC_FIELDS = [
-  ['Header', 'Signature header', 'X-Signature'], ['Prefix', 'Prefix', 'sha256='], ['SignedContent', 'Signed content', '{timestamp}.{body}'],
-  ['TimestampHeader', 'Timestamp header', ''], ['IdHeader', 'ID header', ''], ['ToleranceSeconds', 'Tolerance (s)', '300']
+  ['Header', 'Signature header', 'e.g. X-Signature'], ['Prefix', 'Prefix', 'e.g. sha256='], ['SignedContent', 'Signed content', '{body}'],
+  ['TimestampHeader', 'Timestamp header', 'e.g. X-Timestamp'], ['IdHeader', 'ID header', 'e.g. X-Request-Id'], ['ToleranceSeconds', 'Tolerance (s)', '300']
 ];
 const HMAC_SELECTS = [['Encoding', 'Encoding', ['Hex', 'Base64']], ['KeyEncoding', 'Key encoding', ['Utf8', 'Base64']], ['Format', 'Format', ['Plain', 'TimestampList']]];
-const DELIVERY_FIELDS = [['DeliveryIdHeader', 'Delivery ID header', ''], ['DeliveryIdField', 'Delivery ID field', '']];
+const DELIVERY_FIELDS = [['DeliveryIdHeader', 'Delivery ID header', 'e.g. X-Delivery-Id'], ['DeliveryIdField', 'Delivery ID field', 'e.g. id']];
+
+function modeOptions(mode) {
+  const option = m => `<option value="${m}" ${m === mode ? 'selected' : ''}>${esc(WEBHOOK_MODE_LABELS[m] ?? m)}</option>`;
+  return `<optgroup label="Generic">${['None', 'SharedSecret', 'Hmac'].map(option).join('')}</optgroup>
+    <optgroup label="Presets">${WEBHOOK_PRESETS.map(option).join('')}</optgroup>`;
+}
+
+function presetInfo(mode) {
+  const p = _webhookPresets[mode];
+  if (!p) return '';
+  const parts = [];
+  if (p.header) parts.push(`signature <code>${esc(p.header)}</code>`);
+  else if (mode === 'StandardWebhooks') parts.push('signature <code>webhook-signature</code>');
+  if (p.timestamp_header) parts.push(`timestamp <code>${esc(p.timestamp_header)}</code>`);
+  if (p.delivery_id_header) parts.push(`delivery ID <code>${esc(p.delivery_id_header)}</code>`);
+  else if (p.delivery_id_field) parts.push(`delivery ID field <code>${esc(p.delivery_id_field)}</code>`);
+  return parts.length ? `Reads ${parts.join(', ')}` : '';
+}
+
+function modeChanged(select) {
+  const row = select.closest('.wh-verify-row');
+  row.dataset.mode = select.value;
+  const info = row.querySelector('.wh-preset-info');
+  if (info) info.innerHTML = presetInfo(select.value);
+  markDirty();
+}
 
 function secretRefName(value) {
   const m = /^\$\{secret:([A-Za-z0-9-]{1,64})\}$/.exec(value ?? '');
@@ -1103,42 +1213,50 @@ function verifyRow(id, v) {
   v = v ?? {};
   const mode = v.Scheme ? (WEBHOOK_MODES.find(m => m.toLowerCase() === v.Scheme.toLowerCase()) ?? v.Scheme) : 'None';
   const shared = mode === 'SharedSecret';
-  const input = (key, label, placeholder, value) => `<label class="wh-field"><span>${esc(label)}</span>
-      <input type="text" class="input" data-key="${key}" value="${esc(value ?? '')}" placeholder="${esc(placeholder)}" spellcheck="false" oninput="markDirty()"></label>`;
+  const input = (key, label, placeholder, value, extra = '') => `<label class="wh-field"><span>${esc(label)}</span>
+      <input type="${key === 'ToleranceSeconds' ? 'number' : 'text'}" class="input" data-key="${key}" value="${esc(value ?? '')}" placeholder="${esc(placeholder)}" spellcheck="false" ${extra} oninput="markDirty()"></label>`;
   const select = (key, label, options) => `<label class="wh-field"><span>${esc(label)}</span>
       <select class="input" data-key="${key}" onchange="markDirty()">${options.map(o => `<option ${(v[key] ?? options[0]) === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`;
   const secret = (key, label) => `<label class="wh-field"><span>${esc(label)}</span>
       <input type="text" class="input wh-secret" data-key="${key}" list="secretNames" value="${esc(secretRefName(v[key]))}" placeholder="SECRET-NAME" spellcheck="false" autocomplete="off" oninput="markDirty()"></label>`;
   const toggle = (key, label) => `<label class="wh-toggle"><span class="switch"><input type="checkbox" data-key="${key}" ${v[key] ? 'checked' : ''} onchange="markDirty()"><span class="slider"></span></span>${esc(label)}</label>`;
+  const hmacValue = key => {
+    if (key === 'Header') return shared ? '' : v.Header;
+    if (key === 'SignedContent') return v.SignedContent ?? '{body}';
+    return v[key];
+  };
+  const extra = key => key === 'ToleranceSeconds' ? 'min="60" max="900" step="1"' : '';
   return `<div class="wh-verify-row" data-id="${esc(id)}" data-mode="${esc(mode)}">
     <div class="wh-verify-head">
       <span class="wh-id">${esc(id)}</span>
-      <select class="input wh-mode" aria-label="Verification mode for ${esc(id)}" onchange="this.closest('.wh-verify-row').dataset.mode = this.value; markDirty()">
-        ${WEBHOOK_MODES.map(m => `<option ${m === mode ? 'selected' : ''}>${m}</option>`).join('')}
-      </select>
+      <select class="input wh-mode" aria-label="Verification for ${esc(id)}" onchange="modeChanged(this)">${modeOptions(mode)}</select>
     </div>
     <div class="wh-verify-body">
+      <div class="wh-preset-info">${presetInfo(mode)}</div>
       <div class="wh-grid">${secret('Secret', 'Secret')}${secret('PreviousSecret', 'Previous secret')}</div>
-      <div class="wh-grid wh-only-shared">${input('SharedHeader', 'Credential header', 'X-Hook-Key', shared ? v.Header : '')}${input('Username', 'Basic username', '', v.Username)}</div>
-      <div class="wh-grid wh-only-hmac">${HMAC_FIELDS.map(([key, label, placeholder]) => input(key, label, placeholder, shared && key === 'Header' ? '' : v[key])).join('')}${HMAC_SELECTS.map(f => select(...f)).join('')}</div>
+      <div class="wh-grid wh-only-shared">${input('SharedHeader', 'Credential header', 'e.g. X-Hook-Key', v.SharedHeader ?? (shared ? v.Header : ''))}${input('Username', 'Basic username', 'e.g. sender', v.Username)}</div>
+      <div class="wh-grid wh-only-hmac">${HMAC_FIELDS.map(([key, label, placeholder]) => input(key, label, placeholder, hmacValue(key), extra(key))).join('')}${HMAC_SELECTS.map(f => select(...f)).join('')}</div>
       <div class="wh-grid wh-only-custom">${DELIVERY_FIELDS.map(([key, label, placeholder]) => input(key, label, placeholder, v[key])).join('')}${select('DedupeKey', 'Dedupe key', ['DeliveryId', 'BodyHash'])}</div>
       <div class="wh-toggles">${toggle('Deduplicate', 'Deduplicate')}${toggle('AcceptForm', 'Accept form bodies')}</div>
+      <div class="field-help">Deduplicate needs a <code>DeliveryId</code> column with a unique index.</div>
     </div>
   </div>`;
 }
 
 function renderVerificationRows(ids, verification) {
-  if (!ids.length) return `<div class="secret-empty">Add a webhook ID first.</div>`;
+  if (!ids.length) return `<div class="secret-empty">Add a webhook ID to choose its verification.</div><datalist id="secretNames"></datalist>`;
   const byId = Object.fromEntries(Object.entries(verification).map(([k, v]) => [k.toLowerCase(), v]));
   return ids.map(id => verifyRow(id, byId[id.toLowerCase()])).join('') + `<datalist id="secretNames"></datalist>`;
 }
 
-// keeps rows already edited, adds rows for new ids
 function syncVerificationRows() {
   const list = document.getElementById('verificationList');
   if (!list) return;
+  const ids = readColumns('allowedCols');
+  const rows = [...list.querySelectorAll('.wh-verify-row')].map(r => r.dataset.id);
+  if (ids.join('\n').toLowerCase() === rows.join('\n').toLowerCase()) return;
   const current = collectVerification(true);
-  list.innerHTML = renderVerificationRows(readColumns('allowedCols'), current);
+  list.innerHTML = renderVerificationRows(ids, current);
   loadSecretNames();
 }
 
@@ -1153,7 +1271,6 @@ async function loadSecretNames() {
   list.innerHTML = [...names].sort().map(n => `<option value="${esc(n)}"></option>`).join('');
 }
 
-// presets accept Secret, PreviousSecret, Deduplicate and AcceptForm only; keepAll serves a re-render
 function collectVerification(keepAll = false) {
   const result = {};
   document.querySelectorAll('#verificationList .wh-verify-row').forEach(row => {
@@ -1162,6 +1279,8 @@ function collectVerification(keepAll = false) {
     const read = key => row.querySelector(`[data-key="${key}"]`);
     const text = key => read(key)?.value?.trim() || undefined;
     const secretRef = key => (text(key) ? '${secret:' + text(key) + '}' : undefined);
+    const saved = Object.entries(_detailData?.content?.Verification ?? {}).find(([k]) => k.toLowerCase() === row.dataset.id.toLowerCase())?.[1] ?? {};
+    const choice = (key, fallback) => (keepAll || saved[key] !== undefined || text(key) !== fallback ? text(key) : undefined);
     const v = {
       Scheme: mode === 'None' ? undefined : mode,
       Secret: secretRef('Secret'),
@@ -1170,14 +1289,15 @@ function collectVerification(keepAll = false) {
       AcceptForm: read('AcceptForm')?.checked || undefined
     };
     if (mode === 'SharedSecret') Object.assign(v, { Header: text('SharedHeader'), Username: text('Username') });
+    if (keepAll) v.SharedHeader = text('SharedHeader');
     if (mode === 'Hmac' || keepAll) {
       HMAC_FIELDS.forEach(([key]) => { v[key] ??= text(key); });
-      HMAC_SELECTS.forEach(([key]) => { v[key] = text(key); });
-      if (v.ToleranceSeconds) v.ToleranceSeconds = Number(v.ToleranceSeconds);
+      HMAC_SELECTS.forEach(([key, , options]) => { v[key] = key === 'Encoding' ? text(key) : choice(key, options[0]); });
+      if (v.ToleranceSeconds) v.ToleranceSeconds = Number.parseInt(v.ToleranceSeconds, 10);
     }
     if (mode === 'Hmac' || mode === 'SharedSecret' || keepAll) {
       DELIVERY_FIELDS.forEach(([key]) => { v[key] = text(key); });
-      v.DedupeKey = text('DedupeKey');
+      v.DedupeKey = choice('DedupeKey', 'DeliveryId');
     }
     if (keepAll && mode !== 'SharedSecret') v.Username = text('Username');
     result[row.dataset.id] = JSON.parse(JSON.stringify(v));
@@ -1189,80 +1309,220 @@ function wireWebhookForm() {
   const ids = document.getElementById('allowedCols');
   if (!ids) return;
   ids.addEventListener('focusout', syncVerificationRows);
-  new MutationObserver(syncVerificationRows).observe(ids, { childList: true });
+  new MutationObserver(records => {
+    if (records.some(r => [...r.addedNodes, ...r.removedNodes].some(n => n.classList?.contains('ep-col-row')))) syncVerificationRows();
+  }).observe(ids, { childList: true });
   document.getElementById('allowedEnvironments')?.addEventListener('change', loadSecretNames);
   loadSecretNames();
+  loadWebhookPresets();
+}
+
+async function loadWebhookPresets() {
+  if (!Object.keys(_webhookPresets).length) {
+    try { _webhookPresets = await api('/_/api/webhook-presets', { silent: true }); } catch (e) { return; }
+  }
+  document.querySelectorAll('#verificationList .wh-verify-row').forEach(row => {
+    const info = row.querySelector('.wh-preset-info');
+    if (info) info.innerHTML = presetInfo(row.dataset.mode);
+  });
+}
+
+const WEBHOOK_ID = /^[^\s\/\\()'"?#%]+$/;
+const HEADER_NAME = /^[A-Za-z0-9!#$%&'*+\-.^_`|~]+$/;
+
+function validateWebhookIds(errors, listId) {
+  const inputs = [...document.querySelectorAll(`#${listId} .ep-col-row input`)];
+  const seen = new Set();
+  for (const input of inputs) {
+    const id = input.value.trim();
+    if (!id) continue;
+    if (!WEBHOOK_ID.test(id)) errors.push(fieldError(input, 'An ID cannot contain spaces, slashes, quotes, brackets, ? # or %'));
+    else if (seen.has(id.toLowerCase())) errors.push(fieldError(input, 'This ID is listed twice'));
+    seen.add(id.toLowerCase());
+  }
+  if (!seen.size) errors.push(fieldError(inputs[0] ?? document.getElementById(listId), 'Add at least one webhook ID'));
 }
 
 function validateVerification(errors) {
   document.querySelectorAll('#verificationList .wh-verify-row').forEach(row => {
     const mode = row.querySelector('.wh-mode').value;
     if (mode === 'None') return;
+    const el = key => row.querySelector(`[data-key="${key}"]`);
+    const val = key => el(key)?.value?.trim() ?? '';
+    const add = (key, message) => errors.push(fieldError(el(key) ?? row.querySelector('.wh-mode'), message));
     for (const key of ['Secret', 'PreviousSecret']) {
-      const name = row.querySelector(`[data-key="${key}"]`)?.value?.trim() ?? '';
-      if ((key === 'Secret' || name) && !/^[A-Za-z0-9-]{1,64}$/.test(name)) errors.push(`${row.dataset.id}: ${key === 'Secret' ? 'Secret' : 'Previous secret'} needs a secret name`);
+      const name = val(key);
+      if ((key === 'Secret' || name) && !/^[A-Za-z0-9-]{1,64}$/.test(name)) add(key, key === 'Secret' ? 'Pick a secret name' : 'Use a secret name: letters, numbers and hyphens');
     }
-    if (mode === 'Hmac' && !row.querySelector('[data-key="Header"]')?.value?.trim()) errors.push(`${row.dataset.id}: Signature header is required`);
-    if (mode === 'SharedSecret' && !row.querySelector('[data-key="SharedHeader"]')?.value?.trim() && !row.querySelector('[data-key="Username"]')?.value?.trim())
-      errors.push(`${row.dataset.id}: set a credential header or a Basic username`);
+    const custom = mode === 'Hmac' || mode === 'SharedSecret';
+    for (const key of ['SharedHeader', 'Header', 'TimestampHeader', 'IdHeader', 'DeliveryIdHeader']) {
+      const visible = key === 'SharedHeader' ? mode === 'SharedSecret' : key === 'DeliveryIdHeader' ? custom : mode === 'Hmac';
+      if (visible && val(key) && !HEADER_NAME.test(val(key))) add(key, 'Use a valid header name, for example X-Signature');
+    }
+    if (mode === 'SharedSecret') {
+      if (!val('SharedHeader') && !val('Username')) add('SharedHeader', 'Set a credential header or a Basic username');
+      if (val('SharedHeader') && val('Username')) add('Username', 'Use a credential header or a Basic username, not both');
+    }
+    if (mode === 'Hmac') {
+      if (!val('Header')) add('Header', 'Signature header is required');
+      const content = val('SignedContent');
+      const count = token => content.split(token).length - 1;
+      const timestampList = val('Format') === 'TimestampList';
+      if (count('{body}') !== 1) add('SignedContent', 'Signed content must contain {body} once');
+      else if ((content.match(/\{[^}]*\}/g) ?? []).some(t => !['{body}', '{timestamp}', '{id}'].includes(t))) add('SignedContent', 'Signed content accepts {body}, {timestamp} and {id} only');
+      if (timestampList && !count('{timestamp}')) add('SignedContent', 'Format TimestampList needs {timestamp} in signed content');
+      if (timestampList && val('TimestampHeader')) add('TimestampHeader', 'Format TimestampList reads the timestamp from the signature header');
+      if (count('{timestamp}') && !val('TimestampHeader') && !timestampList) add('TimestampHeader', 'Set the header that sends {timestamp}');
+      if (val('TimestampHeader') && !count('{timestamp}')) add('SignedContent', 'Add {timestamp} or clear Timestamp header');
+      if (count('{id}') && !val('IdHeader')) add('IdHeader', 'Set the header that sends {id}');
+      if (val('IdHeader') && !count('{id}')) add('SignedContent', 'Add {id} or clear ID header');
+      const tolerance = val('ToleranceSeconds');
+      if (tolerance && !(/^\d+$/.test(tolerance) && +tolerance >= 60 && +tolerance <= 900)) add('ToleranceSeconds', 'Use 60 to 900 seconds');
+    }
+    if (custom) {
+      if (mode === 'Hmac' && val('DeliveryIdHeader') && val('DeliveryIdField')) add('DeliveryIdField', 'Use a delivery ID header or field, not both');
+      const source = val('DeliveryIdHeader') || val('DeliveryIdField') || val('DedupeKey') === 'BodyHash';
+      if (el('Deduplicate')?.checked && !source) add('DeliveryIdHeader', 'Deduplicate needs a delivery ID header, field or the BodyHash key');
+    }
+    if (el('AcceptForm')?.checked && document.getElementById('hidden')?.checked) add('AcceptForm', 'Accept form bodies is not allowed on a hidden webhook');
   });
 }
 
 function readEnvs() {
-  const raw = document.getElementById('allowedEnvironments')?.value ?? '*';
-  const envs = raw.split(',').map(s => s.trim()).filter(Boolean);
-  return envs.length === 1 && envs[0] === '*' ? undefined : (envs.length ? envs : undefined);
+  const picker = document.getElementById('allowedEnvironments');
+  if (!picker || picker.querySelector('[data-env="*"]')?.checked) return undefined;
+  return [...picker.querySelectorAll('input:checked')].map(box => box.dataset.env);
 }
 
+function validateEnvs(errors) {
+  const envs = readEnvs();
+  if (envs && !envs.length) errors.push(fieldError('allowedEnvironments', 'Select an environment or All allowed'));
+}
+
+function fieldError(target, message) {
+  return { target, message };
+}
+
+const JSON_FIELDS = [
+  ['docMethodDescriptions', 'Method Descriptions'], ['docMethodDocumentation', 'Method Documentation'],
+  ['columnValidation', 'Column Validation'], ['functionParameters', 'Function Parameters'],
+  ['deletePatterns', 'Delete Patterns'], ['compositeSteps', 'Steps'], ['createSteps', 'Steps']
+];
+
 function validateDocFields(errors) {
-  const descsRaw = document.getElementById('docMethodDescriptions')?.value?.trim() ?? '';
-  const docsRaw  = document.getElementById('docMethodDocumentation')?.value?.trim() ?? '';
-  if (descsRaw) { try { JSON.parse(descsRaw); } catch { errors.push('Method Descriptions must be valid JSON'); } }
-  if (docsRaw)  { try { JSON.parse(docsRaw);  } catch { errors.push('Method Documentation must be valid JSON'); } }
+  for (const [id, label] of JSON_FIELDS) {
+    const raw = document.getElementById(id)?.value?.trim() ?? '';
+    if (raw) { try { JSON.parse(raw); } catch { errors.push(fieldError(id, `${label} must be valid JSON`)); } }
+  }
+}
+
+function requireText(errors, id, message) {
+  if (!document.getElementById(id)?.value?.trim()) errors.push(fieldError(id, message));
+}
+
+function clearFieldError(el) {
+  el.removeAttribute('aria-invalid');
+  const id = el.getAttribute('aria-describedby')?.split(' ').find(x => x.endsWith('-error'));
+  if (id) {
+    document.getElementById(id)?.remove();
+    const rest = el.getAttribute('aria-describedby').split(' ').filter(x => x !== id).join(' ');
+    rest ? el.setAttribute('aria-describedby', rest) : el.removeAttribute('aria-describedby');
+  }
+}
+
+let _errorSeq = 0;
+function showFieldErrors(errors) {
+  document.querySelectorAll('[aria-invalid="true"]').forEach(clearFieldError);
+  document.querySelectorAll('.field-error').forEach(e => e.remove());
+  const loose = [];
+  let first = null;
+  for (const { target, message } of errors) {
+    const el = typeof target === 'string' ? document.getElementById(target) : target;
+    if (!el) { loose.push(message); continue; }
+    const msg = document.createElement('div');
+    msg.className = 'field-error';
+    msg.id = `fe${++_errorSeq}-error`;
+    msg.textContent = message;
+    const cell = el.closest('.wh-field');
+    if (cell) cell.append(msg);
+    else (el.closest('.ep-col-row, .wh-verify-head') ?? el).after(msg);
+    el.setAttribute('aria-invalid', 'true');
+    el.setAttribute('aria-describedby', [el.getAttribute('aria-describedby'), msg.id].filter(Boolean).join(' '));
+    first ??= el;
+  }
+  if (first) {
+    first.closest('.accordion')?.classList.add('open');
+    first.scrollIntoView({ block: 'center' });
+    first.focus({ preventScroll: true });
+  }
+  const marked = errors.length - loose.length;
+  const summary = marked === 1 && !loose.length ? errors[0].message : marked ? `${marked} fields need attention` : '';
+  for (const message of [summary, ...loose].filter(Boolean)) toast(message, 'error');
+}
+
+document.addEventListener('input', e => { if (e.target.getAttribute?.('aria-invalid') === 'true') clearFieldError(e.target); });
+document.addEventListener('change', e => {
+  const el = e.target.closest?.('[aria-invalid="true"]') ?? e.target.closest?.('.env-picker, .method-picker');
+  if (el?.getAttribute('aria-invalid') === 'true') clearFieldError(el);
+});
+
+const SERVER_FIELDS = [
+  ['DatabaseObjectName', ['objectName', 'createObjectName']], ['Url', ['url', 'createUrl']], ['Namespace', ['namespace', 'createNamespace']],
+  ['AllowedColumns', ['allowedCols', 'createWebhookIds']], ['Tenancy', ['tenancy', 'tenancyHeaders']], ['Badges', ['badges']], ['Stability', ['lcStability', 'lcDeprecated']]
+];
+
+function serverErrorTarget(message) {
+  const id = /^Verification\.([^:]+):/.exec(message)?.[1];
+  if (id) return [...document.querySelectorAll('#verificationList .wh-verify-row')].find(r => r.dataset.id.toLowerCase() === id.toLowerCase())?.querySelector('.wh-mode') ?? null;
+  const hit = SERVER_FIELDS.find(([key]) => message.includes(key));
+  return hit?.[1].map(x => document.getElementById(x)).find(Boolean) ?? null;
+}
+
+function showServerErrors(err) {
+  if (err?.errors?.length) showFieldErrors(err.errors.map(m => fieldError(serverErrorTarget(m), m)));
+  else toast(err?.message || 'Save failed', 'error');
 }
 
 function validateForm(type) {
   const methods = readMethods();
   const errors = [];
+  const needMethods = () => { if (!methods.length) errors.push(fieldError('methodPicker', 'Select at least one method')); };
 
   switch(type) {
-    case 'sql':
-      if (!document.getElementById('objectName')?.value?.trim()) errors.push('Object Name is required');
-      if (!/^\d*$/.test(document.getElementById('cacheDurationMinutes')?.value?.trim() ?? '')) errors.push('Duration must be a whole number of minutes');
-      if (!methods.length) errors.push('At least one method must be selected');
-      validateDocFields(errors);
+    case 'sql': {
+      requireText(errors, 'objectName', 'Object Name is required');
+      const minutes = document.getElementById('cacheDurationMinutes')?.value?.trim() ?? '';
+      if (minutes && !/^[1-9]\d*$/.test(minutes)) errors.push(fieldError('cacheDurationMinutes', 'Duration must be a whole number of minutes'));
+      needMethods();
       break;
+    }
     case 'proxy':
-      if (!document.getElementById('url')?.value?.trim()) errors.push('URL is required');
-      if (!methods.length) errors.push('At least one method must be selected');
-      validateDocFields(errors);
+      requireText(errors, 'url', 'URL is required');
+      needMethods();
       break;
     case 'composite':
-      if (!methods.length) errors.push('At least one method must be selected');
-      try { JSON.parse(document.getElementById('compositeSteps')?.value ?? '[]'); }
-      catch { errors.push('Steps must be valid JSON'); }
-      validateDocFields(errors);
+      requireText(errors, 'url', 'URL is required');
+      needMethods();
       break;
     case 'file':
-      if (!document.getElementById('baseDirectory')?.value?.trim()) errors.push('Base Directory is required');
+      requireText(errors, 'baseDirectory', 'Base Directory is required');
       break;
     case 'static':
-      if (!document.getElementById('contentFile')?.value?.trim()) errors.push('Content File is required');
-      if (!document.getElementById('contentType')?.value?.trim()) errors.push('Content-Type is required');
+      requireText(errors, 'contentFile', 'Content File is required');
+      requireText(errors, 'contentType', 'Content-Type is required');
       break;
     case 'webhook':
-      if (!document.getElementById('objectName')?.value?.trim()) errors.push('Object Name is required');
-      if (!readColumns('allowedCols').length) errors.push('Add at least one webhook ID');
-      if (!methods.length) errors.push('At least one method must be selected');
+      validateWebhookIds(errors, 'allowedCols');
       validateVerification(errors);
-      validateDocFields(errors);
+      requireText(errors, 'objectName', 'Object Name is required');
       break;
   }
+  validateEnvs(errors);
+  validateDocFields(errors);
   return errors;
 }
 
 // Form to JSON over the existing content so hidden fields are kept
-// a default value is written only when the file already sets the key
 function keepDefault(c, key, value, fallback) {
   return c[key] === undefined && JSON.stringify(value) === JSON.stringify(fallback) ? undefined : value;
 }
@@ -1288,7 +1548,8 @@ function collectFormConfig(type, existingContent) {
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         Hidden:            keepDefault(c, 'Hidden', document.getElementById('hidden')?.checked ?? false, false),
         Enabled:           keepDefault(c, 'Enabled', document.getElementById('enabled')?.checked ?? true, true),
-        IsMcpExposed:         keepDefault(c, 'IsMcpExposed', document.getElementById('isMcpExposed')?.checked ?? false, false),
+        IsMcpExposed:         undefined,
+        Mcp:                  readMcp(c),
         AllowedEnvironments:  envs,
         AllowedMethods:       keepDefault(c, 'AllowedMethods', methods, ['GET']),
         Procedure:            document.getElementById('procedure')?.value?.trim() || undefined,
@@ -1323,7 +1584,8 @@ function collectFormConfig(type, existingContent) {
         AllowedEnvironments:  envs,
         Hidden:            keepDefault(c, 'Hidden', document.getElementById('hidden')?.checked ?? false, false),
         Enabled:           keepDefault(c, 'Enabled', document.getElementById('enabled')?.checked ?? true, true),
-        IsMcpExposed:         keepDefault(c, 'IsMcpExposed', document.getElementById('isMcpExposed')?.checked ?? false, false),
+        IsMcpExposed:         undefined,
+        Mcp:                  readMcp(c),
         DeletePatterns:       readJsonField('deletePatterns'),
         CustomProperties:     customProps,
         Tenancy:              readTenancy(),
@@ -1336,6 +1598,7 @@ function collectFormConfig(type, existingContent) {
       return {
         ...c,
         Type:                 'Composite',
+        Url:                  document.getElementById('url')?.value?.trim() ?? '',
         Methods:              methods,
         Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
@@ -1344,7 +1607,8 @@ function collectFormConfig(type, existingContent) {
         AllowedEnvironments:  envs,
         Hidden:            keepDefault(c, 'Hidden', document.getElementById('hidden')?.checked ?? false, false),
         Enabled:           keepDefault(c, 'Enabled', document.getElementById('enabled')?.checked ?? true, true),
-        IsMcpExposed:         keepDefault(c, 'IsMcpExposed', document.getElementById('isMcpExposed')?.checked ?? false, false),
+        IsMcpExposed:         undefined,
+        Mcp:                  readMcp(c),
         CompositeConfig: {
           ...c.CompositeConfig,
           Name:        document.getElementById('compositeConfigName')?.value?.trim() || undefined,
@@ -1370,7 +1634,8 @@ function collectFormConfig(type, existingContent) {
         AllowedEnvironments:  envs,
         Hidden:            keepDefault(c, 'Hidden', document.getElementById('hidden')?.checked ?? false, false),
         Enabled:           keepDefault(c, 'Enabled', document.getElementById('enabled')?.checked ?? true, true),
-        IsMcpExposed:         keepDefault(c, 'IsMcpExposed', document.getElementById('isMcpExposed')?.checked ?? false, false),
+        IsMcpExposed:         undefined,
+        Mcp:                  readMcp(c),
         Documentation:        doc ?? undefined,
       };
     }
@@ -1388,7 +1653,8 @@ function collectFormConfig(type, existingContent) {
         AllowedEnvironments:  envs,
         Hidden:            keepDefault(c, 'Hidden', document.getElementById('hidden')?.checked ?? false, false),
         Enabled:           keepDefault(c, 'Enabled', document.getElementById('enabled')?.checked ?? true, true),
-        IsMcpExposed:         keepDefault(c, 'IsMcpExposed', document.getElementById('isMcpExposed')?.checked ?? false, false),
+        IsMcpExposed:         undefined,
+        Mcp:                  readMcp(c),
         Documentation:        doc ?? undefined,
       };
     }
@@ -1401,7 +1667,6 @@ function collectFormConfig(type, existingContent) {
         DatabaseObjectName:   document.getElementById('objectName')?.value?.trim() ?? '',
         DatabaseSchema:       document.getElementById('schema')?.value?.trim() || undefined,
         AllowedColumns:       cols.length ? cols : undefined,
-        AllowedMethods:       methods,
         AllowedEnvironments:  envs,
         Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
@@ -1409,7 +1674,8 @@ function collectFormConfig(type, existingContent) {
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         Hidden:            keepDefault(c, 'Hidden', document.getElementById('hidden')?.checked ?? false, false),
         Enabled:           keepDefault(c, 'Enabled', document.getElementById('enabled')?.checked ?? true, true),
-        IsMcpExposed:         keepDefault(c, 'IsMcpExposed', document.getElementById('isMcpExposed')?.checked ?? false, false),
+        IsMcpExposed:         undefined,
+        Mcp:                  readMcp(c),
         Verification:         Object.keys(verification).length ? verification : undefined,
         Documentation:        doc ?? undefined,
       };
@@ -1431,18 +1697,18 @@ async function saveEndpoint() {
       try { JSON.parse(raw); } catch(e) { toast('Invalid JSON: ' + e.message, 'error'); return; }
       body = { content: raw };
       showSaveWarnings(await api(`/_/api/endpoints/${type}/${name}?raw=true`, { method: 'PUT', body, success: 'Saved', failure: 'Save failed' }));
-      _dirty = false;
+      _dirty = false; syncDirty();
       await refreshAll();
     } else {
       const errs = validateForm(type);
-      if (errs.length) { toast(errs[0], 'error'); return; }
+      if (errs.length) { showFieldErrors(errs); return; }
       const cfg = applyLifecycle(collectFormConfig(type, _detailData.content));
       body = { content: cfg };
-      showSaveWarnings(await api(`/_/api/endpoints/${type}/${name}`, { method: 'PUT', body, success: 'Saved', failure: 'Save failed' }));
-      _dirty = false;
+      showSaveWarnings(await api(`/_/api/endpoints/${type}/${name}`, { method: 'PUT', body, success: 'Saved', failure: 'Save failed', silent: true }));
+      _dirty = false; syncDirty();
       await refreshAll();
     }
-  } catch(e) {}
+  } catch(e) { if (!_rawMode) showServerErrors(e); }
   finally { saveBtn?.classList.remove('is-loading'); }
 }
 
@@ -1459,7 +1725,7 @@ function toggleRawMode() {
 
 async function reloadDetail() {
   confirmNavigate(async () => {
-    if (_selected) await selectEndpoint(_selected.type, _selected.name, false);
+    if (_selected) await selectEndpoint(_selected.type, _selected.name, false, 'none');
   });
 }
 
@@ -1498,12 +1764,8 @@ async function confirmDelete() {
   const { type, name } = _selected;
   try {
     await api(`/_/api/endpoints/${type}/${name}`, { method: 'DELETE', success: `${name} deleted`, failure: 'Delete failed' });
-    _selected = null;
-    _detailData = null;
-    document.getElementById('epDetail').innerHTML = `<div class="ep-empty">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-      <span>Select an endpoint</span>
-    </div>`;
+    clearSelection();
+    history.replaceState(null, '', location.pathname + location.search);
     await refreshAll();
   } catch(e) {}
 }
@@ -1542,7 +1804,7 @@ async function confirmRename() {
     });
     _renaming = false;
     await refreshAll();
-    selectEndpoint(type, newName);
+    selectEndpoint(type, newName, true, 'replace');
   } catch(e) {}
 }
 
@@ -1572,57 +1834,51 @@ function setCreateType(key) {
 }
 
 function renderCreateForm() {
-  const typeCfg = ENDPOINT_TYPES.find(t => t.key === _createType);
-  const def = typeCfg?.defaultContent ?? {};
   let html = `<div class="card">
     <div class="card-header"><h2 class="card-title">Identity</h2></div>
-    ${fieldText('createName', 'Name', '')}
+    ${_createType === 'webhook' ? fieldText('createNamespace', 'Namespace', '', 'e.g. Hooks', { required: true, hint: 'Verified webhook IDs need a namespace' }) : ''}
+    ${fieldText('createName', 'Name', '', _createType === 'webhook' ? 'e.g. Payments' : 'e.g. Orders', { required: true, hint: 'Letters, numbers, hyphens and underscores. Slashes add a namespace.' })}
+  </div>`;
+  const access = (methods) => `<div class="card">
+    <div class="card-header"><h2 class="card-title">Access</h2></div>
+    ${methods ? fieldMethods(['GET'], 'createMethodPicker') : ''}
+    ${fieldAllowedEnvs('*')}
+    ${fieldToggle('createHidden', 'Private', false)}
   </div>`;
 
   switch(_createType) {
     case 'sql':
       html += `<div class="card">
         <div class="card-header"><h2 class="card-title">Database Object</h2></div>
-        ${fieldText('createObjectName', 'Object Name', '')}
-        ${fieldText('createSchema', 'Schema', 'dbo')}
+        ${fieldText('createObjectName', 'Object Name', '', 'e.g. Items', { required: true })}
+        ${fieldText('createSchema', 'Schema', '', 'dbo', { hint: 'Empty uses the provider default schema' })}
         ${fieldSelect('createObjectType', 'Type', 'Table', ['Table','View','StoredProcedure','TableValuedFunction'])}
       </div>
       <div class="card">
         <div class="card-header"><h2 class="card-title">Metadata</h2></div>
-        ${fieldText('createDisplayName', 'Display Name', '')}
-        ${fieldText('createNamespaceDisplayName', 'Namespace Label', '')}
+        ${fieldText('createDisplayName', 'Display Name', '', 'e.g. Order lines')}
+        ${fieldText('createNamespaceDisplayName', 'Namespace Label', '', 'e.g. Sales orders')}
       </div>
-      <div class="card">
-        <div class="card-header"><h2 class="card-title">Access</h2></div>
-        ${fieldMethods(['GET'], 'createMethodPicker')}
-        ${fieldAllowedEnvs('*')}
-        ${fieldToggle('createHidden', 'Private', false)}
-      </div>
+      ${access(true)}
       ${fieldDocumentation({})}`;
       break;
     case 'proxy':
       html += `<div class="card">
         <div class="card-header"><h2 class="card-title">Target</h2></div>
-        ${fieldText('createUrl', 'URL', '')}
+        ${fieldText('createUrl', 'URL', '', 'https://erp.internal/api/items', { required: true })}
       </div>
-      <div class="card">
-        <div class="card-header"><h2 class="card-title">Access</h2></div>
-        ${fieldMethods(['GET'], 'createMethodPicker')}
-        ${fieldAllowedEnvs('*')}
-        ${fieldToggle('createHidden', 'Private', false)}
-      </div>
+      ${access(true)}
       ${fieldDocumentation({})}`;
       break;
     case 'composite':
       html += `<div class="card">
-        <div class="card-header"><h2 class="card-title">Access</h2></div>
-        ${fieldMethods(['GET'], 'createMethodPicker')}
-        ${fieldAllowedEnvs('*')}
-        ${fieldToggle('createHidden', 'Private', false)}
+        <div class="card-header"><h2 class="card-title">Target</h2></div>
+        ${fieldText('createUrl', 'URL', '', 'https://erp.internal/api', { required: true, hint: 'Base URL of the upstream the steps call' })}
       </div>
+      ${access(true)}
       <div class="card">
-        <div class="card-header"><h2 class="card-title">Steps (JSON)</h2></div>
-        ${fieldTextarea('createSteps', 'Steps Array', '[]', '100px', true)}
+        <div class="card-header"><h2 class="card-title">Steps</h2></div>
+        ${fieldJson('createSteps', 'Steps (JSON)', [], '100px')}
       </div>
       ${fieldDocumentation({})}`;
       break;
@@ -1630,35 +1886,30 @@ function renderCreateForm() {
       html += `<div class="card">
         <div class="card-header"><h2 class="card-title">Storage</h2></div>
         ${fieldSelect('createStorageType', 'Storage Type', 'Local', ['Local','AzureBlob','S3'])}
-        ${fieldText('createBaseDir', 'Base Directory', '')}
-        ${fieldText('createExtensions', 'Allowed Extensions', '.jpg, .png, .pdf')}
+        ${fieldText('createBaseDir', 'Base Directory', '', 'e.g. files/documents', { required: true })}
+        ${fieldText('createExtensions', 'Allowed Extensions', '', '.pdf, .png', { hint: 'Comma separated. Empty applies only the global file storage list.' })}
       </div>
-      <div class="card">
-        <div class="card-header"><h2 class="card-title">Access</h2></div>
-        ${fieldAllowedEnvs('*')}
-        ${fieldToggle('createHidden', 'Private', false)}
-      </div>`;
+      ${access(false)}`;
       break;
     case 'static':
       html += `<div class="card">
         <div class="card-header"><h2 class="card-title">Content</h2></div>
-        ${fieldText('createContentFile', 'Content File', '')}
-        ${fieldText('createContentType', 'Content-Type', 'application/json')}
+        ${fieldText('createContentFile', 'Content File', '', 'e.g. data.json', { required: true, hint: 'File in the endpoint folder' })}
+        ${fieldText('createContentType', 'Content-Type', '', 'application/json')}
         ${fieldToggle('createEnableFiltering', 'Enable OData Filtering', false)}
       </div>
-      <div class="card">
-        <div class="card-header"><h2 class="card-title">Access</h2></div>
-        ${fieldAllowedEnvs('*')}
-        ${fieldToggle('createHidden', 'Private', false)}
-      </div>`;
+      ${access(false)}`;
       break;
     case 'webhook':
       html += `<div class="card">
+        <div class="card-header"><h2 class="card-title">Webhook IDs</h2></div>
+        ${fieldColumns('createWebhookIds', 'IDs', [''], 'Add webhook ID', 'e.g. github', true)}
+        <div class="field-help">New IDs require a Portway token. Choose a signature mode per ID after create.</div>
+      </div>
+      <div class="card">
         <div class="card-header"><h2 class="card-title">Storage</h2></div>
-        ${fieldText('createNamespace', 'Namespace', '')}
-        ${fieldText('createObjectName', 'Table', 'WebhookData')}
-        ${fieldText('createSchema', 'Schema', 'dbo')}
-        ${fieldColumns('createWebhookIds', 'Webhook IDs', [''], 'Add webhook ID', 'webhook-id')}
+        ${fieldText('createObjectName', 'Object Name', '', 'WebhookData', { hint: 'Table that receives each delivery. Empty uses WebhookData.' })}
+        ${fieldText('createSchema', 'Schema', '', 'dbo', { hint: 'Empty uses the provider default schema' })}
       </div>
       <div class="card">
         <div class="card-header"><h2 class="card-title">Access</h2></div>
@@ -1670,124 +1921,103 @@ function renderCreateForm() {
   document.getElementById('createForm').innerHTML = html;
 }
 
+const NAME_PART = /^[a-zA-Z0-9_-]+$/;
+
+function createContent(errors, baseName) {
+  const val = id => document.getElementById(id)?.value?.trim() ?? '';
+  const methods = readMethods('createMethodPicker');
+  const envs = readEnvs();
+  const hidden = document.getElementById('createHidden')?.checked ?? false;
+  const doc = readDocumentation({});
+  const needMethods = () => { if (!methods.length) errors.push(fieldError('createMethodPicker', 'Select at least one method')); };
+  const extras = () => ({ ...(doc ? { Documentation: doc } : {}) });
+
+  switch(_createType) {
+    case 'sql':
+      requireText(errors, 'createObjectName', 'Object Name is required');
+      needMethods();
+      return {
+        DatabaseObjectName: val('createObjectName'),
+        DatabaseSchema: val('createSchema') || undefined,
+        DatabaseObjectType: keepDefault({}, 'DatabaseObjectType', document.getElementById('createObjectType')?.value ?? 'Table', 'Table'),
+        AllowedMethods: methods,
+        AllowedEnvironments: envs,
+        Hidden: hidden,
+        DisplayName: val('createDisplayName') || undefined,
+        NamespaceDisplayName: val('createNamespaceDisplayName') || undefined,
+        ...extras()
+      };
+    case 'proxy':
+      requireText(errors, 'createUrl', 'URL is required');
+      needMethods();
+      return { Url: val('createUrl'), Methods: methods, AllowedEnvironments: envs, Hidden: hidden, ...extras() };
+    case 'composite': {
+      requireText(errors, 'createUrl', 'URL is required');
+      needMethods();
+      let steps = [];
+      try { steps = JSON.parse(val('createSteps') || '[]'); } catch { /* reported by validateDocFields */ }
+      return { Type: 'Composite', Url: val('createUrl'), Methods: methods, AllowedEnvironments: envs, Hidden: hidden, CompositeConfig: { Steps: steps }, ...extras() };
+    }
+    case 'file':
+      requireText(errors, 'createBaseDir', 'Base Directory is required');
+      return {
+        StorageType: document.getElementById('createStorageType')?.value ?? 'Local',
+        BaseDirectory: val('createBaseDir'),
+        AllowedExtensions: val('createExtensions').split(',').map(x => x.trim()).filter(Boolean),
+        AllowedEnvironments: envs,
+        Hidden: hidden
+      };
+    case 'static':
+      requireText(errors, 'createContentFile', 'Content File is required');
+      return {
+        ContentFile: val('createContentFile'),
+        ContentType: val('createContentType') || 'application/json',
+        EnableFiltering: document.getElementById('createEnableFiltering')?.checked ?? false,
+        AllowedEnvironments: envs,
+        Hidden: hidden
+      };
+    case 'webhook':
+      if (!NAME_PART.test(val('createNamespace'))) errors.push(fieldError('createNamespace', 'Namespace is required: letters, numbers, hyphens or underscores'));
+      validateWebhookIds(errors, 'createWebhookIds');
+      return {
+        DatabaseObjectName: val('createObjectName') || 'WebhookData',
+        DatabaseSchema: val('createSchema') || undefined,
+        AllowedMethods: ['POST'],
+        AllowedColumns: readColumns('createWebhookIds'),
+        AllowedEnvironments: envs
+      };
+  }
+  return {};
+}
+
 async function submitCreate() {
+  const errors = [];
   const baseName = (document.getElementById('createName')?.value ?? '').trim();
-  if (!baseName) { toast('Name is required', 'error'); return; }
-  if (!/^[a-zA-Z0-9_-]+$/.test(baseName)) { toast('Name must use only letters, numbers, hyphens, or underscores', 'error'); return; }
+  const nameOk = baseName.split('/').every(part => NAME_PART.test(part));
+  if (!baseName) errors.push(fieldError('createName', 'Name is required'));
+  else if (!nameOk) errors.push(fieldError('createName', 'Use letters, numbers, hyphens or underscores; slashes separate namespaces'));
   const webhookNamespace = (document.getElementById('createNamespace')?.value ?? '').trim();
   const name = _createType === 'webhook' && webhookNamespace ? `${webhookNamespace}/${baseName}` : baseName;
 
-  const methods = readMethods('createMethodPicker');
-  const envs = readEnvs();
-  let content;
-  let validationErr = null;
-
-  switch(_createType) {
-    case 'sql': {
-      const objectName = document.getElementById('createObjectName')?.value?.trim();
-      if (!objectName) { validationErr = 'Object Name is required'; break; }
-      if (!methods.length) { validationErr = 'At least one method must be selected'; break; }
-      const createDisplayName = document.getElementById('createDisplayName')?.value?.trim();
-      const createNsDisplayName = document.getElementById('createNamespaceDisplayName')?.value?.trim();
-      const createDoc = readDocumentation({});
-      const errors = [];
-      validateDocFields(errors);
-      if (errors.length) { validationErr = errors[0]; break; }
-      content = {
-        DatabaseObjectName: objectName,
-        DatabaseSchema: document.getElementById('createSchema')?.value?.trim() ?? 'dbo',
-        DatabaseObjectType: document.getElementById('createObjectType')?.value ?? 'Table',
-        AllowedMethods: methods,
-        AllowedEnvironments: envs,
-        Hidden: document.getElementById('createHidden')?.checked ?? false,
-        ...(createDisplayName ? { DisplayName: createDisplayName } : {}),
-        ...(createNsDisplayName ? { NamespaceDisplayName: createNsDisplayName } : {}),
-        ...(createDoc ? { Documentation: createDoc } : {})
-      }; break; }
-    case 'proxy': {
-      const url = document.getElementById('createUrl')?.value?.trim();
-      if (!url) { validationErr = 'URL is required'; break; }
-      if (!methods.length) { validationErr = 'At least one method must be selected'; break; }
-      const createProxyDoc = readDocumentation({});
-      const proxyErrors = [];
-      validateDocFields(proxyErrors);
-      if (proxyErrors.length) { validationErr = proxyErrors[0]; break; }
-      content = {
-        Url: url,
-        Methods: methods,
-        AllowedEnvironments: envs,
-        Hidden: document.getElementById('createHidden')?.checked ?? false,
-        ...(createProxyDoc ? { Documentation: createProxyDoc } : {})
-      }; break; }
-    case 'composite': {
-      if (!methods.length) { validationErr = 'At least one method must be selected'; break; }
-      let steps = [];
-      try { steps = JSON.parse(document.getElementById('createSteps')?.value ?? '[]'); }
-      catch { validationErr = 'Steps must be valid JSON'; break; }
-      const createCompDoc = readDocumentation({});
-      const compErrors = [];
-      validateDocFields(compErrors);
-      if (compErrors.length) { validationErr = compErrors[0]; break; }
-      content = {
-        Type: 'Composite',
-        Methods: methods,
-        AllowedEnvironments: envs,
-        Hidden: document.getElementById('createHidden')?.checked ?? false,
-        CompositeConfig: { Steps: steps },
-        ...(createCompDoc ? { Documentation: createCompDoc } : {})
-      }; break; }
-    case 'file': {
-      const baseDir = document.getElementById('createBaseDir')?.value?.trim();
-      if (!baseDir) { validationErr = 'Base Directory is required'; break; }
-      const exts = (document.getElementById('createExtensions')?.value ?? '').split(',').map(s=>s.trim()).filter(Boolean);
-      content = {
-        StorageType: document.getElementById('createStorageType')?.value ?? 'Local',
-        BaseDirectory: baseDir,
-        AllowedExtensions: exts,
-        AllowedEnvironments: envs,
-        Hidden: document.getElementById('createHidden')?.checked ?? false
-      }; break; }
-    case 'static': {
-      const contentFile = document.getElementById('createContentFile')?.value?.trim();
-      const contentType = document.getElementById('createContentType')?.value?.trim();
-      if (!contentFile) { validationErr = 'Content File is required'; break; }
-      if (!contentType) { validationErr = 'Content-Type is required'; break; }
-      content = {
-        ContentFile: contentFile,
-        ContentType: contentType,
-        EnableFiltering: document.getElementById('createEnableFiltering')?.checked ?? false,
-        AllowedEnvironments: envs,
-        Hidden: document.getElementById('createHidden')?.checked ?? false
-      }; break; }
-    case 'webhook': {
-      const ids = readColumns('createWebhookIds');
-      if (!/^[a-zA-Z0-9_-]+$/.test(webhookNamespace)) { validationErr = 'Namespace is required: letters, numbers, hyphens, or underscores'; break; }
-      if (!ids.length) { validationErr = 'Add at least one webhook ID'; break; }
-      content = {
-        DatabaseObjectName: document.getElementById('createObjectName')?.value?.trim() || 'WebhookData',
-        DatabaseSchema: document.getElementById('createSchema')?.value?.trim() || 'dbo',
-        AllowedMethods: ['POST'],
-        AllowedColumns: ids,
-        AllowedEnvironments: envs
-      }; break; }
-    default:
-      content = {};
-  }
-
-  if (validationErr) { toast(validationErr, 'error'); return; }
+  const content = createContent(errors, baseName);
+  validateEnvs(errors);
+  validateDocFields(errors);
+  if (errors.length) { showFieldErrors(errors); return; }
 
   try {
     showSaveWarnings(await api(`/_/api/endpoints/${_createType}`, {
       method: 'POST',
       body: { name, content: JSON.stringify(content, null, 2) },
-      success: `${name} created`, failure: 'Create failed'
+      success: `${name} created`, failure: 'Create failed', silent: true
     }));
     await closeCreateDrawer();
     await refreshAll();
     selectEndpoint(_createType, name);
-  } catch(e) {}
+  } catch(e) { showServerErrors(e); }
 }
 
-Drawer.onClose('createDrawer', () => { _dirty = _preDrawerDirty; });
+Drawer.onClose('createDrawer', () => { _dirty = _preDrawerDirty; syncDirty(); });
+_selected = selectionFromHash();
+syncSplit();
 refreshAll();
 </script>

@@ -75,6 +75,7 @@ async function api(url, options = {}) {
         const err = new Error(message);
         err.status = res.status;
         err.field = data && data.field;
+        err.errors = data && Array.isArray(data.errors) ? data.errors : null;
         throw err;
     }
     if (success) toast(success, 'success');
