@@ -1340,6 +1340,34 @@ public class WebUiSecurityTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task EndpointSave_KeepsInlineArrays()
+    {
+        var dir = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", "UiInline", "Items");
+        Directory.CreateDirectory(dir);
+        await File.WriteAllTextAsync(Path.Combine(dir, "content.json"), "[]", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(dir, "entity.json"), "{\n    \"ContentType\": \"application/json\",\n    \"ContentFile\": \"content.json\",\n    \"AllowedEnvironments\": [\"500\",\"700\"],\n    \"Notes\": [\"a\", \"b\"]\n}\n", TestContext.Current.CancellationToken);
+        try
+        {
+            var client = CreateClient();
+            var (authCookie, csrfCookie) = await LoginAsync(client);
+            var content = """{"ContentType":"application/json","ContentFile":"content.json","AllowedEnvironments":["500","700"],"Notes":["a","c"]}""";
+            var saved = await client.SendAsync(AuthedRequest(HttpMethod.Put, "/_/api/endpoints/static/UiInline/Items?raw=true", authCookie, csrfCookie,
+                new { content }), TestContext.Current.CancellationToken);
+
+            Assert.True(saved.StatusCode == HttpStatusCode.OK, await saved.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+            var file = await File.ReadAllTextAsync(Path.Combine(dir, "entity.json"), TestContext.Current.CancellationToken);
+            Assert.Contains("\n    \"AllowedEnvironments\": [\"500\",\"700\"],\n", file);
+            Assert.Contains("\n    \"Notes\": [\n        \"a\",\n        \"c\"\n    ]", file);
+            Assert.Equal(System.Text.Json.Nodes.JsonNode.Parse(content)!.ToJsonString(), System.Text.Json.Nodes.JsonNode.Parse(file)!.ToJsonString());
+        }
+        finally
+        {
+            Directory.Delete(Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", "UiInline"), recursive: true);
+            PortwayApi.Classes.EndpointHandler.ReloadAllEndpoints();
+        }
+    }
+
     // token scopes are validated on create and on update
     [Fact]
     public async Task TokenScopes_AreValidated()

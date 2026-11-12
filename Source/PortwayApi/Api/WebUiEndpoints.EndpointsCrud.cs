@@ -128,7 +128,7 @@ public static partial class WebUiEndpointExtensions
             }
             catch (JsonException ex) { return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400); }
 
-            rawContent = StampDeprecatedSince(rawContent, existing, format);
+            rawContent = KeepInlineValues(StampDeprecatedSince(rawContent, existing, format), existing, format);
 
             if (ConfigError(type, rawContent) is { } putConfigError)
                 return Results.Json(new { error = putConfigError }, statusCode: 400);
@@ -394,6 +394,40 @@ public static partial class WebUiEndpointExtensions
 
         entity["DeprecatedSince"] = DateTime.UtcNow.ToString("yyyy-MM-dd'T'00:00:00'Z'", System.Globalization.CultureInfo.InvariantCulture);
         return entity.ToJsonString(format);
+    }
+
+    // top-level values written on one line stay as written while unchanged
+    private static string KeepInlineValues(string json, string? existing, JsonSerializerOptions format)
+    {
+        if (existing is null)
+            return json;
+
+        JsonDocument previous;
+        try { previous = JsonDocument.Parse(existing); }
+        catch (JsonException) { return json; }
+
+        using (previous)
+        using (var updated = JsonDocument.Parse(json))
+        {
+            if (previous.RootElement.ValueKind != JsonValueKind.Object || updated.RootElement.ValueKind != JsonValueKind.Object)
+                return json;
+
+            var indent = new string(' ', format.IndentSize);
+            foreach (var property in updated.RootElement.EnumerateObject())
+            {
+                if (property.Value.ValueKind is not (JsonValueKind.Array or JsonValueKind.Object)
+                    || !previous.RootElement.TryGetProperty(property.Name, out var before)
+                    || before.GetRawText().Contains('\n')
+                    || !JsonElement.DeepEquals(before, property.Value))
+                    continue;
+
+                var key = "\n" + indent + JsonSerializer.Serialize(property.Name, format) + ": ";
+                var at = json.IndexOf(key + property.Value.GetRawText(), StringComparison.Ordinal);
+                if (at >= 0)
+                    json = string.Concat(json.AsSpan(0, at), key, before.GetRawText(), json.AsSpan(at + key.Length + property.Value.GetRawText().Length));
+            }
+        }
+        return json;
     }
 
     private static bool IsDeprecated(JsonObject entity) =>

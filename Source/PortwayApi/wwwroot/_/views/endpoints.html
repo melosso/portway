@@ -690,13 +690,11 @@ function readDocumentation(c) {
   let descs = null, docs = null;
   try { descs = descsRaw ? JSON.parse(descsRaw) : null; } catch { descs = existing.MethodDescriptions ?? null; }
   try { docs = docsRaw ? JSON.parse(docsRaw) : null; } catch { docs = existing.MethodDocumentation ?? null; }
-  const { TagDescription, MethodDescriptions, MethodDocumentation, ...rest } = existing;
-  const doc = {
-    ...rest,
-    ...(tag   ? { TagDescription: tag }        : {}),
-    ...(descs ? { MethodDescriptions: descs }  : {}),
-    ...(docs  ? { MethodDocumentation: docs }  : {}),
-  };
+  const doc = { ...existing };
+  for (const [key, value] of [['TagDescription', tag], ['MethodDescriptions', descs], ['MethodDocumentation', docs]]) {
+    if (value) doc[key] = value;
+    else delete doc[key];
+  }
   return Object.keys(doc).length ? doc : null;
 }
 
