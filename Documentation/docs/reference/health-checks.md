@@ -5,7 +5,7 @@ description: "Health check endpoints, response format, component checks, and loa
 
 # Health Checks
 
-Three health endpoints report the gateway status at increasing detail. All `/health*` paths are exempt from rate limiting.
+Three health endpoints return the gateway status at increasing detail. All `/health*` paths are exempt from rate limiting.
 
 ## Available endpoints
 
@@ -111,7 +111,7 @@ Each component check, cached for 60 seconds. Requires a token.
 
 ### Database check
 
-SQL connectivity per environment. Reports connection availability, response time and authentication result.
+SQL connectivity per environment. Returns connection availability, response time and authentication result.
 
 ### Disk space check
 
