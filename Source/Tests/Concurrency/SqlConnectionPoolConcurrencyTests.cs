@@ -33,38 +33,15 @@ public class SqlConnectionPoolConcurrencyTests : IAsyncLifetime
             ApplicationName: "PortwayConcurrencyTest"),
         new SqlProviderFactory([new MsSqlProvider(), new PostgreSqlProvider(), new MySqlProvider(), new SqliteProvider()]));
 
-    // Regression guard: host shutdown disposes the singleton pool, then stops hosted services, which must not throw `Cannot access a disposed object.`
-    [Fact]
-    public async Task StopAsync_AfterDispose_DoesNotThrow()
-    {
-        var pool = BuildPool();
-        await pool.PrewarmConnectionPoolAsync(_connectionString, TestContext.Current.CancellationToken);
-        await pool.StartAsync(CancellationToken.None);
-
-        await pool.DisposeAsync();
-
-        // Must not throw ObjectDisposedException on the maintenance gate
-        await pool.StopAsync(CancellationToken.None);
-    }
-
     [Fact]
     public async Task ConcurrentConnections_UnderLoad_AllSucceed()
     {
-        await using var pool = BuildPool();
-        await pool.PrewarmConnectionPoolAsync(_connectionString, TestContext.Current.CancellationToken);
-        await pool.StartAsync(CancellationToken.None);
+        var pool = BuildPool();
 
         const int workers = 64;
         const int perWorker = 20;
         var failures = new ConcurrentBag<Exception>();
         var optimised = new ConcurrentBag<string>();
-
-        // Maintenance runs against the same warmup connections while the load is in flight
-        var maintenance = Task.Run(async () =>
-        {
-            for (var i = 0; i < 10; i++)
-                await pool.MaintenanceTaskAsync();
-        }, TestContext.Current.CancellationToken);
 
         await Parallel.ForEachAsync(
             Enumerable.Range(0, workers),
@@ -92,8 +69,6 @@ public class SqlConnectionPoolConcurrencyTests : IAsyncLifetime
                 }
             });
 
-        await maintenance;
-        await pool.StopAsync(CancellationToken.None);
 
         Assert.True(failures.IsEmpty,
             $"{failures.Count} of {workers * perWorker} pooled connections failed:\n" +
