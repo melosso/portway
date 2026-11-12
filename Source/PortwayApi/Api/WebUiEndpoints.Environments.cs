@@ -28,6 +28,9 @@ public static partial class WebUiEndpointExtensions
         }
     }
 
+    private static Task WriteSettingsFileAsync(string path, string json) =>
+        AtomicFile.WriteAllTextAsync(path, json.EndsWith('\n') ? json : json + "\n");
+
     private static void MapEnvironmentRoutes(WebApplication app, PortwayApi.Services.Configuration.ConfigAuditService configAudit)
     {
         void Audit(HttpContext ctx, string action, string targetType, string target, string? details = null, string? backupPath = null)
@@ -63,7 +66,7 @@ public static partial class WebUiEndpointExtensions
 
             var backupPath = Services.Configuration.ConfigBackupService.Backup(globalPath);
             var model = new { Environment = new { ServerName = serverName, AllowedEnvironments = allowedEnvs } };
-            await AtomicFile.WriteAllTextAsync(globalPath, JsonSerializer.Serialize(model, SharedJsonOptions.Indented));
+            await WriteSettingsFileAsync(globalPath, JsonSerializer.Serialize(model, SharedJsonOptions.Indented));
             envSettings.Reload();
             Audit(context, "update", "environment-settings", "environments/settings.json", null, backupPath);
             return Results.Ok(new { ok = true });
@@ -179,7 +182,7 @@ public static partial class WebUiEndpointExtensions
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
             Directory.CreateDirectory(Path.GetDirectoryName(envPath)!);
             var backupPath = Services.Configuration.ConfigBackupService.Backup(envPath);
-            await AtomicFile.WriteAllTextAsync(envPath, raw);
+            await WriteSettingsFileAsync(envPath, raw);
             Audit(context, "update-raw", "environment", name, null, backupPath);
             var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(envPath), TimeSpan.Zero).ToUnixTimeSeconds();
             return Results.Ok(new { ok = true, last_modified = lastMod });
@@ -224,10 +227,12 @@ public static partial class WebUiEndpointExtensions
             settings["Secrets"] = secrets;
             if (!edit(secrets))
                 return Results.Json(new { error = "Secret not found" }, statusCode: 404);
+            if (secrets.Count == 0)
+                settings.Remove("Secrets");
 
             EncryptAtRest(settings);
             var backupPath = Services.Configuration.ConfigBackupService.Backup(envPath);
-            await AtomicFile.WriteAllTextAsync(envPath, settings.ToJsonString(SharedJsonOptions.Indented));
+            await WriteSettingsFileAsync(envPath, settings.ToJsonString(SharedJsonOptions.Indented));
             Audit(context, action, "environment-secret", $"{name}/{secret}", null, backupPath);
             var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(envPath), TimeSpan.Zero).ToUnixTimeSeconds();
             return Results.Ok(new { ok = true, last_modified = lastMod });
@@ -295,13 +300,13 @@ public static partial class WebUiEndpointExtensions
             var encryptedCs = !string.IsNullOrEmpty(connStr)
                 ? SettingsEncryptionHelper.Encrypt(connStr) : "";
             var envModel = new { ConnectionString = encryptedCs, ServerName = serverName, Headers = headers };
-            await AtomicFile.WriteAllTextAsync(envSettingsPath,
+            await WriteSettingsFileAsync(envSettingsPath,
                 JsonSerializer.Serialize(envModel, SharedJsonOptions.Indented));
 
             var newAllowed = envSettings.AllowedEnvironments;
             newAllowed.Add(name);
             var globalModel = new { Environment = new { ServerName = envSettings.ServerName, AllowedEnvironments = newAllowed } };
-            await AtomicFile.WriteAllTextAsync(globalPath,
+            await WriteSettingsFileAsync(globalPath,
                 JsonSerializer.Serialize(globalModel, SharedJsonOptions.Indented));
             envSettings.Reload();
             Audit(context, "create", "environment", name);
@@ -356,7 +361,7 @@ public static partial class WebUiEndpointExtensions
             envModel["ServerName"] = serverName;
             envModel["Headers"] = headers;
 
-            await AtomicFile.WriteAllTextAsync(envSettingsPath,
+            await WriteSettingsFileAsync(envSettingsPath,
                 JsonSerializer.Serialize(envModel, SharedJsonOptions.Indented));
             Audit(context, "update", "environment", name, null, backupPath);
             var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(envSettingsPath), TimeSpan.Zero).ToUnixTimeSeconds();
@@ -388,7 +393,7 @@ public static partial class WebUiEndpointExtensions
             var newAllowed = envSettings.AllowedEnvironments
                 .Select(e => e.Equals(name, StringComparison.OrdinalIgnoreCase) ? newName : e).ToList();
             var globalModel = new { Environment = new { ServerName = envSettings.ServerName, AllowedEnvironments = newAllowed } };
-            await AtomicFile.WriteAllTextAsync(globalPath, JsonSerializer.Serialize(globalModel, SharedJsonOptions.Indented));
+            await WriteSettingsFileAsync(globalPath, JsonSerializer.Serialize(globalModel, SharedJsonOptions.Indented));
             envSettings.Reload();
 
             Audit(context, "rename", "environment", $"{name} -> {newName}");
@@ -408,7 +413,7 @@ public static partial class WebUiEndpointExtensions
                 .Where(e => !e.Equals(name, StringComparison.OrdinalIgnoreCase)).ToList();
             var backupPath = Services.Configuration.ConfigBackupService.Backup(Path.Combine(envDir, "settings.json"));
             var globalModel = new { Environment = new { ServerName = envSettings.ServerName, AllowedEnvironments = newAllowed } };
-            await AtomicFile.WriteAllTextAsync(globalPath,
+            await WriteSettingsFileAsync(globalPath,
                 JsonSerializer.Serialize(globalModel, SharedJsonOptions.Indented));
             envSettings.Reload();
             if (deleteFiles && Directory.Exists(envDir))

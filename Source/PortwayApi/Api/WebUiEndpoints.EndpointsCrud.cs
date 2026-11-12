@@ -119,22 +119,23 @@ public static partial class WebUiEndpointExtensions
                 rawContent = contentEl.GetRawText();
             }
 
-            // Validate JSON and re-serialize prettified
+            var existing = File.Exists(filePath!) ? await File.ReadAllTextAsync(filePath!) : null;
+            var format = FormatOf(existing);
             try
             {
                 using var doc = JsonDocument.Parse(rawContent);
-                rawContent = JsonSerializer.Serialize(doc.RootElement, IndentedJson);
+                rawContent = JsonSerializer.Serialize(doc.RootElement, format);
             }
             catch (JsonException ex) { return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400); }
 
-            rawContent = StampDeprecatedSince(rawContent);
+            rawContent = StampDeprecatedSince(rawContent, existing, format);
 
             if (ConfigError(type, rawContent) is { } putConfigError)
                 return Results.Json(new { error = putConfigError }, statusCode: 400);
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath!)!);
             var backupPath = Services.Configuration.ConfigBackupService.Backup(filePath!);
-            await File.WriteAllTextAsync(filePath!, rawContent);
+            await File.WriteAllTextAsync(filePath!, existing?.EndsWith('\n') == true ? rawContent + "\n" : rawContent);
             var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(filePath!), TimeSpan.Zero).ToUnixTimeSeconds();
 
             var epType = TypeStringToEndpointType(type);
@@ -352,6 +353,13 @@ public static partial class WebUiEndpointExtensions
             : null;
 
     private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+    private static readonly JsonSerializerOptions IndentedJson4 = new(IndentedJson) { IndentSize = 4 };
+
+    private static JsonSerializerOptions FormatOf(string? existing) =>
+        existing is not null && FourSpaceIndent().IsMatch(existing) ? IndentedJson4 : IndentedJson;
+
+    [GeneratedRegex(@"\A\s*\{[ \t]*\r?\n {4}\S")]
+    private static partial Regex FourSpaceIndent();
 
     internal static string RedactEndpointUrls(string json)
     {
@@ -375,16 +383,26 @@ public static partial class WebUiEndpointExtensions
 
     private static readonly string[] LifecycleKeys = ["Deprecated", "DeprecatedSince", "Sunset", "Stability"];
 
-    // the deprecation header needs a date, a deprecated endpoint without one gets today
-    private static string StampDeprecatedSince(string json)
+    // the deprecation header needs a date, an endpoint deprecated by this save gets today
+    private static string StampDeprecatedSince(string json, string? existing, JsonSerializerOptions format)
     {
         if (JsonNode.Parse(json) is not JsonObject entity
-            || !entity.Any(p => p.Key.Equals("Deprecated", StringComparison.OrdinalIgnoreCase) && p.Value?.GetValueKind() == JsonValueKind.True)
-            || entity.Any(p => p.Key.Equals("DeprecatedSince", StringComparison.OrdinalIgnoreCase)))
+            || !IsDeprecated(entity)
+            || entity.Any(p => p.Key.Equals("DeprecatedSince", StringComparison.OrdinalIgnoreCase))
+            || (existing is not null && TryParseObject(existing) is { } previous && IsDeprecated(previous)))
             return json;
 
         entity["DeprecatedSince"] = DateTime.UtcNow.ToString("yyyy-MM-dd'T'00:00:00'Z'", System.Globalization.CultureInfo.InvariantCulture);
-        return entity.ToJsonString(IndentedJson);
+        return entity.ToJsonString(format);
+    }
+
+    private static bool IsDeprecated(JsonObject entity) =>
+        entity.Any(p => p.Key.Equals("Deprecated", StringComparison.OrdinalIgnoreCase) && p.Value?.GetValueKind() == JsonValueKind.True);
+
+    private static JsonObject? TryParseObject(string json)
+    {
+        try { return JsonNode.Parse(json) as JsonObject; }
+        catch (JsonException) { return null; }
     }
 
     // a new version starts without the base endpoint's deprecation

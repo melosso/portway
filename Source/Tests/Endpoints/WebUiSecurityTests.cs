@@ -810,7 +810,7 @@ public class WebUiSecurityTests : IDisposable
 
             var delete = await client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/_/api/environments/{name}/secrets/ERP-KEY", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.OK, delete.StatusCode);
-            Assert.Empty(System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(folder, "settings.json")))!["Secrets"]!.AsObject());
+            Assert.Null(System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(folder, "settings.json")))!["Secrets"]);
 
             var again = await client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/_/api/environments/{name}/secrets/ERP-KEY", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.NotFound, again.StatusCode);
@@ -835,6 +835,27 @@ public class WebUiSecurityTests : IDisposable
             Assert.Equal("plain-secret-value", saved["Secrets"]!["ERP-KEY"]!.GetValue<string>());
             Assert.Equal(1, saved["FutureKey"]!["x"]!.GetValue<int>());
             Assert.Equal("srv2", saved["ServerName"]!.GetValue<string>());
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task EnvironmentSave_EndsWithNewline()
+    {
+        var (client, name, folder, adminCookie, adminCsrf) = await SecretEnvironmentAsync(PlainSecrets + "\n");
+        try
+        {
+            var put = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/environments/{name}/secrets/NEW-KEY", adminCookie, adminCsrf, new { value = "v" }), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+            Assert.EndsWith("}\n", File.ReadAllText(Path.Combine(folder, "settings.json")));
+
+            var raw = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/environments/{name}/raw", adminCookie, adminCsrf,
+                new { content = """{"ServerName":"srv"}""" }), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, raw.StatusCode);
+            Assert.EndsWith("}\n", File.ReadAllText(Path.Combine(folder, "settings.json")));
         }
         finally
         {
@@ -874,6 +895,55 @@ public class WebUiSecurityTests : IDisposable
             var warning = Assert.Single(warnings);
             Assert.Contains("NOPE", warning);
             Assert.Contains(name, warning);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task SecretsOverview_ListsReferencesAndMissing()
+    {
+        var (_, name, folder, _, _) = await SecretEnvironmentAsync("""{"Encrypt":false,"ConnectionString":"Password=${secret:DB-PW}","Secrets":{"ERP-KEY":"plain-secret-value","IDLE-KEY":"idle-secret-value"}}""");
+        var endpointDir = Path.Combine("endpoints", "Proxy", "SecretsOverview", "Items");
+        Directory.CreateDirectory(endpointDir);
+        File.WriteAllText(Path.Combine(endpointDir, "entity.json"), $$"""{"Url":"https://api.example/x?a=${secret:ERP-KEY}&b=${secret:NOPE}","AllowedEnvironments":["{{name}}"]}""");
+        try
+        {
+            var rows = await PortwayApi.Endpoints.WebUiEndpointExtensions.SecretsOverviewAsync(_factory.Services, [name], TestContext.Current.CancellationToken);
+            var json = System.Text.Json.JsonSerializer.Serialize(rows);
+
+            Assert.DoesNotContain("plain-secret-value", json);
+            Assert.DoesNotContain("idle-secret-value", json);
+            var erp = rows.Single(r => r.Name == "ERP-KEY");
+            Assert.True(erp.HasValue);
+            Assert.Contains("Proxy/SecretsOverview/Items", erp.UsedBy);
+            var nope = rows.Single(r => r.Name == "NOPE");
+            Assert.False(nope.HasValue);
+            Assert.Contains("environment settings", rows.Single(r => r.Name == "DB-PW").UsedBy);
+            Assert.Empty(rows.Single(r => r.Name == "IDLE-KEY").UsedBy);
+            Assert.All(rows, r => Assert.Equal(name, r.Environment));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+            Directory.Delete(Path.Combine("endpoints", "Proxy", "SecretsOverview"), recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task SecretsOverview_OnlyAllowedEnvironments()
+    {
+        var (client, name, folder, adminCookie, _) = await SecretEnvironmentAsync(PlainSecrets);
+        try
+        {
+            var response = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/secrets", adminCookie), TestContext.Current.CancellationToken);
+            var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.DoesNotContain(name, body);
+            Assert.DoesNotContain("plain-secret-value", body);
         }
         finally
         {
@@ -1239,6 +1309,33 @@ public class WebUiSecurityTests : IDisposable
         {
             var root = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", "UiVer");
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+            PortwayApi.Classes.EndpointHandler.ReloadAllEndpoints();
+        }
+    }
+
+    [Fact]
+    public async Task StampDeprecatedSince_KeepsExistingDeprecation()
+    {
+        var dir = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", "UiStamp", "Items");
+        Directory.CreateDirectory(dir);
+        await File.WriteAllTextAsync(Path.Combine(dir, "content.json"), "[]", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(dir, "entity.json"), "{ \n    \"ContentType\": \"application/json\",\n    \"ContentFile\": \"content.json\",\n    \"Deprecated\": true\n}\n", TestContext.Current.CancellationToken);
+        try
+        {
+            var client = CreateClient();
+            var (authCookie, csrfCookie) = await LoginAsync(client);
+            var saved = await client.SendAsync(AuthedRequest(HttpMethod.Put, "/_/api/endpoints/static/UiStamp/Items", authCookie, csrfCookie,
+                new { content = new { ContentType = "application/json", ContentFile = "content.json", Deprecated = true } }), TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+            var file = await File.ReadAllTextAsync(Path.Combine(dir, "entity.json"), TestContext.Current.CancellationToken);
+            Assert.DoesNotContain("DeprecatedSince", file);
+            Assert.Matches("\n {4}\"contentType\"", file);
+            Assert.EndsWith("}\n", file);
+        }
+        finally
+        {
+            Directory.Delete(Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", "UiStamp"), recursive: true);
             PortwayApi.Classes.EndpointHandler.ReloadAllEndpoints();
         }
     }

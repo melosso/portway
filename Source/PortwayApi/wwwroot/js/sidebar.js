@@ -35,6 +35,11 @@ const NAV_GROUPS = [
                 icon: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>'
             },
             {
+                href: '/_/secrets',
+                label: 'Secrets',
+                icon: '<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/>'
+            },
+            {
                 href: '/_/tokens',
                 label: 'Access Tokens',
                 icon: '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'
@@ -240,10 +245,24 @@ function markBodyCapture() {
     link.insertAdjacentHTML('beforeend', '<i class="nav-dot" aria-hidden="true"></i>');
 }
 
+// script is in head, the first render waits for the DOM and the data render waits for the first
+const domReady = new Promise((resolve) => {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSidebar(false);
+            resolve();
+        });
+    } else {
+        renderSidebar(false);
+        resolve();
+    }
+});
+
 Promise.all([
     api('/_/api/overview', { silent: true }),
     api('/_/api/settings', { silent: true }).catch(() => ({ mcp: { enabled: false } })),
-    api('/_/api/users/me', { silent: true }).catch(() => ({ signed_in: false }))
+    api('/_/api/users/me', { silent: true }).catch(() => ({ signed_in: false })),
+    domReady
 ])
     .then(([d, settings, me]) => {
         const mcpEnabled = settings?.mcp?.enabled ?? false;
@@ -531,10 +550,3 @@ function chooseAppearance(next, e) {
 }
 
 document.addEventListener('click', () => closeAccountMenu());
-
-// Render immediately (script is in <head>, so wait for DOM)
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', renderSidebar);
-} else {
-    renderSidebar();
-}

@@ -633,10 +633,10 @@ function readBadges() {
   return badges.length ? badges : undefined;
 }
 
-function fieldText(id, label, value) {
+function fieldText(id, label, value, placeholder = '') {
   return `<div class="field">
     <label class="field-label" for="${id}">${label}</label>
-    <input type="text" class="input" id="${id}" value="${esc(value ?? '')}" oninput="markDirty()">
+    <input type="text" class="input" id="${id}" value="${esc(value ?? '')}" placeholder="${esc(placeholder)}" oninput="markDirty()">
   </div>`;
 }
 
@@ -649,8 +649,8 @@ function fieldSelect(id, label, value, options) {
 }
 
 function fieldMethods(selected, id = 'methodPicker') {
-  const all = ['GET','POST','PUT','PATCH','DELETE','QUERY'];
-  const sel = [].concat(selected ?? ['GET']);   // normalise: string → [string], null/undefined → ['GET']
+  const sel = [].concat(selected ?? ['GET']).map(m => String(m).toUpperCase());
+  const all = [...new Set(['GET','POST','PUT','PATCH','MERGE','DELETE','QUERY', ...sel])];
   return `<div class="field">
     <label class="field-label">Methods</label>
     <div class="method-picker" id="${id}">
@@ -686,15 +686,18 @@ function readDocumentation(c) {
   const tag  = document.getElementById('docTagDescription')?.value?.trim() ?? '';
   const descsRaw = document.getElementById('docMethodDescriptions')?.value?.trim() ?? '';
   const docsRaw  = document.getElementById('docMethodDocumentation')?.value?.trim() ?? '';
+  const existing = c?.Documentation ?? {};
   let descs = null, docs = null;
-  try { if (descsRaw) descs = JSON.parse(descsRaw); } catch {}
-  try { if (docsRaw)  docs  = JSON.parse(docsRaw);  } catch {}
-  if (!tag && !descs && !docs) return null;
-  return {
+  try { descs = descsRaw ? JSON.parse(descsRaw) : null; } catch { descs = existing.MethodDescriptions ?? null; }
+  try { docs = docsRaw ? JSON.parse(docsRaw) : null; } catch { docs = existing.MethodDocumentation ?? null; }
+  const { TagDescription, MethodDescriptions, MethodDocumentation, ...rest } = existing;
+  const doc = {
+    ...rest,
     ...(tag   ? { TagDescription: tag }        : {}),
     ...(descs ? { MethodDescriptions: descs }  : {}),
     ...(docs  ? { MethodDocumentation: docs }  : {}),
   };
+  return Object.keys(doc).length ? doc : null;
 }
 
 function kvRow(k = '', v = '', keyLabel = 'Key', valueLabel = 'Value') {
@@ -781,6 +784,7 @@ function readCacheProperties(existing) {
   delete props.CacheDurationMinutes;
   delete props.CacheInvalidatedBy;
   if (!document.getElementById('cacheEnabled')?.checked) props.CacheEnabled = false;
+  else if (existing?.CacheEnabled !== undefined) props.CacheEnabled = true;
   const minutes = Number.parseInt(document.getElementById('cacheDurationMinutes')?.value ?? '', 10);
   if (Number.isInteger(minutes) && minutes > 0) props.CacheDurationMinutes = minutes;
   const tables = readColumns('cacheInvalidatedBy');
@@ -870,7 +874,7 @@ function renderSqlForm(c) {
   return `
     <div class="card">
       <div class="card-header"><h2 class="card-title">Database Object</h2></div>
-      ${fieldText('schema', 'Schema', c.DatabaseSchema ?? 'dbo')}
+      ${fieldText('schema', 'Schema', c.DatabaseSchema ?? '', 'dbo')}
       ${fieldText('objectName', 'Object Name', c.DatabaseObjectName ?? '')}
       ${fieldSelect('objectType', 'Type', c.DatabaseObjectType ?? 'Table', ['Table','View','StoredProcedure','TableValuedFunction'])}
       ${fieldText('procedure', 'Procedure', c.Procedure ?? '')}
@@ -1052,7 +1056,7 @@ function renderWebhookForm(c) {
     <div class="card">
       <div class="card-header"><h2 class="card-title">Database Object</h2></div>
       ${fieldText('objectName', 'Object Name', c.DatabaseObjectName ?? '')}
-      ${fieldText('schema', 'Schema', c.DatabaseSchema ?? 'dbo')}
+      ${fieldText('schema', 'Schema', c.DatabaseSchema ?? '', 'dbo')}
     </div>
     <div class="card">
       <div class="card-header"><h2 class="card-title">Access</h2></div>
@@ -1226,7 +1230,6 @@ function validateForm(type) {
   switch(type) {
     case 'sql':
       if (!document.getElementById('objectName')?.value?.trim()) errors.push('Object Name is required');
-      if (!document.getElementById('schema')?.value?.trim())     errors.push('Schema is required');
       if (!/^\d*$/.test(document.getElementById('cacheDurationMinutes')?.value?.trim() ?? '')) errors.push('Duration must be a whole number of minutes');
       if (!methods.length) errors.push('At least one method must be selected');
       validateDocFields(errors);
@@ -1251,7 +1254,6 @@ function validateForm(type) {
       break;
     case 'webhook':
       if (!document.getElementById('objectName')?.value?.trim()) errors.push('Object Name is required');
-      if (!document.getElementById('schema')?.value?.trim())     errors.push('Schema is required');
       if (!readColumns('allowedCols').length) errors.push('Add at least one webhook ID');
       if (!methods.length) errors.push('At least one method must be selected');
       validateVerification(errors);
@@ -1262,6 +1264,11 @@ function validateForm(type) {
 }
 
 // Form to JSON over the existing content so hidden fields are kept
+// a default value is written only when the file already sets the key
+function keepDefault(c, key, value, fallback) {
+  return c[key] === undefined && JSON.stringify(value) === JSON.stringify(fallback) ? undefined : value;
+}
+
 function collectFormConfig(type, existingContent) {
   const c = existingContent ?? {};
   const methods = readMethods();
@@ -1274,18 +1281,18 @@ function collectFormConfig(type, existingContent) {
       const doc      = readDocumentation(c);
       return {
         ...c,
-        DatabaseSchema:       document.getElementById('schema')?.value?.trim() ?? 'dbo',
+        DatabaseSchema:       document.getElementById('schema')?.value?.trim() || undefined,
         DatabaseObjectName:   document.getElementById('objectName')?.value?.trim() ?? '',
-        DatabaseObjectType:   document.getElementById('objectType')?.value === 'Table' ? undefined : (document.getElementById('objectType')?.value ?? undefined),
+        DatabaseObjectType:   keepDefault(c, 'DatabaseObjectType', document.getElementById('objectType')?.value ?? 'Table', 'Table'),
         Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
         NamespaceDescription: document.getElementById('namespaceDescription')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
-        Hidden:            document.getElementById('hidden')?.checked || undefined,
-        Enabled:           document.getElementById('enabled')?.checked ?? true,
-        IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
+        Hidden:            keepDefault(c, 'Hidden', document.getElementById('hidden')?.checked ?? false, false),
+        Enabled:           keepDefault(c, 'Enabled', document.getElementById('enabled')?.checked ?? true, true),
+        IsMcpExposed:         keepDefault(c, 'IsMcpExposed', document.getElementById('isMcpExposed')?.checked ?? false, false),
         AllowedEnvironments:  envs,
-        AllowedMethods:       methods,
+        AllowedMethods:       keepDefault(c, 'AllowedMethods', methods, ['GET']),
         Procedure:            document.getElementById('procedure')?.value?.trim() || undefined,
         PrimaryKey:           document.getElementById('primaryKey')?.value?.trim() || undefined,
         AllowedColumns:       cols.length ? cols : undefined,
@@ -1316,9 +1323,9 @@ function collectFormConfig(type, existingContent) {
         NamespaceDescription: document.getElementById('namespaceDescription')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         AllowedEnvironments:  envs,
-        Hidden:            document.getElementById('hidden')?.checked || undefined,
-        Enabled:           document.getElementById('enabled')?.checked ?? true,
-        IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
+        Hidden:            keepDefault(c, 'Hidden', document.getElementById('hidden')?.checked ?? false, false),
+        Enabled:           keepDefault(c, 'Enabled', document.getElementById('enabled')?.checked ?? true, true),
+        IsMcpExposed:         keepDefault(c, 'IsMcpExposed', document.getElementById('isMcpExposed')?.checked ?? false, false),
         DeletePatterns:       readJsonField('deletePatterns'),
         CustomProperties:     customProps,
         Tenancy:              readTenancy(),
@@ -1337,9 +1344,9 @@ function collectFormConfig(type, existingContent) {
         NamespaceDescription: document.getElementById('namespaceDescription')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         AllowedEnvironments:  envs,
-        Hidden:            document.getElementById('hidden')?.checked || undefined,
-        Enabled:           document.getElementById('enabled')?.checked ?? true,
-        IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
+        Hidden:            keepDefault(c, 'Hidden', document.getElementById('hidden')?.checked ?? false, false),
+        Enabled:           keepDefault(c, 'Enabled', document.getElementById('enabled')?.checked ?? true, true),
+        IsMcpExposed:         keepDefault(c, 'IsMcpExposed', document.getElementById('isMcpExposed')?.checked ?? false, false),
         CompositeConfig: {
           ...c.CompositeConfig,
           Name:        document.getElementById('compositeConfigName')?.value?.trim() || undefined,
@@ -1363,9 +1370,9 @@ function collectFormConfig(type, existingContent) {
         NamespaceDescription: document.getElementById('namespaceDescription')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         AllowedEnvironments:  envs,
-        Hidden:            document.getElementById('hidden')?.checked || undefined,
-        Enabled:           document.getElementById('enabled')?.checked ?? true,
-        IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
+        Hidden:            keepDefault(c, 'Hidden', document.getElementById('hidden')?.checked ?? false, false),
+        Enabled:           keepDefault(c, 'Enabled', document.getElementById('enabled')?.checked ?? true, true),
+        IsMcpExposed:         keepDefault(c, 'IsMcpExposed', document.getElementById('isMcpExposed')?.checked ?? false, false),
         Documentation:        doc ?? undefined,
       };
     }
@@ -1381,9 +1388,9 @@ function collectFormConfig(type, existingContent) {
         NamespaceDescription: document.getElementById('namespaceDescription')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         AllowedEnvironments:  envs,
-        Hidden:            document.getElementById('hidden')?.checked || undefined,
-        Enabled:           document.getElementById('enabled')?.checked ?? true,
-        IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
+        Hidden:            keepDefault(c, 'Hidden', document.getElementById('hidden')?.checked ?? false, false),
+        Enabled:           keepDefault(c, 'Enabled', document.getElementById('enabled')?.checked ?? true, true),
+        IsMcpExposed:         keepDefault(c, 'IsMcpExposed', document.getElementById('isMcpExposed')?.checked ?? false, false),
         Documentation:        doc ?? undefined,
       };
     }
@@ -1394,7 +1401,7 @@ function collectFormConfig(type, existingContent) {
       return {
         ...c,
         DatabaseObjectName:   document.getElementById('objectName')?.value?.trim() ?? '',
-        DatabaseSchema:       document.getElementById('schema')?.value?.trim() ?? 'dbo',
+        DatabaseSchema:       document.getElementById('schema')?.value?.trim() || undefined,
         AllowedColumns:       cols.length ? cols : undefined,
         AllowedMethods:       methods,
         AllowedEnvironments:  envs,
@@ -1402,9 +1409,9 @@ function collectFormConfig(type, existingContent) {
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
         NamespaceDescription: document.getElementById('namespaceDescription')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
-        Hidden:            document.getElementById('hidden')?.checked || undefined,
-        Enabled:           document.getElementById('enabled')?.checked ?? true,
-        IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
+        Hidden:            keepDefault(c, 'Hidden', document.getElementById('hidden')?.checked ?? false, false),
+        Enabled:           keepDefault(c, 'Enabled', document.getElementById('enabled')?.checked ?? true, true),
+        IsMcpExposed:         keepDefault(c, 'IsMcpExposed', document.getElementById('isMcpExposed')?.checked ?? false, false),
         Verification:         Object.keys(verification).length ? verification : undefined,
         Documentation:        doc ?? undefined,
       };
@@ -1425,7 +1432,7 @@ async function saveEndpoint() {
       const raw = document.getElementById('rawContent')?.value ?? '';
       try { JSON.parse(raw); } catch(e) { toast('Invalid JSON: ' + e.message, 'error'); return; }
       body = { content: raw };
-      await api(`/_/api/endpoints/${type}/${name}?raw=true`, { method: 'PUT', body, success: 'Saved', failure: 'Save failed' });
+      showSaveWarnings(await api(`/_/api/endpoints/${type}/${name}?raw=true`, { method: 'PUT', body, success: 'Saved', failure: 'Save failed' }));
       _dirty = false;
       await refreshAll();
     } else {
@@ -1433,12 +1440,16 @@ async function saveEndpoint() {
       if (errs.length) { toast(errs[0], 'error'); return; }
       const cfg = applyLifecycle(collectFormConfig(type, _detailData.content));
       body = { content: cfg };
-      await api(`/_/api/endpoints/${type}/${name}`, { method: 'PUT', body, success: 'Saved', failure: 'Save failed' });
+      showSaveWarnings(await api(`/_/api/endpoints/${type}/${name}`, { method: 'PUT', body, success: 'Saved', failure: 'Save failed' }));
       _dirty = false;
       await refreshAll();
     }
   } catch(e) {}
   finally { saveBtn?.classList.remove('is-loading'); }
+}
+
+function showSaveWarnings(result) {
+  for (const warning of result?.warnings ?? []) toast(warning, 'warning');
 }
 
 function toggleRawMode() {
@@ -1768,11 +1779,11 @@ async function submitCreate() {
   if (validationErr) { toast(validationErr, 'error'); return; }
 
   try {
-    await api(`/_/api/endpoints/${_createType}`, {
+    showSaveWarnings(await api(`/_/api/endpoints/${_createType}`, {
       method: 'POST',
       body: { name, content: JSON.stringify(content, null, 2) },
       success: `${name} created`, failure: 'Create failed'
-    });
+    }));
     await closeCreateDrawer();
     await refreshAll();
     selectEndpoint(_createType, name);

@@ -189,6 +189,7 @@ public static partial class WebUiEndpointExtensions
         MapInfoRoutes(app, appVersion);
         MapEnvironmentRoutes(app, configAudit);
         MapWebhookRoutes(app);
+        MapSecretRoutes(app);
         MapSettingsRoutes(app, configAudit);
         MapUserRoutes(app, configAudit);
         MapOidcRoutes(app, configAudit, secureCookies);

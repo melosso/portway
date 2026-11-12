@@ -700,7 +700,7 @@ function buildAuthSection(auth, prefix = 'edit') {
             <input type="checkbox" id="${prefix}AuthEnabled" ${auth.enabled ? 'checked' : ''} onchange="toggleAuthUI('${prefix}'); markDirty()">
             <span class="slider"></span>
           </label>
-          <span class="tooltip-wrapper" style="font-size:0.8125rem;font-weight:500;">Enable custom authentication<span class="tooltip tooltip-above">Accepts API key, Bearer, Basic, JWT or HMAC credentials on every request to this environment.</span></span>
+          <span style="font-size:0.8125rem;font-weight:500;" data-tooltip="Accepts API key, Bearer, Basic, JWT or HMAC credentials on every request to this environment.">Enable custom authentication</span>
         </div>
 
         <div id="${prefix}AuthOverrideContainer" style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;${auth.enabled ? '' : 'opacity:0.5;pointer-events:none'}"
@@ -709,7 +709,7 @@ function buildAuthSection(auth, prefix = 'edit') {
             <input type="checkbox" id="${prefix}AuthOverride" ${auth.override_global_token ? 'checked' : ''} onchange="markDirty()">
             <span class="slider"></span>
           </label>
-          <span class="tooltip-wrapper" style="font-size:0.8125rem;font-weight:500;">Override global token<span class="tooltip tooltip-above">Rejects the Portway bearer token. Accepts the methods above.</span></span>
+          <span style="font-size:0.8125rem;font-weight:500;" data-tooltip="Rejects the Portway bearer token. Accepts the methods above.">Override global token</span>
         </div>
       </div>
 

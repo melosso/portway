@@ -177,6 +177,7 @@ public static partial class WebUiEndpointExtensions
             ["health"] = "Health",
             ["endpoints"] = "Endpoints",
             ["environments"] = "Environments",
+            ["secrets"] = "Secrets",
             ["tokens"] = "Access Tokens",
             ["users"] = "Users",
             ["settings"] = "Settings",
