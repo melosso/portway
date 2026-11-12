@@ -1,3 +1,4 @@
+using PortwayApi.Middleware;
 using Serilog;
 
 namespace PortwayApi.Helpers;
@@ -16,86 +17,59 @@ public static class StartupLogHelper
     }
 
     /// <summary>
-    /// The URLs Kestrel binds without explicit app.Urls: urls, the Kestrel endpoint, ASPNETCORE_HTTP_PORTS and ASPNETCORE_HTTPS_PORTS, then http://localhost:5000
+    /// Verifies the API and console ports are free before Kestrel binds; returns false when a port is taken
     /// </summary>
-    internal static string ConfiguredUrls(IConfiguration configuration)
+    public static bool TryReservePorts(WebApplication app, PortRouting ports)
     {
-        if ((configuration["urls"] ?? configuration["Kestrel:Endpoints:Http:Url"]) is { Length: > 0 } urls)
-            return urls;
-
-        var ports = (configuration["http_ports"] ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(p => $"http://*:{p}")
-            .Concat((configuration["https_ports"] ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(p => $"https://*:{p}"))
-            .ToList();
-        return ports.Count > 0 ? string.Join(';', ports) : "http://localhost:5000";
-    }
-
-    /// <summary>
-    /// Verifies configured ports are free before Kestrel binds; returns false when a port is taken
-    /// </summary>
-    public static bool TryReservePorts(WebApplication app, IConfiguration configuration)
-    {
-        // Only Kestrel binds sockets; if the server is not Kestrel, we can't probe the ports thus return true
+        // iis in-process binds its own ports
         var server = app.Services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>();
         if (server.GetType().Assembly != typeof(Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions).Assembly)
             return true;
 
-        var urlsToCheck = app.Urls.Count > 0 ? app.Urls : ConfiguredUrls(configuration).Split(';');
+        if (FirstTakenPort(ports.IsSplit ? [ports.ApiPort, ports.ConsolePort] : [ports.ApiPort]) is not { } taken)
+            return true;
 
-        foreach (var rawUrl in urlsToCheck)
+        Log.Fatal("Port {Port} is already in use. Stop the existing process, or set PORTWAY_PORT_API and PORTWAY_PORT_CONSOLE.", taken);
+        return false;
+    }
+
+    internal static int? FirstTakenPort(IEnumerable<int> ports)
+    {
+        foreach (var port in ports)
         {
-            if (!Uri.TryCreate(rawUrl.Trim(), UriKind.Absolute, out var uri)) continue;
-            if (uri.Scheme is not ("http" or "https")) continue;
-
             try
             {
-                var address = uri.Host is "localhost" or "0.0.0.0" or "*" or "+"
-                    ? System.Net.IPAddress.Loopback
-                    : System.Net.IPAddress.Parse(uri.Host);
-
-                using var probe = new System.Net.Sockets.TcpListener(address, uri.Port);
+                // the same dual-mode any address ListenAnyIP binds
+                var probe = System.Net.Sockets.TcpListener.Create(port);
                 probe.Start();
                 probe.Stop();
             }
             catch (System.Net.Sockets.SocketException ex)
                 when (ex.SocketErrorCode == System.Net.Sockets.SocketError.AddressAlreadyInUse)
             {
-                Log.Fatal("Port {Port} is already in use. Stop the existing process, or pass --urls to use another port.", uri.Port);
-                return false;
+                return port;
             }
             catch (System.Net.Sockets.SocketException ex)
             {
-                // Anything else, a reserved port or a blocked address, is Kestrel's to report
-                Log.Debug(ex, "Could not probe {Url}; leaving the bind to Kestrel", rawUrl);
+                // anything else, a reserved port or a blocked address, is Kestrel's to report
+                Log.Debug(ex, "Could not probe port {Port}; leaving the bind to Kestrel", port);
             }
         }
 
-        return true;
+        return null;
     }
 
     /// <summary>
     /// Logs hosting URLs and configuration reload status
     /// </summary>
-    public static void LogHostingSummary(WebApplication app, IConfiguration configuration)
+    public static void LogHostingSummary(WebApplication app, IConfiguration configuration, PortRouting ports)
     {
-        var urls = app.Urls;
-        if (urls != null && urls.Any())
-        {
-            Log.Information("Application is hosted on the following URLs:");
-            foreach (var url in urls)
-            {
-                Log.Information("   {Url}", url);
-            }
-        }
-        else if (app.Environment.IsProduction() && Environment.GetEnvironmentVariable("ASPNETCORE_IIS_PHYSICAL_PATH") != null)
-        {
-            // We're running in IIS
+        if (app.Environment.IsProduction() && Environment.GetEnvironmentVariable("ASPNETCORE_IIS_PHYSICAL_PATH") != null)
             Log.Debug("Application is hosted in IIS");
-        }
+        else if (ports.IsSplit)
+            Log.Information("Application is hosted on API port {ApiPort} and console port {ConsolePort}", ports.ApiPort, ports.ConsolePort);
         else
-        {
-            var formattedUrls = ConfiguredUrls(configuration).Replace(";", "; ");
-            Log.Information("Application is hosted on: {Urls}", formattedUrls);
-        }
+            Log.Information("Application is hosted on port {Port} for API and console", ports.ApiPort);
 
         if (!app.Environment.IsProduction())
             Log.Warning("Application Environment: {Environment}", app.Environment.EnvironmentName);

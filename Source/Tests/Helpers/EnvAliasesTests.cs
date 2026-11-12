@@ -61,6 +61,8 @@ public sealed class EnvAliasesTests
         { "PORTWAY_TELEMETRY_PROVIDER", "Telemetry__Provider", "Telemetry:Provider" },
         { "PORTWAY_OTLP_ENDPOINT", "Telemetry__Otlp__Endpoint", "Telemetry:Otlp:Endpoint" },
         { "PORTWAY_SERVICE_NAME", "Telemetry__ServiceName", "Telemetry:ServiceName" },
+        { "PORTWAY_PORT_API", "Hosting__ApiPort", "Hosting:ApiPort" },
+        { "PORTWAY_PORT_CONSOLE", "Hosting__ConsolePort", "Hosting:ConsolePort" },
         { "PORTWAY_USE_HTTPS", "Use_HTTPS", null },
         { "PORTWAY_PROXY_USERNAME", "PROXY_USERNAME", null },
         { "PORTWAY_PROXY_PASSWORD", "PROXY_PASSWORD", null },

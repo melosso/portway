@@ -4,9 +4,10 @@ using System.IO.Compression;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using PortwayApi.Helpers;
+using PortwayApi.Middleware;
 
 /// <summary>
-/// Kestrel hardening, HTTPS opt-in detection and response compression for the Portway web host
+/// Kestrel hardening, API and console listeners, HTTPS opt-in detection and response compression for the Portway web host
 /// </summary>
 public static class WebHostConfigurationExtensions
 {
@@ -26,6 +27,9 @@ public static class WebHostConfigurationExtensions
             // On Windows Server/IIS, enable HTTPS unless explicitly disabled
             useHttps = !string.Equals(useHttpsEnv, "false", StringComparison.OrdinalIgnoreCase);
         }
+
+        var ports = PortRouting.From(builder.Configuration);
+        builder.Services.AddSingleton(ports);
 
         builder.WebHost.ConfigureKestrel(serverOptions =>
         {
@@ -65,6 +69,11 @@ public static class WebHostConfigurationExtensions
                     listenOptions.UseHttps();
                 });
             }
+
+            // after ConfigureEndpointDefaults so both listeners take its https setting
+            serverOptions.ListenAnyIP(ports.ApiPort);
+            if (ports.IsSplit)
+                serverOptions.ListenAnyIP(ports.ConsolePort);
         });
 
         builder.Services.AddResponseCompression(options =>

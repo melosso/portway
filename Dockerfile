@@ -44,8 +44,9 @@ RUN mkdir -p /app/endpoints && \
     mkdir -p /app/environments/prod
 
 # Set environment variables
-# For future reference, ASPNETCORE_HTTP_PORTS=8080 is already set by the base image (dotnet/aspnet:8.0+). Can be removed when deemed stable.
+# Ports are set by PORTWAY_PORT_API and PORTWAY_PORT_CONSOLE, the base image binding is cleared
 ENV ASPNETCORE_ENVIRONMENT=Production
+ENV ASPNETCORE_HTTP_PORTS=
 
 # Copy published output and tools
 COPY --from=build /app/publish /opt/portway
@@ -71,8 +72,8 @@ RUN chmod -R 755 /app /opt/portway /usr/local/bin/portway-start
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8080/health/live || exit 1
 
-# Expose application port
-EXPOSE 8080
+# Expose API and console ports
+EXPOSE 8080 8081
 
 # Define entrypoint
 ENTRYPOINT ["/usr/local/bin/portway-start"]

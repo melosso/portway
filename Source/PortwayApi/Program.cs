@@ -144,7 +144,8 @@ try
     var app = builder.Build();
 
     // Pre-flight: fail on a taken port before database, cache and endpoint initialisation
-    if (!StartupLogHelper.TryReservePorts(app, builder.Configuration))
+    var ports = app.Services.GetRequiredService<PortRouting>();
+    if (!StartupLogHelper.TryReservePorts(app, ports))
         return 1;
 
     // legacy seed key, Console:Enabled takes precedence
@@ -172,6 +173,9 @@ try
 
     // Forwarded headers for reverse proxies plus Cloudflare client IP and scheme restoration
     app.UseProxyForwardedHeaders();
+
+    // Console paths return 404 on the API port
+    app.UsePortRouting();
 
     // Configure unified documentation
     var openApiMonitor = app.Services.GetRequiredService<IOptionsMonitor<OpenApiSettings>>();
@@ -261,7 +265,7 @@ try
     Log.Information("Console: {Status}", webUiEnabled ? "Enabled" : "Disabled");
     OpenApiConfiguration.LogDocsStatus(app, openApiMonitor.CurrentValue);
     app.LogRateLimitStatus();
-    StartupLogHelper.LogHostingSummary(app, builder.Configuration);
+    StartupLogHelper.LogHostingSummary(app, builder.Configuration, ports);
 
     app.Lifetime.ApplicationStopping.Register(() =>
     {

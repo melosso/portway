@@ -87,7 +87,7 @@ $DOCKER run -d --name test-portway --network portway-verify -p 127.0.0.1:8081:80
   -v "$WORK/config/environments:/app/environments:z" -v "$WORK/config/endpoints:/app/endpoints:z" \
   -v "$WORK/log:/app/log:z" -v "$WORK/data:/app/data:z" -v "$WORK/data/auth.db:/app/auth.db:z" -v "$WORK/keys:/app/.core:z" \
   -e PORTWAY_ENCRYPTION_KEY=demo-encryption-key-12345 -e "PORTWAY_ALLOWED_HOSTS=localhost;127.0.0.1" \
-  -e PORTWAY_SEED_TOKEN=$TOKEN -e PORTWAY_MCP_ENABLED=true \
+  -e PORTWAY_SEED_TOKEN=$TOKEN -e PORTWAY_MCP_ENABLED=true -e PORTWAY_PORT_CONSOLE=8080 \
   -e RateLimiting__Enabled=$LIMIT -e RequestTrafficLogging__Enabled=$TRAFFIC -e RequestTrafficLogging__Provider=SQLite \
   "$IMAGE" >/dev/null
 

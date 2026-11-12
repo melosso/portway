@@ -18,6 +18,7 @@ services:
       - ./keys:/app/.core:z
     environment:
       - PORTWAY_ENCRYPTION_KEY=demo-encryption-key-12345
+      - PORTWAY_PORT_CONSOLE=8080
       - PORTWAY_ALLOWED_HOSTS=portway-demo.melosso.com;localhost
       - PORTWAY_KNOWN_NETWORKS=172.16.0.0/12
       - PORTWAY_SEED_TOKEN=pwdemo_4819cfc3d3dff6f0f63e7160a6422abee1ae07dd
