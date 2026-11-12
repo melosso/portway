@@ -547,11 +547,13 @@ public sealed partial class SqlRequestHandler
     {
         var errorId = Guid.NewGuid().ToString("N")[..8];
         if (SqlErrorClassifier.IsConnectionFailure(dbEx))
+        {
             Log.Warning("Database unreachable [{ErrorId}] for endpoint {EndpointName} ({Detail}): {Message}",
                 errorId, endpointName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
-        else
-            Log.Error(dbEx, "Database error [{ErrorId}] for endpoint {EndpointName} ({Detail}): {Message}",
-                errorId, endpointName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
+            return PortwayResults.ServiceUnavailable(context, $"Database unavailable. Retry later. Reference: T{errorId}");
+        }
+        Log.Error(dbEx, "Database error [{ErrorId}] for endpoint {EndpointName} ({Detail}): {Message}",
+            errorId, endpointName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
         return PortwayResults.ServerError(context,
             $"A data error occurred. Please contact support with reference: T{errorId}");
     }

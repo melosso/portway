@@ -43,7 +43,7 @@ public class SqlEndpointTests : ApiTestBase
             Times.Once);
 
         // Only the 200 itself needs a reachable server
-        if (response.StatusCode == HttpStatusCode.InternalServerError)
+        if (response.StatusCode == HttpStatusCode.ServiceUnavailable)
         {
             Log.Warning("SQL Server not reachable during test, skipping full validation of OK status.");
             return;

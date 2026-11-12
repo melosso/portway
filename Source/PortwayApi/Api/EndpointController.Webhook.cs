@@ -71,6 +71,11 @@ public sealed partial class EndpointController
                 _ => PortwayResults.BadRequest("Environment is not configured properly.")
             };
         }
+        catch (System.Data.Common.DbException ex) when (SqlErrorClassifier.IsConnectionFailure(ex))
+        {
+            Log.Warning("Database unreachable for webhook {WebhookId} ({Detail}): {Message}", route.Id, SqlErrorClassifier.DescribeForLog(ex), ex.Message);
+            return PortwayResults.ServiceUnavailable(HttpContext, "Database unavailable. Retry later.");
+        }
         catch (Exception ex)
         {
             return HandleUnexpectedError(ex, "webhook", route.Id, "Error processing webhook. Please check the logs for more details.");

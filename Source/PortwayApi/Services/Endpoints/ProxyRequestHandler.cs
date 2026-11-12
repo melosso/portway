@@ -37,6 +37,15 @@ public sealed class ProxyRequestHandler
     // Endpoint Urls are config-static, so the path/query split and reserved param names are computed once per Url
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Path, string Query, HashSet<string> Reserved)> _splitUrlCache = new();
 
+    // connection failures and timeouts mean the upstream is down, not the gateway
+    internal static bool IsUpstreamUnavailable(Exception ex, CancellationToken aborted) => ex switch
+    {
+        HttpRequestException { HttpRequestError: HttpRequestError.ConnectionError or HttpRequestError.NameResolutionError } => true,
+        HttpRequestException { InnerException: System.Net.Sockets.SocketException } => true,
+        TaskCanceledException => !aborted.IsCancellationRequested,
+        _ => false
+    };
+
     private static (string Path, string Query, HashSet<string> Reserved) SplitEndpointUrl(string url) =>
         _splitUrlCache.GetOrAdd(url, static u =>
         {
@@ -349,6 +358,11 @@ public sealed class ProxyRequestHandler
         {
             Log.Warning("Blocked proxy connection for {EndpointName}: {Reason}", endpointName, blocked.Message);
             return new ObjectResult(ErrorResponse.Of("Request blocked due to security restrictions")) { StatusCode = 403 };
+        }
+        catch (Exception ex) when (!context.Response.HasStarted && IsUpstreamUnavailable(ex, context.RequestAborted))
+        {
+            Log.Warning("Upstream unavailable for {EndpointName}: {Message}", endpointName, ex.Message);
+            return PortwayResults.ServiceUnavailable(context, "Upstream unavailable. Retry later.");
         }
         catch (Exception ex)
         {

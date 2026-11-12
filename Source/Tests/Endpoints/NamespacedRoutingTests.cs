@@ -21,7 +21,7 @@ public class NamespacedRoutingTests : ApiTestBase
 
         var response = await _client.GetAsync("/api/500/Inventory/Products", TestContext.Current.CancellationToken);
 
-        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 
     // A namespaced static endpoint resolves to the static handler and serves its content

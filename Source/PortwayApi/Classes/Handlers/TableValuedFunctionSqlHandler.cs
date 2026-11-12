@@ -107,7 +107,7 @@ public static class TableValuedFunctionSqlHandler
                 if (odataConverter == null)
                 {
                     Log.Error("IODataToSqlConverter not available in DI");
-                    return (false, new ObjectResult(new { error = "OData-to-SQL converter not available", success = false }) { StatusCode = 500 }, null);
+                    return (false, PortwayResults.ServerError("OData-to-SQL converter not available"), null);
                 }
 
                 // Use a dummy table name to generate OData SQL (provider-aware)
@@ -152,6 +152,12 @@ public static class TableValuedFunctionSqlHandler
 
             return (true, null, resultList);
         }
+        catch (System.Data.Common.DbException dbEx) when (SqlErrorClassifier.IsConnectionFailure(dbEx))
+        {
+            Log.Warning("Database unreachable for TVF {FunctionName} ({Detail}): {ErrorMessage}",
+                endpoint.DatabaseObjectName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
+            return (false, PortwayResults.ServiceUnavailable(request.HttpContext, "Database unavailable. Retry later."), null);
+        }
         catch (System.Data.Common.DbException dbEx)
         {
             Log.Error(dbEx, "Database error executing TVF {FunctionName} ({Detail}): {ErrorMessage}",
@@ -169,12 +175,7 @@ public static class TableValuedFunctionSqlHandler
                 }
                 : "Error executing table valued function";
 
-            return (false, new ObjectResult(new
-            {
-                error = errorMessage,
-                success = false
-            })
-            { StatusCode = 500 }, null);
+            return (false, PortwayResults.ServerError(errorMessage), null);
         }
         catch (Exception ex) when (ex is Microsoft.OData.ODataException or NotSupportedException)
         {
@@ -185,12 +186,7 @@ public static class TableValuedFunctionSqlHandler
         {
             Log.Error(ex, "Unexpected error executing TVF {FunctionName}", endpoint.DatabaseObjectName);
 
-            return (false, new ObjectResult(new
-            {
-                error = "An unexpected error occurred while executing the table valued function",
-                success = false
-            })
-            { StatusCode = 500 }, null);
+            return (false, PortwayResults.ServerError("An unexpected error occurred while executing the table valued function"), null);
         }
     }
 

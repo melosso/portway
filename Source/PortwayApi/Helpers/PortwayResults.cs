@@ -89,6 +89,13 @@ public static class PortwayResults
         => new ObjectResult(ErrorResponse.Of(error)) { StatusCode = StatusCodes.Status503ServiceUnavailable };
 
     /// <summary>
+    /// 503 in the shared envelope with the trace id of the matching server log entry
+    /// </summary>
+    public static IActionResult ServiceUnavailable(HttpContext context, string error)
+        => new ObjectResult(ErrorResponse.Traced(error, TraceIdOf(context)))
+        { StatusCode = StatusCodes.Status503ServiceUnavailable };
+
+    /// <summary>
     /// Tells clients and caches how long to back off before retrying a deliberate outage
     /// </summary>
     private static void SetRetryAfter(HttpResponse response, int? retryAfterSeconds)
