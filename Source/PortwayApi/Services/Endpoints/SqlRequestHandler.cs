@@ -546,8 +546,12 @@ public sealed partial class SqlRequestHandler
     private static IActionResult MaskedDataError(HttpContext context, DbException dbEx, string endpointName)
     {
         var errorId = Guid.NewGuid().ToString("N")[..8];
-        Log.Error(dbEx, "Database error [{ErrorId}] for endpoint {EndpointName} ({Detail}): {Message}",
-            errorId, endpointName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
+        if (SqlErrorClassifier.IsConnectionFailure(dbEx))
+            Log.Warning("Database unreachable [{ErrorId}] for endpoint {EndpointName} ({Detail}): {Message}",
+                errorId, endpointName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
+        else
+            Log.Error(dbEx, "Database error [{ErrorId}] for endpoint {EndpointName} ({Detail}): {Message}",
+                errorId, endpointName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
         return PortwayResults.ServerError(context,
             $"A data error occurred. Please contact support with reference: T{errorId}");
     }

@@ -1,7 +1,9 @@
 namespace PortwayApi.Endpoints;
 
+using System.Data.Common;
 using PortwayApi.Auth;
 using PortwayApi.Classes;
+using PortwayApi.Helpers;
 using PortwayApi.Services;
 
 public static partial class WebUiEndpointExtensions
@@ -30,7 +32,13 @@ public static partial class WebUiEndpointExtensions
                     deliveries = deliveries.Select(d => new { id = d.Id, webhook_id = d.WebhookId, received_at = d.ReceivedAt, payload = d.Payload })
                 });
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (DbException dbEx) when (!context.RequestAborted.IsCancellationRequested)
+            {
+                Serilog.Log.Warning("Reading deliveries of webhook {Endpoint} in {Environment} failed ({Detail}): {Message}",
+                    key, env, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
+                return Results.Json(new { error = "Deliveries could not be read" }, statusCode: 500);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException and not DbException)
             {
                 Serilog.Log.Warning(ex, "Reading deliveries of webhook {Endpoint} in {Environment} failed", key, env);
                 return Results.Json(new { error = "Deliveries could not be read" }, statusCode: 500);

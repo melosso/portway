@@ -56,6 +56,19 @@ public static class SqlErrorClassifier
     };
 
     /// <summary>
+    /// True when the server is unreachable at connect time: refused, unresolved or timed out
+    /// </summary>
+    public static bool IsConnectionFailure(DbException ex)
+    {
+        for (Exception? inner = ex; inner is not null; inner = inner.InnerException)
+        {
+            if (inner is System.Net.Sockets.SocketException or TimeoutException)
+                return true;
+        }
+        return ex is MySqlException { ErrorCode: MySqlErrorCode.UnableToConnectToHost };
+    }
+
+    /// <summary>
     /// Compact provider detail for internal logs, never sent to clients
     /// </summary>
     public static string DescribeForLog(DbException ex) => ex switch
