@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-EUPL%201.2-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/melosso/portway)](https://github.com/melosso/portway/commits/main)
 [![Release](https://img.shields.io/github/v/release/melosso/portway)](https://github.com/melosso/portway/releases/latest)
-[![GitHub stars](https://img.shields.io/github/stars/melosso/portway)](https://github.com/frain-dev/convoy/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/melosso/portway)](https://github.com/melosso/portway/stargazers)
 
 Portway is an open source API gateway.
 
