@@ -95,7 +95,7 @@ public sealed class CompositeEndpointHandler
 
             // Create execution context and result container
             var executionContext = new ExecutionContext();
-            var result = new CompositeResult { Success = true };
+            var result = new CompositeResult();
 
             // Create a step tracker to track completed steps
             var completedSteps = new List<string>();
@@ -114,40 +114,28 @@ public sealed class CompositeEndpointHandler
                 }
                 catch (CompositeStepException ex)
                 {
-                    // Step execution failed with a detailed exception
-                    result.Success = false;
-                    result.ErrorStep = ex.StepName;
-                    result.ErrorMessage = ex.Message;
-                    result.ErrorDetail = ex.ErrorDetail;
-                    result.StatusCode = ex.StatusCode;
-
                     // 4xx means a request or step configuration error
                     Log.Write(ex.StatusCode is >= 400 and < 500 ? Serilog.Events.LogEventLevel.Warning : Serilog.Events.LogEventLevel.Error,
                         "Composite endpoint {Endpoint} step {StepName} failed with status {StatusCode}: {ErrorMessage}",
                         endpointName, ex.StepName, ex.StatusCode, ex.Message);
-                    Log.Debug("Composite step {StepName} error detail: {ErrorDetail}", ex.StepName, ex.ErrorDetail);
+                    Log.Debug("Composite step {StepName} upstream response: {ResponseContent}", ex.StepName,
+                        ex.ResponseContent.Length > 200 ? ex.ResponseContent[..200] + "..." : ex.ResponseContent);
 
                     int statusCode = ex.StatusCode >= 400 && ex.StatusCode < 600 ? ex.StatusCode : 500;
 
-                    var errorResponse = new
+                    return Results.Json(new
                     {
                         success = false,
                         error = $"Error executing step '{ex.StepName}'",
-                        details = ex.StructuredError ?? ex.ErrorDetail,  // Use structured error if available
+                        details = ex.ErrorDetail,
+                        traceId = PortwayResults.TraceIdOf(context),
                         step = ex.StepName,
                         statusCode = ex.StatusCode,
                         completedSteps
-                    };
-
-                    return Results.Json(errorResponse, statusCode: statusCode);
+                    }, statusCode: statusCode);
                 }
                 catch (Exception ex)
                 {
-                    // Generic exception handling
-                    result.Success = false;
-                    result.ErrorStep = step.Name;
-                    result.ErrorMessage = ex.Message;
-
                     Log.Error(ex, "Error executing step {StepName} for composite endpoint {Endpoint}: {ErrorMessage}",
                         step.Name, endpointName, ex.Message);
 
@@ -370,38 +358,12 @@ public sealed class CompositeEndpointHandler
         // Ensure success
         if (!response.IsSuccessStatusCode)
         {
-            string errorDetail;
-            object? parsedError = null;
-
-            try
-            {
-                // Try to parse the response as JSON
-                parsedError = JsonSerializer.Deserialize<object>(responseContent,
-                    SharedJsonOptions.CaseInsensitive);
-
-                // Already-JSON responses are kept out of the string field so the error response serializes them structured, not escaped
-                errorDetail = "See structured error details";
-            }
-            catch
-            {
-                // If we can't parse as JSON, use the raw response content
-                parsedError = null;
-
-                // If it's too long, truncate it
-                errorDetail = responseContent.Length > 200
-                    ? responseContent.Substring(0, 200) + "..."
-                    : responseContent;
-            }
-
-            // Throw a detailed exception that will halt the composite process
             throw new CompositeStepException(
                 $"Error executing step '{step.Name}': HTTP {(int)response.StatusCode} {response.StatusCode}",
                 step.Name,
                 (int)response.StatusCode,
-                errorDetail,
-                responseContent,
-                parsedError  // Pass the parsed error object if available
-            );
+                $"Upstream returned HTTP {(int)response.StatusCode}",
+                responseContent);
         }
 
         try

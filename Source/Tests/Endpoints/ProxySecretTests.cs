@@ -171,16 +171,22 @@ public sealed class ProxySecretTests : ApiTestBase, IDisposable
     [Theory]
     [InlineData("""{"error":"bad key {header:X-Api-Key}"}""")]
     [InlineData("plain text with {header:X-Api-Key} echoed")]
-    public async Task CompositeStepFailure_EchoedSecretMaskedInDetails(string upstreamBody)
+    public async Task CompositeStepFailure_OmitsUpstreamBody(string upstreamBody)
     {
         _upstream.ResponseStatus = 400;
         _upstream.ResponseBody = upstreamBody;
 
         var response = await PostFlow("{\"a\":1}");
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var root = JsonDocument.Parse(body).RootElement;
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.DoesNotContain("erp-secret", body);
         Assert.DoesNotContain(Uri.EscapeDataString(Secret), body);
+        Assert.DoesNotContain("bad key", body);
+        Assert.DoesNotContain("echoed", body);
+        Assert.Equal("Upstream returned HTTP 400", root.GetProperty("details").GetString());
+        Assert.Equal("Only", root.GetProperty("step").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("traceId").GetString()));
     }
 }
