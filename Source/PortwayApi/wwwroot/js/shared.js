@@ -140,18 +140,16 @@ function animateCounter(el, target, duration) {
         if (_reported >= _maxReports) return;
         _reported++;
         try {
-            navigator.sendBeacon(
-                '/_/api/client-error',
-                JSON.stringify({
-                    message: String(msg).slice(0, 500),
-                    source: String(source || '').slice(0, 200),
-                    line: lineno,
-                    col: colno,
-                    stack: err && err.stack ? String(err.stack).slice(0, 1000) : null,
-                    url: location.pathname,
-                    ts: Date.now()
-                })
-            );
+            var report = JSON.stringify({
+                message: String(msg).slice(0, 500),
+                source: String(source || '').slice(0, 200),
+                line: lineno,
+                col: colno,
+                stack: err && err.stack ? String(err.stack).slice(0, 1000) : null,
+                url: location.pathname,
+                ts: Date.now()
+            });
+            navigator.sendBeacon('/_/api/client-error', new Blob([report], { type: 'application/json' }));
         } catch (_) {}
     }
     window.onerror = function (msg, source, lineno, colno, err) {
