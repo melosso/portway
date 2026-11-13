@@ -9,7 +9,7 @@
 
 Portway is an open source API gateway.
 
-- Documentation: [Github Pages](https://melosso.github.com/portway)
+- Documentation: [Github Pages](https://melosso.github.io/portway)
 - Deploy: [Install Portway](https://melosso.github.io/portway/guide/install/)
 - Demo: [Visit Instance](https://portway-demo.melosso.com/)
 
