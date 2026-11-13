@@ -1107,7 +1107,7 @@ function renderFileForm(c) {
       ${fieldSelect('storageType', 'Storage Type', c.StorageType ?? 'Local', ['Local','AzureBlob','S3'])}
       ${fieldRow(
         fieldText('baseDirectory', 'Base Directory', c.BaseDirectory ?? '', 'e.g. files/documents', { required: true }),
-        fieldText('allowedExtensions', 'Allowed Extensions', (c.AllowedExtensions ?? []).join(', '), '.pdf, .png', { hint: 'Comma separated. Empty applies only the global file storage list.' }))}
+        fieldText('allowedExtensions', 'Allowed Extensions', (c.AllowedExtensions ?? []).join(', '), '.pdf, .png', { hint: 'Comma separated. If empty: the global file storage list applies.' }))}
       ${fieldFileTenancy(c.Tenancy)}
     </div>
     <div class="card">
@@ -1147,7 +1147,7 @@ function renderWebhookForm(c) {
     <div class="card">
       <div class="card-header"><h2 class="card-title">Webhook IDs</h2>
         <a class="card-doc" href="https://melosso.github.io/portway/guide/endpoints-webhook" target="_blank" rel="noopener noreferrer" aria-label="Webhook documentation" title="Documentation"></a></div>
-      <div class="field-help">Senders post to <code>/api/{env}/${esc(_selected?.name ?? '')}/{id}</code>. Each ID uses a Portway token or the signature its mode names.</div>
+      <div class="field-help">Senders post to <code>/api/{env}/${esc(_selected?.name ?? '')}/{id}</code>. Each ID requires a Portway token or the signature of its verification mode.</div>
       ${fieldColumns('allowedCols', 'IDs', c.AllowedColumns, 'Add webhook ID', 'e.g. github', true)}
       <div id="verificationList" class="wh-verify-list">${renderVerificationRows(c.AllowedColumns ?? [], c.Verification ?? {})}</div>
     </div>
@@ -1522,7 +1522,7 @@ function validateForm(type) {
   return errors;
 }
 
-// Form to JSON over the existing content so hidden fields are kept
+// Merge form values into the existing content to retain hidden fields.
 function keepDefault(c, key, value, fallback) {
   return c[key] === undefined && JSON.stringify(value) === JSON.stringify(fallback) ? undefined : value;
 }
@@ -1753,7 +1753,7 @@ function startDelete() {
   const { name } = _selected;
   showAlertDialog({
     title: `Delete "${name}"?`,
-    description: 'Deletes the endpoint files. A backup of entity.json is kept under Settings > Recent Configuration Changes.',
+    description: 'Deletes the endpoint files. Portway stores a backup of entity.json under Settings > Recent Configuration Changes.',
     actionLabel: 'Delete',
     onConfirm: confirmDelete
   });
@@ -1887,7 +1887,7 @@ function renderCreateForm() {
         <div class="card-header"><h2 class="card-title">Storage</h2></div>
         ${fieldSelect('createStorageType', 'Storage Type', 'Local', ['Local','AzureBlob','S3'])}
         ${fieldText('createBaseDir', 'Base Directory', '', 'e.g. files/documents', { required: true })}
-        ${fieldText('createExtensions', 'Allowed Extensions', '', '.pdf, .png', { hint: 'Comma separated. Empty applies only the global file storage list.' })}
+        ${fieldText('createExtensions', 'Allowed Extensions', '', '.pdf, .png', { hint: 'Comma separated. If empty: the global file storage list applies.' })}
       </div>
       ${access(false)}`;
       break;

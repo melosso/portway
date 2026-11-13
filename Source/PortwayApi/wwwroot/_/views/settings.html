@@ -419,7 +419,7 @@ async function loadBackups() {
 function restoreBackup(name) {
   AlertDialog.show({
     title:       'Restore this backup?',
-    description: `${name} replaces auth.db, mcp.db, environments and endpoints at the next start. The current files are kept as a pre-restore copy.`,
+    description: `${name} replaces auth.db, mcp.db, environments and endpoints at the next start. Portway retains the current files as a pre-restore copy.`,
     actionLabel: 'Restore',
     variant:     'destructive',
     confirmDelaySeconds: 10,
@@ -495,7 +495,7 @@ const CARDS = {
         ? 'The sign-in page is reachable from the configured origins. Origin matching does not restrict access.'
         : 'The console accepts requests from loopback and local addresses only.'),
     riskItem('HTTPS', sec.https_enabled, 'Enabled', 'Not detected',
-      'Scheme of this request. Behind a TLS proxy, add the proxy under Trusted proxies.'),
+      'Scheme of this request. If a TLS proxy terminates HTTPS: add the proxy under Trusted proxies.'),
     riskItem('Secure cookies', sec.secure_cookies || !sec.https_enabled,
       sec.secure_cookies ? 'Enabled' : 'Not needed on HTTP', 'Off while serving HTTPS',
       'Sends the session cookie over HTTPS only.'),
@@ -513,7 +513,7 @@ const CARDS = {
       { placeholder: 'https://portway.example.com' }),
     field('Console:CorsOrigins', 'CORS origins', 'Browser origins allowed to call the API. One per line.',
       { placeholder: 'https://app.example.com' }),
-    field('AllowedHosts', 'Allowed hosts', 'Host names this gateway answers to. One per line, * for any.',
+    field('AllowedHosts', 'Allowed hosts', 'Host names the gateway accepts. One per line, * for any.',
       { placeholder: 'portway.example.com' }),
     field('PathBase', 'Path base', 'Prefix for every route, such as /portway. The console moves with it.',
       { placeholder: '/portway' }),
@@ -532,8 +532,8 @@ const CARDS = {
     field('OpenApi:Title', 'Title', 'Title of the document and the reference page.'),
     field('OpenApi:Version', 'Document version', 'Version label of the OpenAPI document.'),
     field('OpenApi:Description', 'Description', 'Markdown shown above the reference.', { multiline: true }),
-    field('OpenApi:Contact:Name', 'Contact name', 'Contact listed in the document.'),
-    field('OpenApi:Contact:Email', 'Contact e-mail', 'Contact address listed in the document.'),
+    field('OpenApi:Contact:Name', 'Contact name', 'Contact name in the OpenAPI document.'),
+    field('OpenApi:Contact:Email', 'Contact e-mail', 'Contact address in the OpenAPI document.'),
     field('OpenApi:ForceHttpsInProduction', 'Force HTTPS', 'Uses an HTTPS server URL outside Development.'),
     field('OpenApi:ServeMarkdown', 'Markdown export', 'Serves the reference as Markdown for LLMs.'),
     field('OpenApi:ExternalDocs:Url', 'Guide link', 'Link to your own API guide.', { placeholder: 'https://example.com/guide' }),
@@ -585,7 +585,7 @@ const CARDS = {
 
   backupBody: { actions: '<button class="btn btn-outline" onclick="createBackup(this)">Create backup</button>', rows: () => [
     field('DatabaseMaintenance:Backup:Enabled', 'Scheduled backup', 'Writes a snapshot at the maintenance time.'),
-    field('DatabaseMaintenance:Backup:Retention', 'Keep', 'Snapshots kept. Older ones are deleted.', { unit: 'backups' }),
+    field('DatabaseMaintenance:Backup:Retention', 'Retention', 'Retained snapshots. Older snapshots are deleted.', { unit: 'backups' }),
     '<div id="backupList"></div>',
   ] },
 
@@ -622,7 +622,7 @@ const CARDS = {
 
   sqlBody: { rows: () => [
     field('SqlConnectionPooling:Enabled', 'Enabled', 'Reuses database connections between requests.'),
-    field('SqlConnectionPooling:MinPoolSize', 'Minimum pool size', 'Connections kept open per connection string.'),
+    field('SqlConnectionPooling:MinPoolSize', 'Minimum pool size', 'Open connections per connection string.'),
     field('SqlConnectionPooling:MaxPoolSize', 'Maximum pool size', 'Upper limit before requests wait for a connection.'),
     field('SqlConnectionPooling:ConnectionTimeoutSeconds', 'Connection timeout', 'Wait time to open a connection.', { unit: 's' }),
     field('SqlConnectionPooling:CommandTimeoutSeconds', 'Command timeout', 'Wait time for a statement to finish.', { unit: 's' }),
@@ -632,9 +632,9 @@ const CARDS = {
   fileBody: { rows: () => [
     field('FileStorage:StorageDirectory', 'Storage directory', 'Folder for uploaded files, relative to the Portway folder.', { placeholder: 'storage/files' }),
     field('FileStorage:MaxFileSizeBytes', 'Max file size', 'Largest accepted upload.', { unit: 'MB', scale: 1048576 }),
-    field('FileStorage:UseMemoryCache', 'Memory cache', 'Keeps recent uploads in memory.'),
+    field('FileStorage:UseMemoryCache', 'Memory cache', 'Stores recent uploads in memory.'),
     field('FileStorage:MemoryCacheDurationSeconds', 'Memory cache duration', 'Time a file stays in memory.', { unit: 's' }),
-    field('FileStorage:MaxTotalMemoryCacheMB', 'Memory cache budget', 'Upper limit of files held in memory.', { unit: 'MB' }),
+    field('FileStorage:MaxTotalMemoryCacheMB', 'Memory cache budget', 'Maximum memory for cached files.', { unit: 'MB' }),
     field('FileStorage:AllowedExtensions', 'Allowed extensions', 'Empty allows every extension not blocked. One per line.', { placeholder: '.pdf' }),
     field('FileStorage:BlockedExtensions', 'Blocked extensions', 'Refused on upload. One per line.', { placeholder: '.exe' }),
   ] },
