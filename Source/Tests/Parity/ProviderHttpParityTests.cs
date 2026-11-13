@@ -36,6 +36,7 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
         var schema = fixture.QualifiedGuidKeysTable.Split('.')[0];
         WriteEndpoint("Native", TableEndpoint(fixture.QualifiedGuidKeysTable, "Id", "Name"));
         WriteEndpoint("Text", TableEndpoint(fixture.QualifiedTextKeysTable, "Id", "Name"));
+        WriteEndpoint("TextAliased", TableEndpoint(fixture.QualifiedTextKeysTable, "Id", "Name;Label"));
         WriteEndpoint("Int", TableEndpoint(fixture.QualifiedProductsTable, "Id", "Name", "Price"));
         WriteEndpoint("IntCopy", TableEndpoint(fixture.QualifiedProductsTable, "Id", "Name"));
         var readOnly = TableEndpoint(fixture.QualifiedProductsTable, "Id", "Name");
@@ -304,6 +305,24 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
 
         Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, Url("Int", "(9002)"))).Status);
         Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Get, Url("Int", "(9002)"))).Status);
+    }
+
+    [DockerFact]
+    public async Task KeyedRead_KeyEqualToAlias_ReturnsThatRecord()
+    {
+        Assert.Equal(HttpStatusCode.Created, (await Send(HttpMethod.Post, Url("TextAliased"), """{ "Id": "Label", "Label": "Aliased key" }""")).Status);
+        try
+        {
+            var (status, body) = await Send(HttpMethod.Get, Url("TextAliased", "('Label')"));
+            Assert.Equal(HttpStatusCode.OK, status);
+            Assert.Contains("Aliased key", body);
+
+            Assert.Contains("Aliased key", (await Send(HttpMethod.Get, Url("TextAliased", "?$filter=Id eq 'Label'"))).Body);
+        }
+        finally
+        {
+            await Send(HttpMethod.Delete, Url("TextAliased", "('Label')"));
+        }
     }
 
     [DockerFact]

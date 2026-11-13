@@ -254,4 +254,23 @@ public class ColumnMappingHelperTests
         // Assert - Should remain unchanged because "Code" is part of "ProductCode"
         Assert.Equal("ProductCode eq 'PROD001'", result);
     }
+    [Fact]
+    public void ConvertODataFilterAliases_AliasInsideLiteral_Unchanged()
+    {
+        var aliasToDatabase = new Dictionary<string, string> { ["Status"] = "db_status" };
+
+        var result = ColumnMappingHelper.ConvertODataFilterAliases("Status eq 'Status' and Note eq 'it''s Status'", aliasToDatabase);
+
+        Assert.Equal("db_status eq 'Status' and Note eq 'it''s Status'", result);
+    }
+
+    [Fact]
+    public void ConvertODataFilterAliases_SwappedNames_ConvertsEachOnce()
+    {
+        var aliasToDatabase = new Dictionary<string, string> { ["Code"] = "Name", ["Name"] = "Code" };
+
+        var result = ColumnMappingHelper.ConvertODataFilterAliases("Code eq 'a' and Name eq 'b'", aliasToDatabase);
+
+        Assert.Equal("Name eq 'a' and Code eq 'b'", result);
+    }
 }
