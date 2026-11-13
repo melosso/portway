@@ -267,7 +267,7 @@ public static class OpenApiConfiguration
             var title = System.Text.Encodings.Web.HtmlEncoder.Default.Encode(openApiSettings.Title);
             string Js(string? value) => JsonSerializer.Serialize(value ?? "");
 
-            // scalar fonts stay off so the console onest files are served from this origin instead
+            // scalar fonts stay off so the console IBM Plex files are served from this origin instead
             var portwayTheme = string.Equals(openApiSettings.Scalar.Theme, "portway", StringComparison.OrdinalIgnoreCase);
             var customCss = JsonEncodedText.Encode(DocsCss.Replace("{pathBase}", pathBase) + (portwayTheme ? PortwayThemeCss : ""));
             var docsBase = JsonEncodedText.Encode(pathBase + "/docs");
@@ -504,25 +504,58 @@ public static class OpenApiConfiguration
     // To-do: recheck these scalar overrides on each scalar bump
     private const string DocsCss = """
         @font-face {
-            font-family: "Onest";
-            font-weight: 400 700;
+            font-family: "IBM Plex Sans";
+            font-weight: 100 700;
             font-display: swap;
-            src: url("{pathBase}/fonts/onest-latin-ext.woff2") format("woff2");
+            src: url("{pathBase}/fonts/ibm-plex-sans-latin-ext.woff2") format("woff2");
             unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
         }
 
         @font-face {
-            font-family: "Onest";
-            font-weight: 400 700;
+            font-family: "IBM Plex Sans";
+            font-weight: 100 700;
             font-display: swap;
-            src: url("{pathBase}/fonts/onest-latin.woff2") format("woff2");
+            src: url("{pathBase}/fonts/ibm-plex-sans-latin.woff2") format("woff2");
+            unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+        }
+
+        @font-face {
+            font-family: "IBM Plex Mono";
+            font-weight: 400;
+            font-display: swap;
+            src: url("{pathBase}/fonts/ibm-plex-mono-latin-ext-400.woff2") format("woff2");
+            unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+        }
+
+        @font-face {
+            font-family: "IBM Plex Mono";
+            font-weight: 400;
+            font-display: swap;
+            src: url("{pathBase}/fonts/ibm-plex-mono-latin-400.woff2") format("woff2");
+            unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+        }
+
+        @font-face {
+            font-family: "IBM Plex Mono";
+            font-weight: 500;
+            font-display: swap;
+            src: url("{pathBase}/fonts/ibm-plex-mono-latin-ext-500.woff2") format("woff2");
+            unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+        }
+
+        @font-face {
+            font-family: "IBM Plex Mono";
+            font-weight: 500;
+            font-display: swap;
+            src: url("{pathBase}/fonts/ibm-plex-mono-latin-500.woff2") format("woff2");
             unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
         }
 
         :root,
         .light-mode,
         .dark-mode {
-            --scalar-font: "Onest", ui-sans-serif, system-ui, sans-serif;
+            --scalar-font: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+            --scalar-font-code: "IBM Plex Mono", ui-monospace, monospace;
         }
 
         .scalar-app nav.context-bar {

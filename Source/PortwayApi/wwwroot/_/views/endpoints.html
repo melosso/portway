@@ -509,7 +509,7 @@ function renderDetail() {
        <button class="btn btn-primary btn-sm" onclick="confirmRename()">Save</button>
        <button class="btn btn-outline btn-sm" onclick="cancelRename()">Cancel</button>`
     : `<h2>${esc(version ? name.slice(0, -(version.length + 1)) : name)}</h2>
-       <span class="badge badge-muted" style="font-size:0.7rem">${esc(typeCfg?.label ?? type)}</span>${stateBadges(_detailData?.content)}`;
+       <span class="badge badge-muted" style="font-size:0.75rem">${esc(typeCfg?.label ?? type)}</span>${stateBadges(_detailData?.content)}`;
 
   detail.innerHTML = `
     <div class="ep-detail-header">
@@ -971,7 +971,7 @@ function fieldExampleIcon(fnName) {
 }
 
 function deletePatternsExample() {
-  const row = (code) => `<code style="display:block;background:hsl(0 0% 10%/0.5);padding:0.15rem 0.4rem;border-radius:3px;margin-bottom:0.2rem;font-size:0.68rem">${code}</code>`;
+  const row = (code) => `<code style="display:block;background:hsl(0 0% 10%/0.5);padding:0.15rem 0.4rem;border-radius:3px;margin-bottom:0.2rem;font-size:0.75rem">${code}</code>`;
   return '<div style="white-space:normal;max-width:260px;font-size:0.72rem;line-height:1.6">'
     + '<div style="font-weight:600;margin-bottom:0.4rem">Delete Pattern examples</div>'
     + row('[{"Style":"PathParameter"}]')

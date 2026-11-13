@@ -436,7 +436,7 @@
         <div
             class="code-block"
             id="revealTokenValue"
-            style="max-height:none; word-break:break-all; user-select:all; margin-bottom:1.25rem; font-size:0.7rem; line-height:1.9; letter-spacing:0.02em;"
+            style="max-height:none; word-break:break-all; user-select:all; margin-bottom:1.25rem; font-size:0.75rem; line-height:1.9; letter-spacing:0.02em;"
         ></div>
         <div style="display:flex; gap:0.5rem;">
             <button
@@ -723,7 +723,7 @@ function formatPills(str) {
   const visible = parts.slice(0, 2);
   const more = parts.length - visible.length;
   let html = `<div class="pill-list">${visible.map(p => `<span class="pill">${esc(p)}</span>`).join('')}`;
-  if (more > 0) html += `<span class="muted" style="font-size:0.7rem">+${more}</span>`;
+  if (more > 0) html += `<span class="muted" style="font-size:0.75rem">+${more}</span>`;
   return html + '</div>';
 }
 
@@ -1011,7 +1011,7 @@ async function loadAudit(id) {
       }
       return `<tr>
         <td><span class="badge badge-muted">${esc(e.operation)}</span></td>
-        <td class="col-mono" style="font-size:0.7rem; white-space:nowrap;">${esc(e.timestamp)}</td>
+        <td class="col-mono" style="font-size:0.75rem; white-space:nowrap;">${esc(e.timestamp)}</td>
         <td class="muted" style="font-size:0.75rem; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${esc(details)}">${esc(details) || '—'}</td>
       </tr>`;
     }).join('');

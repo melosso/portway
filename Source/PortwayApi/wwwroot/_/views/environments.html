@@ -908,8 +908,8 @@ function collectAuthData(prefix = 'edit') {
 function buildRawView(name, d) {
   return `
     <div class="field-help" style="padding-bottom:0.5rem;border-bottom:1px solid hsl(var(--border));margin-bottom:0.75rem">
-      Editing <code style="font-family:ui-monospace,monospace">environments/${esc(name)}/settings.json</code> directly.
-      Any plaintext <code style="font-family:ui-monospace,monospace">ConnectionString</code> will be automatically encrypted on save.
+      Editing <code style="font-family: var(--font-mono)">environments/${esc(name)}/settings.json</code> directly.
+      Any plaintext <code style="font-family: var(--font-mono)">ConnectionString</code> will be automatically encrypted on save.
     </div>
     <div class="ep-raw-editor" style="flex:1;display:flex;flex-direction:column;">
       <textarea id="rawTextarea" class="input input-code" spellcheck="false" oninput="validateRaw(); markDirty();" style="flex:1;min-height:260px">${esc(d._rawContent ?? '')}</textarea>

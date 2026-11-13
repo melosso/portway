@@ -11,6 +11,7 @@
   <script src="js/components/dialog.js"></script>
   <script src="js/components/alert-dialog.js"></script>
   <script src="js/shared.js"></script>
+  <script src="js/theme-toggle.js"></script>
   <script src="js/sidebar.js"></script>
 </head>
 <body>
@@ -463,6 +464,8 @@ async function send(retryMessage) {
     if (typingEl) return;
     typingEl = document.createElement('span');
     typingEl.className = 'msg-typing';
+    typingEl.setAttribute('role', 'status');
+    typingEl.setAttribute('aria-label', 'Assistant is replying');
     typingEl.innerHTML = '<span></span><span></span><span></span>';
     textNode.appendChild(typingEl);
   }
@@ -788,7 +791,7 @@ function _renderWizardStep1() {
       <div class="wizard-providers">${rows}</div>
       <div id="wizard-step1-err" class="wizard-error" hidden></div>`,
     footer: `
-      <button type="button" class="btn btn-primary" onclick="_wizardNext1()">Next →</button>`,
+      <button type="button" class="btn btn-primary" onclick="_wizardNext1()">Next</button>`,
     onOpen: () => {
       document.querySelectorAll('.wizard-provider-option').forEach(el => {
         el.addEventListener('click', () => {
@@ -841,7 +844,7 @@ function _renderWizardStep2() {
       </div>
       <div id="wizard-step2-err" class="wizard-error" hidden></div>`,
     footer: `
-      <button type="button" class="btn btn-outline" onclick="_renderWizardStep1()">← Back</button>
+      <button type="button" class="btn btn-outline" onclick="_renderWizardStep1()">Back</button>
       <button type="button" class="btn btn-primary" id="wiz-save-btn" onclick="_wizardSave()">Save configuration</button>`,
     onOpen: () => {
       document.getElementById('wiz-key')?.focus();
@@ -960,7 +963,7 @@ async function _wizardSave() {
   gap: 0.5rem;
 }
 .chat-hint {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
   user-select: none;
 }
@@ -968,7 +971,7 @@ async function _wizardSave() {
 .spin { animation: spin 0.8s linear infinite; }
 
 .model-badge {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 500;
   padding: 0.2rem 0.55rem;
   border: 1px solid hsl(var(--border));
@@ -976,7 +979,7 @@ async function _wizardSave() {
   color: hsl(var(--muted-foreground));
   background: hsl(var(--muted));
   white-space: nowrap;
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
 }
 
 .msg { display: flex; }
@@ -1001,7 +1004,7 @@ async function _wizardSave() {
   padding: 0.625rem 0.875rem;
 }
 .msg-role {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1019,7 +1022,7 @@ async function _wizardSave() {
   border-radius: 4px;
   background: transparent;
   color: hsl(var(--muted-foreground));
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   cursor: pointer;
   line-height: 1;
   transition: background 0.15s, color 0.15s;
@@ -1043,6 +1046,7 @@ async function _wizardSave() {
 }
 .msg-typing span:nth-child(2) { animation-delay: 0.18s; }
 .msg-typing span:nth-child(3) { animation-delay: 0.36s; }
+@media (prefers-reduced-motion: reduce) { .msg-typing span { animation: none; } }
 @keyframes typing-dot {
   0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
   40%           { opacity: 1;    transform: scale(1.1);  }
@@ -1053,18 +1057,18 @@ async function _wizardSave() {
 .msg-text .md-h3 { font-size: 0.9rem; font-weight: 700; margin: 0.4rem 0 0.2rem; }
 .msg-text .md-h4 { font-size: 0.85rem; font-weight: 600; margin: 0.35rem 0 0.15rem; }
 .msg-text .md-pre {
-  font-family: ui-monospace, monospace; font-size: 0.78rem;
+  font-family: var(--font-mono); font-size: 0.78rem;
   background: hsl(var(--muted)); color: hsl(var(--foreground));
   border: 1px solid hsl(var(--border)); border-radius: 6px;
   padding: 0.75rem 1rem; overflow-x: auto; white-space: pre; margin: 0.4rem 0; position: relative;
 }
 .msg-text .md-pre[data-lang]::before {
   content: attr(data-lang); position: absolute; top: 0.35rem; right: 0.6rem;
-  font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em;
   opacity: 0.4; pointer-events: none;
 }
 .msg-text .md-ic {
-  font-family: ui-monospace, monospace; font-size: 0.82em;
+  font-family: var(--font-mono); font-size: 0.82em;
   background: hsl(var(--muted)); border: 1px solid hsl(var(--border));
   border-radius: 3px; padding: 0.05em 0.35em;
 }
@@ -1095,11 +1099,11 @@ async function _wizardSave() {
 .tool-call-header:hover { background: hsl(var(--muted) / 0.7); }
 .tool-call-body { padding: 0.625rem; background: hsl(var(--background)); }
 .tool-section-label {
-  font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+  font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
   letter-spacing: 0.05em; color: hsl(var(--muted-foreground)); margin-bottom: 0.25rem;
 }
 .tool-pre {
-  font-family: ui-monospace, monospace; font-size: 0.75rem;
+  font-family: var(--font-mono); font-size: 0.75rem;
   background: hsl(var(--muted)); color: hsl(var(--foreground));
   padding: 0.5rem; border-radius: 4px; overflow-x: auto; white-space: pre;
   margin: 0 0 0.5rem;
@@ -1148,7 +1152,7 @@ async function _wizardSave() {
 }
 .tool-row-name { grid-column: 1; grid-row: 1; }
 .tool-row-code {
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 0.8rem;
   background: hsl(var(--muted));
   border: 1px solid hsl(var(--border));
@@ -1206,7 +1210,7 @@ async function _wizardSave() {
 .wizard-provider-model {
   font-size: 0.75rem;
   color: var(--text-secondary);
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--font-mono);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

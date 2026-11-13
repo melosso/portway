@@ -9,6 +9,7 @@
   <script src="js/components/toast.js"></script>
   <script src="js/components/promobar.js"></script>
   <script src="js/shared.js"></script>
+  <script src="js/theme-toggle.js"></script>
   <script src="js/sidebar.js"></script>
 </head>
 <body>
@@ -175,10 +176,10 @@ load();
 }
 .tools-group:first-child { padding-top: 0; }
 .tool-main { min-width: 0; }
-.tool-url { font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace; overflow-wrap: anywhere; }
+.tool-url { font-family: var(--font-mono); overflow-wrap: anywhere; }
 .tool-meta { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
 .tool-methods {
-  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  font-family: var(--font-mono);
   font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
 }

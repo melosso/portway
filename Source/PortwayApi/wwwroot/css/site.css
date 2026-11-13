@@ -1,20 +1,65 @@
+/* IBM Plex: SIL Open Font License 1.1 (fonts/IBM-Plex-OFL.txt) */
 @font-face {
-    font-family: 'Onest';
+    font-family: 'IBM Plex Sans';
     font-style: normal;
-    font-weight: 400 700;
+    font-weight: 100 700;
     font-display: swap;
-    src: url('../fonts/onest-latin-ext.woff2') format('woff2');
+    src: url('../fonts/ibm-plex-sans-latin-ext.woff2') format('woff2');
     unicode-range:
         U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
-        U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+        U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
 @font-face {
-    font-family: 'Onest';
+    font-family: 'IBM Plex Sans';
     font-style: normal;
-    font-weight: 400 700;
+    font-weight: 100 700;
     font-display: swap;
-    src: url('../fonts/onest-latin.woff2') format('woff2');
+    src: url('../fonts/ibm-plex-sans-latin.woff2') format('woff2');
+    unicode-range:
+        U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F,
+        U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('../fonts/ibm-plex-mono-latin-ext-400.woff2') format('woff2');
+    unicode-range:
+        U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+        U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('../fonts/ibm-plex-mono-latin-400.woff2') format('woff2');
+    unicode-range:
+        U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F,
+        U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('../fonts/ibm-plex-mono-latin-ext-500.woff2') format('woff2');
+    unicode-range:
+        U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+        U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('../fonts/ibm-plex-mono-latin-500.woff2') format('woff2');
     unicode-range:
         U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F,
         U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
@@ -52,7 +97,8 @@
     --nav-indent: 2.1875rem;
     --topbar-height: 3.5rem;
     --sidebar-width: 16rem;
-    --app-font: 'Onest', system-ui, -apple-system, sans-serif;
+    --app-font: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Code', 'Consolas', monospace;
     --check-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
     /* Log viewer — light mode */
     --log-bg: 240 5% 97%;
@@ -187,6 +233,15 @@
     border: 0;
 }
 
+/* Browser form-control styles reset the font family and font-size-adjust */
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+    font-size-adjust: inherit;
+}
+
 body {
     font-family: var(--app-font);
     background-color: hsl(var(--background));
@@ -195,7 +250,9 @@ body {
     height: 100vh;
     width: 100vw;
     overflow: hidden;
-    font-size: 14px;
+    font-size: 0.875rem;
+    /* Scales IBM Plex to a 0.55 x-height, matching Beacon's apparent text size */
+    font-size-adjust: ex-height 0.55;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
 }
@@ -416,6 +473,16 @@ aside {
     flex-shrink: 0;
     border-radius: 6px;
     overflow: hidden;
+}
+
+.brand-avatar--lg {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+}
+
+.blend-hard-light {
+    mix-blend-mode: hard-light;
 }
 
 .brand-avatar-bg {
@@ -756,7 +823,7 @@ aside {
 }
 
 .account-version {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     color: hsl(var(--sidebar-muted));
     font-variant-numeric: tabular-nums;
 }
@@ -1093,7 +1160,7 @@ h1 {
     gap: 0.25rem;
     padding: 0.2rem 0.5rem;
     border-radius: 4px;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 600;
     white-space: nowrap;
 }
@@ -1148,7 +1215,7 @@ h1 {
 }
 
 .summary-sub {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: hsl(var(--muted-foreground));
     margin-top: 0.375rem;
 }
@@ -1376,7 +1443,7 @@ h1 {
 }
 
 .env-flag {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     color: hsl(var(--warning));
 }
 
@@ -1386,7 +1453,7 @@ h1 {
 }
 
 .wh-preset-info code {
-    font-family: ui-monospace, monospace;
+    font-family: var(--font-mono);
     font-size: 0.95em;
 }
 
@@ -1477,7 +1544,7 @@ h1 {
 }
 
 .table code {
-    font-family: ui-monospace, monospace;
+    font-family: var(--font-mono);
     font-size: 0.8125rem;
     background: hsl(var(--muted));
     padding: 0.125rem 0.375rem;
@@ -1609,7 +1676,7 @@ body:has(.drawer-backdrop.open) main {
     border: 1px solid hsl(var(--border));
     border-radius: var(--nav-radius);
     padding: 1rem;
-    font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+    font-family: var(--font-mono);
     font-size: 0.75rem;
     white-space: pre-wrap;
     word-break: break-word;
@@ -1688,7 +1755,7 @@ body:has(.drawer-backdrop.open) main {
 }
 
 .accordion-section-title {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -1867,7 +1934,7 @@ body:has(.drawer-backdrop.open) main {
     overflow: auto;
     background: hsl(var(--log-bg));
     padding: 1rem;
-    font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+    font-family: var(--font-mono);
     font-size: 0.75rem;
     line-height: 1.6;
 }
@@ -1931,7 +1998,7 @@ input[type='radio'] {
 .pill {
     background: hsl(var(--muted));
     color: hsl(var(--muted-foreground));
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 500;
     padding: 0.2rem 0.5rem;
     border-radius: 4px;
@@ -2134,7 +2201,7 @@ input[type='radio'] {
 }
 
 .field-help code {
-    font-family: ui-monospace, monospace;
+    font-family: var(--font-mono);
     font-size: 0.78em;
     background: hsl(var(--muted));
     border: 1px solid hsl(var(--border));
@@ -2213,7 +2280,7 @@ input.input-secret {
 }
 
 textarea.input-code {
-    font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+    font-family: var(--font-mono);
     font-size: 0.78rem;
     line-height: 1.65;
     background: hsl(var(--muted) / 0.5);
@@ -2534,7 +2601,7 @@ a {
     gap: 0.2rem;
     background: hsl(var(--muted));
     color: hsl(var(--foreground));
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 500;
     padding: 0.15rem 0.25rem 0.15rem 0.5rem;
     border-radius: 4px;
@@ -2717,7 +2784,7 @@ a {
     display: inline-block;
     margin-left: 0.25rem;
     opacity: 0;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
 }
 .sortable.asc .sort-icon,
 .sortable.desc .sort-icon {
@@ -2917,7 +2984,7 @@ th.sortable.sort-desc .sort-icon {
 
 .ep-list-group {
     padding: 0.375rem 0.5rem 0.25rem;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.05em;
     color: hsl(var(--muted-foreground));
@@ -2990,7 +3057,7 @@ th.sortable.sort-desc .sort-icon {
 
 .ep-list-versions {
     flex-shrink: 0;
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     font-variant-numeric: tabular-nums;
     color: hsl(var(--muted-foreground));
 }
@@ -3106,7 +3173,7 @@ th.sortable.sort-desc .sort-icon {
     border-radius: var(--nav-radius);
     background: hsl(var(--muted));
     color: hsl(var(--muted-foreground));
-    font-size: 0.7rem;
+    font-size: 0.75rem;
 }
 
 .ep-copy:hover code {
@@ -3225,7 +3292,7 @@ th.sortable.sort-desc .sort-icon {
 }
 
 .ep-state {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: hsl(30 80% 30%);
 }
 
@@ -3388,7 +3455,7 @@ th.sortable.sort-desc .sort-icon {
 }
 .secret-name,
 .secret-name-input {
-    font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+    font-family: var(--font-mono);
     font-size: 0.8rem;
 }
 .secret-name {
@@ -3444,7 +3511,7 @@ th.sortable.sort-desc .sort-icon {
 .wh-id {
     flex: 1;
     min-width: 0;
-    font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+    font-family: var(--font-mono);
     font-size: 0.8rem;
     overflow-wrap: anywhere;
 }
@@ -3488,7 +3555,7 @@ th.sortable.sort-desc .sort-icon {
     color: hsl(var(--foreground));
 }
 .wh-secret {
-    font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+    font-family: var(--font-mono);
 }
 .wh-toggles {
     display: flex;
@@ -3559,7 +3626,7 @@ th.sortable.sort-desc .sort-icon {
     overflow: auto;
     background: hsl(var(--muted) / 0.35);
     border-top: 1px solid hsl(var(--border));
-    font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+    font-family: var(--font-mono);
     font-size: 0.75rem;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -3762,7 +3829,7 @@ th.sortable.sort-desc .sort-icon {
 }
 
 .ep-overview-card-type {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -4299,7 +4366,7 @@ body.has-promo .signin-theme {
 
 .chart-tooltip-label {
     color: hsl(var(--muted-foreground));
-    font-size: 0.7rem;
+    font-size: 0.75rem;
 }
 
 .chart-tooltip-value {
@@ -4481,4 +4548,78 @@ body.has-promo .signin-theme {
     .nav-scrim {
         transition: none;
     }
+}
+
+/* Status page: 404 for browsers (Middleware/FallbackEndpointExtensions.cs) */
+.status-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 1rem;
+}
+
+.status-card {
+    width: min(32.5rem, 100%);
+    padding: 2rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    background: hsl(var(--card));
+}
+
+.status-head {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 1.25rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.status-code {
+    padding-right: 1rem;
+    border-right: 1px solid hsl(var(--border));
+    color: hsl(var(--destructive-text));
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.status-head h1 {
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.status-card > p {
+    margin-bottom: 1.25rem;
+    color: hsl(var(--muted-foreground));
+}
+
+.status-meta {
+    display: grid;
+    gap: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1.25rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    background: hsl(var(--muted) / 0.5);
+    font-size: 0.8125rem;
+}
+
+.status-meta div {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.25rem 0.75rem;
+}
+
+.status-meta dt {
+    color: hsl(var(--muted-foreground));
+}
+
+.status-meta dd {
+    margin: 0;
+    font-family: var(--font-mono);
+    white-space: nowrap;
 }
