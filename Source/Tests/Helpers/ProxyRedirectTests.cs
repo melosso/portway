@@ -189,4 +189,16 @@ public sealed class ProxyRedirectTests
         Assert.DoesNotContain("a+ss", masked);
         Assert.DoesNotContain("u002Bss", masked);
     }
+
+    [Theory]
+    [InlineData("key=evil&a=1")]
+    [InlineData("%6Bey=evil&a=1")]
+    [InlineData("KEY=evil&a=1")]
+    [InlineData("a=1&%6b%65%79=evil")]
+    public void ClientQuery_EncodedReservedName_Dropped(string query)
+    {
+        var reserved = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "key" };
+
+        Assert.Equal("a=1", PortwayApi.Services.ProxyRequestHandler.DropReservedParams(query, reserved, new HashSet<string>()));
+    }
 }

@@ -45,6 +45,18 @@ public sealed class ProxyRequestHandler
         _ => false
     };
 
+    internal static string DropReservedParams(string query, IReadOnlySet<string> reserved, IReadOnlySet<string> credentials)
+    {
+        if (reserved.Count == 0 && credentials.Count == 0)
+            return query;
+
+        return string.Join('&', query.Split('&', StringSplitOptions.RemoveEmptyEntries).Where(p =>
+        {
+            var name = System.Net.WebUtility.UrlDecode(p.Split('=', 2)[0]);
+            return !reserved.Contains(name) && !credentials.Contains(name);
+        }));
+    }
+
     private static (string Path, string Query, HashSet<string> Reserved) SplitEndpointUrl(string url) =>
         _splitUrlCache.GetOrAdd(url, static u =>
         {
@@ -54,7 +66,7 @@ public sealed class ProxyRequestHandler
 
             var query = u[(queryIndex + 1)..];
             var reserved = query.Split('&', StringSplitOptions.RemoveEmptyEntries)
-                .Select(p => p.Split('=', 2)[0])
+                .Select(p => System.Net.WebUtility.UrlDecode(p.Split('=', 2)[0]))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             return (u[..queryIndex], query, reserved);
@@ -183,15 +195,7 @@ public sealed class ProxyRequestHandler
                 qs = qs.Replace("${", "%24{", StringComparison.Ordinal);
 
                 // Drop client params that collide with baked ones; upstreams resolving duplicates last-wins would let clients override injected credentials
-                if (reservedParams.Count > 0 || queryCredentials.Count > 0)
-                {
-                    qs = string.Join('&', qs.Split('&', StringSplitOptions.RemoveEmptyEntries)
-                        .Where(p =>
-                        {
-                            var name = p.Split('=', 2)[0];
-                            return !reservedParams.Contains(name) && !queryCredentials.Contains(System.Net.WebUtility.UrlDecode(name));
-                        }));
-                }
+                qs = DropReservedParams(qs, reservedParams, queryCredentials);
 
                 if (!string.IsNullOrEmpty(qs))
                     fullUrl += fullUrl.Contains('?') ? "&" + qs : "?" + qs;
