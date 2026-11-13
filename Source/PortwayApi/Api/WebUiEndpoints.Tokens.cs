@@ -31,7 +31,7 @@ public static partial class WebUiEndpointExtensions
                 allowed_tenants = t.Tenants.ToDictionary(g => g.Key, g => g.Value.Order(StringComparer.Ordinal).ToArray()),
                 rate_limit_requests = t.RateLimitRequests,
                 rate_limit_window_seconds = t.RateLimitWindowSeconds,
-                is_active = t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow)
+                is_active = t.IsActive
             }));
         }).ExcludeFromDescription();
 

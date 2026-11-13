@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Linq.Expressions;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace PortwayApi.Auth;
@@ -78,9 +79,17 @@ public sealed class AuthToken
     public int? RateLimitWindowSeconds { get; set; }
 
     /// <summary>
+    /// Not revoked and not expired; the one definition for database queries and in-memory checks
+    /// </summary>
+    public static readonly Expression<Func<AuthToken, bool>> Active =
+        t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow);
+
+    private static readonly Func<AuthToken, bool> IsActiveCheck = Active.Compile();
+
+    /// <summary>
     /// Indicates if token is currently active
     /// </summary>
-    public bool IsActive => RevokedAt == null && (ExpiresAt == null || ExpiresAt > DateTime.UtcNow);
+    public bool IsActive => IsActiveCheck(this);
 
     /// <summary>
     /// Parses allowed scopes into a list

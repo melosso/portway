@@ -27,7 +27,7 @@ public class TokenService
     {
         return await _dbContext.Tokens
             .AsNoTracking()
-            .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
+            .Where(AuthToken.Active)
             .OrderBy(t => t.Id)
             .FirstOrDefaultAsync();
     }
@@ -181,7 +181,7 @@ public class TokenService
 
         var active = _dbContext.Tokens
             .AsNoTracking()
-            .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow));
+            .Where(AuthToken.Active);
 
         var storedToken = await active.FirstOrDefaultAsync(t => t.TokenLookup == lookup)
             ?? await FindLegacyTokenAsync(active, token);
@@ -299,7 +299,7 @@ public class TokenService
     {
         return await _dbContext.Tokens
             .AsNoTracking()
-            .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
+            .Where(AuthToken.Active)
             .OrderBy(t => t.Id)
             .ToListAsync();
     }
@@ -322,7 +322,7 @@ public class TokenService
     {
         var active = await _dbContext.Tokens
             .AsNoTracking()
-            .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
+            .Where(AuthToken.Active)
             .ToListAsync();
 
         var target = active.FirstOrDefault(t => t.Id == tokenId);
@@ -422,7 +422,7 @@ public class TokenService
     {
         var active = await _dbContext.Tokens
             .AsNoTracking()
-            .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
+            .Where(AuthToken.Active)
             .ToListAsync();
 
         var fullAccess = active.Where(t => t.AllowedScopes == "*" && t.AllowedEnvironments == "*").ToList();
