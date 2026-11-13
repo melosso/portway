@@ -1,12 +1,5 @@
-// runs before first paint to avoid a theme and sidebar flash
-(function () {
-    try {
-        var s = JSON.parse(localStorage.getItem('beacon_settings') || '{}');
-        var theme = s.theme || 'system';
-        if (theme !== 'system') document.documentElement.setAttribute('data-theme', theme);
-        if (s.sidebarCollapsed) document.documentElement.classList.add('sidebar-collapsed');
-    } catch (e) {}
-})();
+// runs before first paint to avoid a sidebar flash; js/theme-toggle.js applies the theme
+if (uiSettings().sidebarCollapsed) document.documentElement.classList.add('sidebar-collapsed');
 
 // Navigation from NAV_GROUPS; the active item follows location.pathname
 
@@ -105,7 +98,7 @@ const BRAND_SVG = `
     <g filter="url(#sb-blur-2)" opacity="0.1"><circle cx="16" cy="16" r="6" fill="#FF64B4" fill-opacity="0.671"/></g>
     <g filter="url(#sb-blur-3)" opacity="0.4"><circle cx="17" cy="19" r="6" fill="#FF64B4" fill-opacity="0.671"/></g>
     <rect width="20" height="20" fill="#FF64B4" fill-opacity="0.15" rx="5.5"/>
-    <g style="mix-blend-mode:hard-light"><rect width="20" height="20" fill="#6A62FF" fill-opacity="0.1" rx="5.5"/></g>
+    <g class="blend-hard-light"><rect width="20" height="20" fill="#6A62FF" fill-opacity="0.1" rx="5.5"/></g>
   </g>
   <rect width="19" height="19" x="0.5" y="0.5" stroke="#FDFDFD" stroke-opacity="0.1" rx="5"/>
   <defs>
@@ -361,7 +354,6 @@ function closeNav() {
 }
 
 const DOCS_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`;
-const THEME_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a4 4 0 1 0 8 0 4 4 0 1 0-8 0M3 12h1m8-9v1m8 8h1m-9 8v1M5.6 5.6l.7.7m12.1-.7-.7.7m0 11.4.7.7m-12.1-.7-.7.7"/></svg>`;
 
 function mountChrome(openapiEnabled) {
     if (!document.querySelector('.nav-scrim')) {
@@ -380,12 +372,12 @@ function mountChrome(openapiEnabled) {
     <button type="button" class="topbar-btn nav-trigger" aria-label="Toggle navigation" aria-expanded="${navExpanded()}">${MENU_SVG}</button>
     <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb"></nav>
     <div class="topbar-actions">
-      <button type="button" class="topbar-btn" id="topbarTheme" data-tooltip="Toggle theme">${THEME_SVG}</button>
+      <button type="button" class="topbar-btn" id="topbarTheme" data-theme-toggle data-icon-size="20"></button>
     </div>`;
     main.prepend(bar);
 
     bar.querySelector('.nav-trigger').addEventListener('click', toggleSidebar);
-    bar.querySelector('#topbarTheme').addEventListener('click', toggleTheme);
+    paintThemeToggles();
     if (openapiEnabled) mountDocsButton();
 
     renderBreadcrumb();
@@ -463,41 +455,7 @@ function toggleSidebar() {
     const collapsed = document.documentElement.classList.contains('sidebar-collapsed');
     document.documentElement.classList.toggle('sidebar-collapsed', !collapsed);
     setNavExpanded(collapsed);
-    try {
-        const s = JSON.parse(localStorage.getItem('beacon_settings') || '{}');
-        s.sidebarCollapsed = !collapsed;
-        localStorage.setItem('beacon_settings', JSON.stringify(s));
-    } catch {}
-}
-
-function _getTheme() {
-    try {
-        return JSON.parse(localStorage.getItem('beacon_settings') || '{}').theme || 'system';
-    } catch {
-        return 'system';
-    }
-}
-
-function _saveTheme(t) {
-    try {
-        var s = JSON.parse(localStorage.getItem('beacon_settings') || '{}');
-        s.theme = t;
-        localStorage.setItem('beacon_settings', JSON.stringify(s));
-    } catch {}
-}
-
-function toggleTheme() {
-    const current = _getTheme();
-    const isDark =
-        current === 'dark' || (current === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    setTheme(isDark ? 'light' : 'dark');
-    markAppearance();
-}
-
-function setTheme(choice) {
-    _saveTheme(choice);
-    if (choice === 'system') document.documentElement.removeAttribute('data-theme');
-    else document.documentElement.setAttribute('data-theme', choice);
+    saveUiSettings({ sidebarCollapsed: !collapsed });
 }
 
 function toggleAccountMenu(e) {
@@ -544,7 +502,7 @@ function hoverAppearance(e, open) {
 }
 
 function markAppearance() {
-    const chosen = _getTheme();
+    const chosen = themeChoice();
     document.querySelectorAll('#appearanceMenu [data-appearance]').forEach((btn) => {
         const on = btn.dataset.appearance === chosen;
         btn.classList.toggle('checked', on);
@@ -554,9 +512,9 @@ function markAppearance() {
 
 function chooseAppearance(next, e) {
     if (e) e.stopPropagation();
-    setTheme(next);
-    markAppearance();
+    applyTheme(next);
     closeAccountMenu();
 }
 
 document.addEventListener('click', () => closeAccountMenu());
+document.addEventListener('portway:theme', markAppearance);
