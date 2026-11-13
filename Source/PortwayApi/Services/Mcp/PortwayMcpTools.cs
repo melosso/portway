@@ -37,7 +37,7 @@ public static class PortwayMcpTools
     private static string ScopeKey(McpToolDescriptor tool) => tool.Identity;
 
     [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = false), Description("List the Portway endpoints the caller can access, as Markdown")]
-    public static async Task<string> ListEndpoints(IHttpContextAccessor httpContextAccessor, TokenService tokenService)
+    public static async Task<string> ListEndpoints(IHttpContextAccessor httpContextAccessor, TokenService tokenService, EnvironmentSettings environmentSettings)
     {
         if (_registry is null) return "MCP not initialized";
 
@@ -45,7 +45,7 @@ public static class PortwayMcpTools
         if (caller is null) return "No endpoints registered";
 
         var byInvokeName = _registry.ToolsByInvokeName
-            .Where(kv => caller.HasAccessToEndpoint(ScopeKey(kv.Value)))
+            .Where(kv => caller.HasAccessToEndpoint(ScopeKey(kv.Value)) && CallerEnvironments(kv.Value, environmentSettings.AllowedEnvironments, caller).Count > 0)
             .ToList();
         if (byInvokeName.Count == 0) return "No endpoints registered";
 
@@ -79,10 +79,11 @@ public static class PortwayMcpTools
             return new EndpointInfoResult { Error = $"Endpoint '{endpointName}' not found" };
 
         var caller = await ResolveCallerTokenAsync(httpContextAccessor, tokenService);
-        if (caller is null || !caller.HasAccessToEndpoint(ScopeKey(tool)))
+        var environments = caller is null ? [] : CallerEnvironments(tool, environmentSettings.AllowedEnvironments, caller);
+        if (caller is null || !caller.HasAccessToEndpoint(ScopeKey(tool)) || environments.Count == 0)
             return new EndpointInfoResult { Error = $"Endpoint '{endpointName}' not found" };
 
-        return Describe(endpointName, tool, _registry.MethodsOf(tool), environmentSettings.AllowedEnvironments);
+        return Describe(endpointName, tool, _registry.MethodsOf(tool), environments);
     }
 
     /// <summary>
@@ -101,9 +102,12 @@ public static class PortwayMcpTools
         Methods = methods,
         Description = tool.Description,
         AvailableFields = tool.AvailableFields ?? [],
-        AllowedEnvironments = tool.AllowedEnvironments is { Count: > 0 } own ? own : allowedEnvironments,
+        AllowedEnvironments = allowedEnvironments,
         TenantHeaders = tool.TenantHeaders
     };
+
+    internal static IReadOnlyList<string> CallerEnvironments(McpToolDescriptor tool, IReadOnlyList<string> allowedEnvironments, AuthToken caller) =>
+        [.. (tool.AllowedEnvironments is { Count: > 0 } own ? own : allowedEnvironments).Where(caller.HasAccessToEnvironment)];
 
     [McpServerTool(Destructive = true, OpenWorld = false),
      Description("Call a registered Portway endpoint. Use ListEndpoints/GetEndpointInfo first to find the endpoint name, methods and allowed environments.")]
