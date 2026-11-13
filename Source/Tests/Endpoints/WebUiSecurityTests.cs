@@ -206,6 +206,49 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task SignIn_CsrfTokenIsSpentByTheFirstAttempt()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var client = CreateClient();
+        await LoginAsync(client);
+
+        var csrf = (await client.GetFromJsonAsync<JsonElement>("/_/api/auth/csrf", ct)).GetProperty("csrf").GetString();
+        var wrong = await client.PostAsJsonAsync("/_/api/auth", new { username = "admin", password = "not-the-password", csrf }, ct);
+        var replay = await client.PostAsJsonAsync("/_/api/auth", new { username = "admin", password = SeededPassword, csrf }, ct);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, wrong.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, replay.StatusCode);
+    }
+
+    [Fact]
+    public async Task SignIn_MustChangePassword_ReturnsFreshCsrfForTheChange()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var client = CreateClient();
+        await LoginAsync(client);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<PortwayApi.Auth.AuthDbContext>();
+            (await db.AdminUsers.FirstAsync(u => u.Username == "admin", ct)).MustChangePassword = true;
+            await db.SaveChangesAsync(ct);
+        }
+
+        var csrf = (await client.GetFromJsonAsync<JsonElement>("/_/api/auth/csrf", ct)).GetProperty("csrf").GetString();
+        var first = await (await client.PostAsJsonAsync("/_/api/auth", new { username = "admin", password = SeededPassword, csrf }, ct))
+            .Content.ReadFromJsonAsync<JsonElement>(ct);
+        var change = await client.PostAsJsonAsync("/_/api/auth/password", new
+        {
+            username = "admin",
+            password = SeededPassword,
+            newPassword = "N3w-console-pw-4c1d",
+            csrf = first.GetProperty("csrf").GetString()
+        }, ct);
+
+        Assert.True(first.GetProperty("must_change_password").GetBoolean());
+        Assert.Equal(HttpStatusCode.OK, change.StatusCode);
+    }
+
+    [Fact]
     public async Task PasswordChange_EndsExistingSessions()
     {
         var ct = TestContext.Current.CancellationToken;

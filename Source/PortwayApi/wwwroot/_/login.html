@@ -189,6 +189,7 @@
       // A first sign-in stops here: the account picks its own password before it gets a session
       if (r.ok && d.must_change_password) {
         _changing = true;
+        csrfToken = d.csrf;
         document.getElementById('newPasswordField').hidden = false;
         document.querySelector('.signin-header p').textContent = 'Set a new password to complete sign-in.';
         document.querySelector('#signInBtn .btn-label').textContent = 'Set password';

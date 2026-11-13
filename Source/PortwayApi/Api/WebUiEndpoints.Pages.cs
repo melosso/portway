@@ -76,7 +76,7 @@ public static partial class WebUiEndpointExtensions
 
             // CSRF validation
             var csrfToken = body.TryGetProperty("csrf", out var csrf) ? csrf.GetString() : null;
-            if (!WebUiAuthHelper.ValidateCsrfToken(csrfToken))
+            if (!WebUiAuthHelper.TryConsumeCsrfToken(csrfToken))
             {
                 return Results.Json(new { error = "Invalid or expired CSRF token" }, statusCode: 403);
             }
@@ -94,10 +94,7 @@ public static partial class WebUiEndpointExtensions
 
             // No session until the account sets its own password
             if (account.MustChangePassword)
-                return Results.Json(new { ok = false, must_change_password = true });
-
-            // Consume the CSRF token (one-time use)
-            WebUiAuthHelper.ConsumeCsrfToken(csrfToken!);
+                return Results.Json(new { ok = false, must_change_password = true, csrf = WebUiAuthHelper.GenerateCsrfToken() });
 
             IssueSessionCookies(context, account, secureCookies, Remember(body));
             return Results.Ok(new { ok = true });
@@ -124,7 +121,7 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { error = blocked }, statusCode: 429);
 
             var csrf = body.TryGetProperty("csrf", out var c) ? c.GetString() : null;
-            if (!WebUiAuthHelper.ValidateCsrfToken(csrf))
+            if (!WebUiAuthHelper.TryConsumeCsrfToken(csrf))
             {
                 return Results.Json(new { error = "Invalid or expired CSRF token" }, statusCode: 403);
             }
@@ -136,7 +133,6 @@ public static partial class WebUiEndpointExtensions
             }
 
             WebUiAuthHelper.ClearFailedAttempts(clientIp, username);
-            WebUiAuthHelper.ConsumeCsrfToken(csrf!);
 
             var account = await users.FindAsync(username);
             Log.Information("Console account {Username} set its own password", username);

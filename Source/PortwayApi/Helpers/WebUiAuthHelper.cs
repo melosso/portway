@@ -132,33 +132,10 @@ public static class WebUiAuthHelper
     }
 
     /// <summary>
-    /// Validates a CSRF token
+    /// Spends a CSRF token; true for the first caller presenting an unexpired token, false for every later one
     /// </summary>
-    public static bool ValidateCsrfToken(string? token)
-    {
-        if (string.IsNullOrEmpty(token))
-            return false;
-
-        if (_csrfTokens.TryGetValue(token, out var expiresAt))
-        {
-            if (expiresAt > DateTime.UtcNow)
-            {
-                return true;
-            }
-            // Remove expired token
-            _csrfTokens.TryRemove(token, out _);
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// Removes a CSRF token after use (one-time use)
-    /// </summary>
-    public static void ConsumeCsrfToken(string token)
-    {
-        _csrfTokens.TryRemove(token, out _);
-    }
+    public static bool TryConsumeCsrfToken(string? token) =>
+        !string.IsNullOrEmpty(token) && _csrfTokens.TryRemove(token, out var expiresAt) && expiresAt > DateTime.UtcNow;
 
     private static void CleanupExpiredEntries()
     {
