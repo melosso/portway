@@ -6,9 +6,9 @@ namespace PortwayApi.Helpers;
 public static partial class MarkdownParser
 {
     [GeneratedRegex(@"\*\*(.*?)\*\*")] private static partial Regex BoldAsterisks();
-    [GeneratedRegex(@"__(.*?)__")] private static partial Regex BoldUnderscores();
+    [GeneratedRegex(@"(?<!\w)__(.*?)__(?!\w)")] private static partial Regex BoldUnderscores();
     [GeneratedRegex(@"\*(.*?)\*")] private static partial Regex ItalicAsterisks();
-    [GeneratedRegex(@"_(.*?)_")] private static partial Regex ItalicUnderscores();
+    [GeneratedRegex(@"(?<!\w)_(.*?)_(?!\w)")] private static partial Regex ItalicUnderscores();
     [GeneratedRegex(@"\[(.*?)\]\((.*?)\)")] private static partial Regex MarkdownLink();
 
     public static string ParseMarkdownToHtml(string md)
@@ -21,19 +21,24 @@ public static partial class MarkdownParser
         var links = new List<string>();
         html = MarkdownLink().Replace(html, m =>
         {
-            links.Add(RenderLink(m.Groups[1].Value, m.Groups[2].Value));
+            links.Add(RenderLink(Emphasis(m.Groups[1].Value), m.Groups[2].Value));
             return $"\u0000{links.Count - 1}\u0000";
         });
 
-        html = BoldAsterisks().Replace(html, "<strong>$1</strong>");
-        html = BoldUnderscores().Replace(html, "<strong>$1</strong>");
-        html = ItalicAsterisks().Replace(html, "<em>$1</em>");
-        html = ItalicUnderscores().Replace(html, "<em>$1</em>");
+        html = Emphasis(html);
 
         for (var i = 0; i < links.Count; i++)
             html = html.Replace($"\u0000{i}\u0000", links[i]);
 
         return html;
+    }
+
+    private static string Emphasis(string html)
+    {
+        html = BoldAsterisks().Replace(html, "<strong>$1</strong>");
+        html = BoldUnderscores().Replace(html, "<strong>$1</strong>");
+        html = ItalicAsterisks().Replace(html, "<em>$1</em>");
+        return ItalicUnderscores().Replace(html, "<em>$1</em>");
     }
 
     // Text and url arrive HTML-encoded; only http(s), protocol-relative and mailto URLs become links

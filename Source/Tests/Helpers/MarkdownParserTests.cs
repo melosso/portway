@@ -73,4 +73,19 @@ public class MarkdownParserTests
 
         Assert.Equal("<strong>Read</strong> the <a href=\"https://example.com/x_y\" target=\"_blank\" rel=\"noopener noreferrer\">guide</a>.", html);
     }
+
+    [Fact]
+    public void ParseMarkdownToHtml_EmphasisInLinkLabel_Renders()
+    {
+        var html = MarkdownParser.ParseMarkdownToHtml("[**Help**](https://example.com/a_b_c)");
+
+        Assert.Equal("<a href=\"https://example.com/a_b_c\" target=\"_blank\" rel=\"noopener noreferrer\"><strong>Help</strong></a>", html);
+    }
+
+    [Theory]
+    [InlineData("Set snake_case_name here", "Set snake_case_name here")]
+    [InlineData("Set PORTWAY__USE__HTTPS here", "Set PORTWAY__USE__HTTPS here")]
+    [InlineData("an _italic_ and __bold__ word", "an <em>italic</em> and <strong>bold</strong> word")]
+    public void ParseMarkdownToHtml_UnderscoresInsideWords_StayLiteral(string md, string expected) =>
+        Assert.Equal(expected, MarkdownParser.ParseMarkdownToHtml(md));
 }
