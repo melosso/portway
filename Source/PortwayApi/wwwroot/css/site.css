@@ -2919,7 +2919,6 @@ th.sortable.sort-desc .sort-icon {
     padding: 0.375rem 0.5rem 0.25rem;
     font-size: 0.7rem;
     font-weight: 600;
-    text-transform: uppercase;
     letter-spacing: 0.05em;
     color: hsl(var(--muted-foreground));
     user-select: none;

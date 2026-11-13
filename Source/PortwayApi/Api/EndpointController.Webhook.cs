@@ -52,12 +52,12 @@ public sealed partial class EndpointController
         {
             var result = await _webhookRequestHandler.StoreAsync(route, endpoint, requestBody, Request.Headers, HttpContext.RequestAborted);
             var metrics = HttpContext.RequestServices.GetService<Services.Telemetry.PortwayMetrics>();
-            
+
             if (result.Outcome == WebhookOutcome.Stored)
                 metrics?.WebhookStored(route.EndpointKey, rule?.Scheme);
             else if (result.Outcome == WebhookOutcome.Duplicate)
                 metrics?.WebhookDuplicate(route.EndpointKey, rule?.Scheme);
-            
+
             return result.Outcome switch
             {
                 WebhookOutcome.Stored => PortwayResults.Created("Webhook stored.", result.Id),

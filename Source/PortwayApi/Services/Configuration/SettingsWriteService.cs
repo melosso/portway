@@ -724,12 +724,6 @@ public sealed partial class SettingsWriteService
 
     private static string Leaf(string key) => key[(key.LastIndexOf(':') + 1)..];
 
-    private static bool TryGetPath(JsonObject root, string key, out JsonNode? value)
-    {
-        value = null;
-        return Parent(root, key, false) is { } parent && parent.TryGetPropertyValue(Leaf(key), out value);
-    }
-
     /// <summary>
     /// Writes a colon-separated configuration key into the nested JSON document
     /// </summary>
