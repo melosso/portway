@@ -1211,6 +1211,7 @@ h1 {
     font-weight: 600;
     letter-spacing: -0.01em;
     line-height: 1.2;
+    margin-bottom: 0.35rem;
     font-variant-numeric: tabular-nums;
 }
 

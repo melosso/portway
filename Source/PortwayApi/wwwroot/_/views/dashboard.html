@@ -434,7 +434,7 @@ async function loadChanges() {
       <li class="dash-row">
         <span class="dash-row-name" tabindex="0" data-tooltip="${esc(esc(e.target))}">${esc(e.target)}</span>
         <time class="dash-row-end" tabindex="0" datetime="${esc(e.timestamp)}" data-tooltip="${esc(esc(new Date(e.timestamp).toLocaleString()))}">${esc(fmtAgo(e.timestamp))}</time>
-        <span class="dash-row-desc">${e.actor ? `<strong class="dash-row-actor">${esc(e.actor)}</strong> · ` : ''}${esc(e.action)} · ${esc(e.target_type)}${e.restorable ? ' · backup available' : ''}</span>
+        <span class="dash-row-desc">${e.actor ? `<strong class="dash-row-actor">${esc(e.actor)}</strong> · ` : ''}${esc(e.action)}</span>
       </li>`).join('') + '</ul>';
   } catch (e) {
     el.innerHTML = alertNote('Change history unavailable. Select Refresh to retry.');
