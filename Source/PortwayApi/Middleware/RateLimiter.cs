@@ -67,8 +67,8 @@ public sealed class RateLimiter
                 _state.BlockedIps.TryRemove(key, out _);
 
         foreach (var key in _state.BlockedTokens.Keys)
-            if (_state.BlockedTokens.TryGetValue(key, out var b) && now >= b.BlockedUntil)
-                _state.BlockedTokens.TryRemove(key, out _);
+            if (_state.BlockedTokens.TryGetValue(key, out var b) && b.IsForgotten(now))
+                _state.BlockedTokens.TryRemove(KeyValuePair.Create(key, b));
 
         Log.Debug("RateLimiter cleanup: {BlockedIps} blocked IPs, {BlockedTokens} blocked tokens",
             _state.BlockedIps.Count, _state.BlockedTokens.Count);
@@ -206,24 +206,15 @@ public sealed class RateLimiter
             var (effectiveLimit, effectiveWindow) = await ResolveTokenLimitsAsync(context, token);
 
             // Check if token is currently blocked
-            if (_state.BlockedTokens.TryGetValue(tokenKey, out var currentBlockInfo))
+            if (_state.BlockedTokens.TryGetValue(tokenKey, out var currentBlockInfo) && now < currentBlockInfo.BlockedUntil)
             {
-                if (now < currentBlockInfo.BlockedUntil)
-                {
-                    // Token is still blocked
-                    int remainingSeconds = (int)(currentBlockInfo.BlockedUntil - now).TotalSeconds;
+                int remainingSeconds = (int)(currentBlockInfo.BlockedUntil - now).TotalSeconds;
 
-                    Log.Warning("Token {MaskedToken} is blocked for {Seconds} more seconds",
-                        maskedToken, remainingSeconds);
+                Log.Warning("Token {MaskedToken} is blocked for {Seconds} more seconds",
+                    maskedToken, remainingSeconds);
 
-                    await RespondWithRateLimit(context, maskedToken, remainingSeconds, effectiveLimit, "token", true);
-                    return;
-                }
-                else
-                {
-                    // Block expired, remove from blocked tokens
-                    _state.BlockedTokens.TryRemove(KeyValuePair.Create(tokenKey, currentBlockInfo));
-                }
+                await RespondWithRateLimit(context, maskedToken, remainingSeconds, effectiveLimit, "token", true);
+                return;
             }
 
             // Limit and window are part of the bucket key so a changed override starts a fresh bucket
@@ -320,6 +311,9 @@ public sealed class RateLimiter
     // Update block info with exponential backoff
     private TokenBlockInfo UpdateBlockInfo(TokenBlockInfo existing, DateTimeOffset now, int windowSeconds)
     {
+        if (existing.IsForgotten(now))
+            return CreateBlockInfo(now, windowSeconds);
+
         int newConsecutiveBlocks = existing.ConsecutiveBlocks + 1;
 
         int newBlockDuration = newConsecutiveBlocks > _maxConsecutiveBlocks
