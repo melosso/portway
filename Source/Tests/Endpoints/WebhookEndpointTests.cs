@@ -153,4 +153,14 @@ public sealed class WebhookEndpointTests : ApiTestBase, IDisposable
     [InlineData("""{"DatabaseObjectName":"WebhookData"}""")]
     public void ConsoleSave_EmptyAllowedColumns_Refused(string json) =>
         Assert.Contains(EndpointHandler.ValidateConfig(EndpointType.Webhook, json), e => e.Contains("AllowedColumns"));
+
+    [Fact]
+    public void SqlReload_DuringPartialWebhookSave_KeepsLastValidWebhook()
+    {
+        Assert.True(EndpointHandler.GetSqlWebhookEndpoints().ContainsKey("Strict/Hooks"));
+        File.WriteAllText(Path.Combine(Dir, "Hooks", "entity.json"), "{\"DatabaseObjectName\": \"Webh");
+        EndpointHandler.ReloadEndpointType(EndpointType.SQL);
+
+        Assert.True(EndpointHandler.GetSqlWebhookEndpoints().ContainsKey("Strict/Hooks"));
+    }
 }

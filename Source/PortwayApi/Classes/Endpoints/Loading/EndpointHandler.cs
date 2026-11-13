@@ -302,7 +302,7 @@ public static partial class EndpointHandler
                 case EndpointType.SQL:
                     // Reload immediately so singletons get updated data
                     _loadedSqlEndpoints = ReloadSqlEndpoints();
-                    _loadedSqlWebhookEndpoints = null; // Webhooks will be reloaded on next access
+                    _loadedSqlWebhookEndpoints = ReloadWebhookEndpoints();
                     Log.Information("SQL endpoints reloaded from disk");
                     break;
                 case EndpointType.Webhook:
