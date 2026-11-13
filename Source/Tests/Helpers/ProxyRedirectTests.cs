@@ -206,6 +206,11 @@ public sealed class ProxyRedirectTests
         Assert.Null(upstream.Requests[2].Content);
     }
 
+    [Fact]
+    public void HealthProbe_KeepsQueryWithoutReference() =>
+        Assert.Equal("https://api.example/x?tenant=acme&v=2",
+            PortwayApi.Services.HealthCheckService.ProbeUrl("https://api.example/x?tenant=acme&key=${secret:K}&v=2"));
+
     [Theory]
     [InlineData("key=evil&a=1")]
     [InlineData("%6Bey=evil&a=1")]

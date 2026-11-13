@@ -176,8 +176,15 @@ public sealed class HealthCheckService
         }
     }
 
-    internal static string ProbeUrl(string url) =>
-        SecretReference.ContainsReference(url) && url.IndexOf('?') is >= 0 and var query ? url[..query] : url;
+    internal static string ProbeUrl(string url)
+    {
+        var query = url.IndexOf('?');
+        if (query < 0 || !SecretReference.ContainsReference(url))
+            return url;
+
+        var kept = string.Join('&', url[(query + 1)..].Split('&').Where(p => !SecretReference.ContainsReference(p)));
+        return kept.Length == 0 ? url[..query] : $"{url[..query]}?{kept}";
+    }
 
     internal static bool StateChanged(ref string last, IEnumerable<string> names, out string current)
     {
