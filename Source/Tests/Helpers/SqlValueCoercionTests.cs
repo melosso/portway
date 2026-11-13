@@ -76,4 +76,20 @@ public sealed class SqlValueCoercionTests
         Assert.True(SqlValueCoercion.TryCoerce(Column("System.Int32"), 5, SqlProviderType.MySql, out var value));
         Assert.Equal(5, value);
     }
+
+    [Fact]
+    public void FloatingPoint_UsesMatchingParser()
+    {
+        Assert.True(SqlValueCoercion.TryCoerce(Column("System.Double"), "1e100", SqlProviderType.PostgreSql, out var real));
+        Assert.Equal(1e100, real);
+        Assert.True(SqlValueCoercion.TryCoerce(Column("System.Single"), "1.5", SqlProviderType.PostgreSql, out var single));
+        Assert.Equal(1.5f, single);
+    }
+
+    [Theory]
+    [InlineData("System.Double", "1e400")]
+    [InlineData("System.Double", "NaN")]
+    [InlineData("System.Single", "1e40")]
+    public void FloatingPoint_NonFinite_IsRefused(string clrType, string text) =>
+        Assert.False(SqlValueCoercion.TryCoerce(Column(clrType), text, SqlProviderType.PostgreSql, out _));
 }

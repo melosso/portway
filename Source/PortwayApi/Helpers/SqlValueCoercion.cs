@@ -21,10 +21,22 @@ public static class SqlValueCoercion
                 coerced = integer;
                 return true;
 
-            case "System.Decimal" or "System.Double" or "System.Single":
+            case "System.Decimal":
                 if (!decimal.TryParse(text, NumberStyles.Float, invariant, out var number))
                     return false;
                 coerced = number;
+                return true;
+
+            case "System.Double":
+                if (!double.TryParse(text, NumberStyles.Float, invariant, out var real) || !double.IsFinite(real))
+                    return false;
+                coerced = real;
+                return true;
+
+            case "System.Single":
+                if (!float.TryParse(text, NumberStyles.Float, invariant, out var single) || !float.IsFinite(single))
+                    return false;
+                coerced = single;
                 return true;
 
             case "System.DateTime" when provider != SqlProviderType.Sqlite:
