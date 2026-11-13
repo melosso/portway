@@ -190,6 +190,22 @@ public sealed class ProxyRedirectTests
         Assert.DoesNotContain("u002Bss", masked);
     }
 
+    [Fact]
+    public async Task SeeOtherThenTemporaryRedirect_StaysGetWithoutBody()
+    {
+        var upstream = new Upstream(r => r.RequestUri!.AbsolutePath switch
+        {
+            "/start" => Redirect("/a", HttpStatusCode.SeeOther),
+            "/a" => Redirect("/b", HttpStatusCode.TemporaryRedirect),
+            _ => new HttpResponseMessage(HttpStatusCode.OK)
+        });
+
+        await Send(upstream, "http://api.example/start", Build(HttpMethod.Post, "{}"));
+
+        Assert.Equal(HttpMethod.Get, upstream.Requests[2].Method);
+        Assert.Null(upstream.Requests[2].Content);
+    }
+
     [Theory]
     [InlineData("key=evil&a=1")]
     [InlineData("%6Bey=evil&a=1")]

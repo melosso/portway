@@ -88,6 +88,7 @@ public static class ProxyFailoverHelper
     {
         var current = response.RequestMessage?.RequestUri ?? new Uri(templateUrl);
         var method = response.RequestMessage?.Method ?? HttpMethod.Get;
+        var bodyDropped = false;
         for (var hop = 0; hop < MaxRedirects && IsRedirect((int)response.StatusCode) && response.Headers.Location is { } location; hop++)
         {
             var next = location.IsAbsoluteUri ? location : new Uri(current, location);
@@ -97,15 +98,18 @@ public static class ProxyFailoverHelper
                 return response;
             }
 
-            var request = buildRequest(templateUrl);
-            request.RequestUri = next;
             if ((int)response.StatusCode == 303 || ((int)response.StatusCode is 301 or 302 && method == HttpMethod.Post))
             {
-                request.Method = method == HttpMethod.Head ? HttpMethod.Head : HttpMethod.Get;
-                request.Content = null;
+                method = method == HttpMethod.Head ? HttpMethod.Head : HttpMethod.Get;
+                bodyDropped = true;
             }
 
-            method = request.Method;
+            var request = buildRequest(templateUrl);
+            request.RequestUri = next;
+            request.Method = method;
+            if (bodyDropped)
+                request.Content = null;
+
             current = next;
             response.Dispose();
             response = await client.SendAsync(request, ct);
