@@ -35,7 +35,7 @@
             '<div class="card">' +
             '<div class="card-header">' +
             '<span class="card-title" style="font-size:0.82rem">Getting started</span>' +
-            '<button onclick="SetupGuide.dismiss()" style="background:none;border:none;cursor:pointer;' +
+            '<button data-on="click:SetupGuide.dismiss" style="background:none;border:none;cursor:pointer;' +
             'font-size:0.75rem;color:hsl(var(--muted-foreground));padding:0;line-height:1;' +
             'text-decoration:underline;text-underline-offset:2px">Dismiss</button>' +
             '</div>' +
@@ -107,7 +107,7 @@
                 ? '<div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid hsl(var(--border));' +
                   'font-size:0.75rem;color:hsl(var(--muted-foreground))">' +
                   'The dashboard displays live Portway traffic data. ' +
-                  '<button onclick="SetupGuide.dismiss()" style="background:none;border:none;cursor:pointer;' +
+                  '<button data-on="click:SetupGuide.dismiss" style="background:none;border:none;cursor:pointer;' +
                   'font-size:0.75rem;color:hsl(var(--foreground));text-decoration:underline;' +
                   'text-underline-offset:2px;padding:0">Dismiss this guide</button>' +
                   '</div>'

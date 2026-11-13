@@ -25,7 +25,7 @@
             </div>
         </div>
         <div class="page-actions">
-            <button class="btn btn-outline ep-refresh" onclick="refreshAll()" aria-label="Refresh">
+            <button class="btn btn-outline ep-refresh" data-on="click:refreshAll" aria-label="Refresh">
                 <svg
                     width="13"
                     height="13"
@@ -42,7 +42,7 @@
                 </svg>
                 <span class="ep-btn-text">Refresh</span>
             </button>
-            <button class="btn btn-primary" onclick="openCreateDrawer()">
+            <button class="btn btn-primary" data-on="click:openCreateDrawer">
                 <svg
                     width="13"
                     height="13"
@@ -78,9 +78,9 @@
                     <circle cx="11" cy="11" r="8" />
                     <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
-                <input type="text" class="input" id="epSearch" placeholder="Search endpoints, namespaces or versions" aria-label="Search endpoints" oninput="filterList()" />
+                <input type="text" class="input" id="epSearch" placeholder="Search endpoints, namespaces or versions" aria-label="Search endpoints" data-on="input:filterList" />
             </div>
-            <select class="input ep-type-filter" id="epType" aria-label="Endpoint type" onchange="switchTab(this.value)"></select>
+            <select class="input ep-type-filter" id="epType" aria-label="Endpoint type" data-on="change:switchTab" data-args='[{"ref": "value"}]'></select>
         </div>
         <div class="ep-split">
             <div class="ep-list">
@@ -88,7 +88,7 @@
                     <div class="ep-empty" style="padding:1.5rem;font-size:0.8rem">Loading…</div>
                 </div>
                 <div class="ep-list-footer">
-                    <button class="btn btn-outline" style="width:100%;font-size:0.8rem" onclick="openCreateDrawer()">
+                    <button class="btn btn-outline" style="width:100%;font-size:0.8rem" data-on="click:openCreateDrawer">
                         <svg
                             width="12"
                             height="12"
@@ -139,8 +139,8 @@
     <div class="drawer-body">
         <div class="wh-deliveries-bar">
             <label class="field-label" for="deliveriesEnv">Environment</label>
-            <select class="input" id="deliveriesEnv" onchange="loadDeliveries()"></select>
-            <button class="btn btn-outline btn-sm" onclick="loadDeliveries()">Refresh</button>
+            <select class="input" id="deliveriesEnv" data-on="change:loadDeliveries"></select>
+            <button class="btn btn-outline btn-sm" data-on="click:loadDeliveries">Refresh</button>
         </div>
         <div id="deliveriesList" aria-live="polite"></div>
     </div>
@@ -173,7 +173,7 @@
 
         <div style="margin-top:1.5rem;display:flex;gap:0.5rem;justify-content:flex-end">
             <button class="btn btn-outline" data-drawer-close="createDrawer">Cancel</button>
-            <button class="btn btn-primary" onclick="submitCreate()">Create</button>
+            <button class="btn btn-primary" data-on="click:submitCreate">Create</button>
         </div>
     </div>
 </div>
@@ -396,7 +396,7 @@ function renderList() {
       const isActive = current?.type === r.type && current?.base === r.base;
       const retired = r.versions.every(v => v.deprecated);
       const versions = r.versions.length > 1 ? r.versions.map(v => v.version ?? 'v1').join(' · ') : '';
-      html += `<div class="ep-list-item ${isActive ? 'active' : ''}${retired ? ' is-deprecated' : ''}" onclick="trySelect('${esc(r.type)}','${esc(latest.name)}')" title="${esc(typeCfg?.label ?? r.type)}">
+      html += `<div class="ep-list-item ${isActive ? 'active' : ''}${retired ? ' is-deprecated' : ''}" data-on="click:trySelect" data-args="${actionArgs(r.type, latest.name)}" title="${esc(typeCfg?.label ?? r.type)}">
         <span class="ep-type-dot ${typeCfg?.dotClass ?? ''}"></span>
         <span class="ep-list-name">${esc(r.leaf)}</span>
         ${versions ? `<span class="ep-list-versions">${esc(versions)}</span>` : ''}
@@ -505,32 +505,32 @@ function renderDetail() {
   const version = selectedVersion();
 
   const nameDisplay = _renaming
-    ? `<input type="text" id="renameInput" value="${esc(name.split('/').pop())}" class="input input-title" onkeydown="if(event.key==='Enter')confirmRename();if(event.key==='Escape')cancelRename()" autofocus>
-       <button class="btn btn-primary btn-sm" onclick="confirmRename()">Save</button>
-       <button class="btn btn-outline btn-sm" onclick="cancelRename()">Cancel</button>`
+    ? `<input type="text" id="renameInput" value="${esc(name.split('/').pop())}" class="input input-title" data-on="keydown:keyAction" data-args='[{"ref":"event"}, "confirmRename", "cancelRename"]' autofocus>
+       <button class="btn btn-primary btn-sm" data-on="click:confirmRename">Save</button>
+       <button class="btn btn-outline btn-sm" data-on="click:cancelRename">Cancel</button>`
     : `<h2>${esc(version ? name.slice(0, -(version.length + 1)) : name)}</h2>
        <span class="badge badge-muted" style="font-size:0.75rem">${esc(typeCfg?.label ?? type)}</span>${stateBadges(_detailData?.content)}`;
 
   detail.innerHTML = `
     <div class="ep-detail-header">
-      <button type="button" class="btn btn-ghost btn-icon ep-back" onclick="closeDetail()" aria-label="Back to endpoints" title="Back to endpoints">
+      <button type="button" class="btn btn-ghost btn-icon ep-back" data-on="click:closeDetail" aria-label="Back to endpoints" title="Back to endpoints">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
       <span class="ep-type-dot ${typeCfg?.dotClass ?? ''}"></span>
       ${nameDisplay}
       ${_renaming ? '' : `<div class="actions">
-        ${version ? '' : `<button class="btn btn-outline btn-sm" onclick="startRename()" data-tooltip="Rename endpoint name">
+        ${version ? '' : `<button class="btn btn-outline btn-sm" data-on="click:startRename" data-tooltip="Rename endpoint name">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Rename
         </button>`}
-        <button class="btn btn-outline btn-sm" onclick="toggleRawMode()">
+        <button class="btn btn-outline btn-sm" data-on="click:toggleRawMode">
           ${_rawMode ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Structured' : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> Raw JSON'}
         </button>
-        ${isWebhook ? `<button class="btn btn-outline btn-sm" onclick="openDeliveries()" data-tooltip="Latest stored deliveries">
+        ${isWebhook ? `<button class="btn btn-outline btn-sm" data-on="click:openDeliveries" data-tooltip="Latest stored deliveries">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
           Deliveries
         </button>` : ''}
-        <button class="btn btn-outline btn-sm" onclick="startDelete()" style="color:hsl(var(--destructive-text));border-color:hsl(var(--destructive)/0.4)" data-tooltip="Delete endpoint permanently">
+        <button class="btn btn-outline btn-sm" data-on="click:startDelete" style="color:hsl(var(--destructive-text));border-color:hsl(var(--destructive)/0.4)" data-tooltip="Delete endpoint permanently">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           Delete
         </button>
@@ -542,8 +542,8 @@ function renderDetail() {
     </div>
     <div class="ep-save-bar" style="padding:0.75rem 1rem;border-top:1px solid hsl(var(--border));display:flex;gap:0.5rem;justify-content:flex-end;align-items:center;flex-shrink:0">
       <span id="epDirty" class="ep-dirty" role="status" ${_dirty ? '' : 'hidden'}>Unsaved changes</span>
-      <button class="btn btn-outline btn-sm" onclick="reloadDetail()">Discard</button>
-      <button id="epSaveBtn" class="btn btn-primary btn-sm" onclick="saveEndpoint()">
+      <button class="btn btn-outline btn-sm" data-on="click:reloadDetail">Discard</button>
+      <button id="epSaveBtn" class="btn btn-primary btn-sm" data-on="click:saveEndpoint">
         <span class="btn-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save</span>
         <span class="btn-spinner"></span>
       </button>
@@ -629,19 +629,19 @@ function renderVersionBar(type) {
     const label = v.version ?? 'v1';
     const active = v.name === _selected.name;
     const state = v.deprecated ? (v.sunset ? `Deprecated, sunset ${String(v.sunset).slice(0, 10)}` : 'Deprecated') : 'Active';
-    return `<button type="button" class="ep-version-chip${active ? ' active' : ''}${v.deprecated ? ' is-deprecated' : ''}" aria-pressed="${active}" data-tooltip="${esc(state)}" onclick="trySelect('${esc(type)}','${esc(v.name)}')">${esc(label)}</button>`;
+    return `<button type="button" class="ep-version-chip${active ? ' active' : ''}${v.deprecated ? ' is-deprecated' : ''}" aria-pressed="${active}" data-tooltip="${esc(state)}" data-on="click:trySelect" data-args="${actionArgs(type, v.name)}">${esc(label)}</button>`;
   }).join('');
   return `<div class="ep-version-bar">
     <div class="ep-version-chips" role="group" aria-label="Versions">
       ${chips}
-      ${type === 'webhook' ? '' : `<button type="button" class="ep-version-chip ep-version-add" onclick="createVersion()" data-tooltip="Copy ${esc(version)} into the next version">
+      ${type === 'webhook' ? '' : `<button type="button" class="ep-version-chip ep-version-add" data-on="click:createVersion" data-tooltip="Copy ${esc(version)} into the next version">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Version
       </button>`}
     </div>
     <div class="ep-version-meta">
-      <button type="button" class="ep-copy" onclick="copyText('${esc(route)}')" data-tooltip="Copy route"><code>${esc(route)}</code></button>
-      <button type="button" class="ep-copy" onclick="copyText('${esc(item.scope ?? r.base)}')" data-tooltip="Copy token scope"><code>${esc(item.scope ?? r.base)}</code></button>
+      <button type="button" class="ep-copy" data-on="click:copyText" data-args="${actionArgs(route)}" data-tooltip="Copy route"><code>${esc(route)}</code></button>
+      <button type="button" class="ep-copy" data-on="click:copyText" data-args="${actionArgs(item.scope ?? r.base)}" data-tooltip="Copy token scope"><code>${esc(item.scope ?? r.base)}</code></button>
     </div>
   </div>`;
 }
@@ -663,11 +663,11 @@ function renderLifecycleCard(c) {
     <div class="ep-lifecycle-dates">
       <div class="field">
         <label class="field-label" for="lcDeprecatedSince">Deprecated since</label>
-        <input type="date" class="input" id="lcDeprecatedSince" value="${esc(dateValue(c.DeprecatedSince))}" oninput="markDirty()">
+        <input type="date" class="input" id="lcDeprecatedSince" value="${esc(dateValue(c.DeprecatedSince))}" data-on="input:markDirty">
       </div>
       <div class="field">
         <label class="field-label" for="lcSunset">Sunset</label>
-        <input type="date" class="input" id="lcSunset" value="${esc(dateValue(c.Sunset))}" oninput="markDirty()">
+        <input type="date" class="input" id="lcSunset" value="${esc(dateValue(c.Sunset))}" data-on="input:markDirty">
       </div>
     </div>
     <p class="field-hint">Sent as Deprecation, Sunset and successor-version Link headers.</p>`, set);
@@ -692,7 +692,7 @@ function fieldBadges(badges) {
   return `<div class="field">
     <label class="field-label">Badges</label>
     <div class="kv-editor" id="badges">${(badges ?? []).map(badgeRow).join('')}</div>
-    <button type="button" class="ep-add-row" onclick="document.getElementById('badges').insertAdjacentHTML('beforeend', badgeRow()); markDirty()">
+    <button type="button" class="ep-add-row" data-on="click:addBadgeRow click:markDirty">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Add badge
     </button>
@@ -702,13 +702,13 @@ function fieldBadges(badges) {
 function badgeRow(badge = {}) {
   const before = String(badge.Position ?? '').toLowerCase() === 'before';
   return `<div class="ep-kv-row ep-badge-row">
-    <input type="text" class="input" data-badge="name" placeholder="Name" aria-label="Badge name" maxlength="32" value="${esc(badge.Name ?? '')}" oninput="markDirty()">
-    <select class="input" data-badge="position" aria-label="Badge position" onchange="markDirty()">
+    <input type="text" class="input" data-badge="name" placeholder="Name" aria-label="Badge name" maxlength="32" value="${esc(badge.Name ?? '')}" data-on="input:markDirty">
+    <select class="input" data-badge="position" aria-label="Badge position" data-on="change:markDirty">
       <option value="after" ${before ? '' : 'selected'}>After</option>
       <option value="before" ${before ? 'selected' : ''}>Before</option>
     </select>
-    <input type="text" class="input" data-badge="color" placeholder="Color" aria-label="Badge color" value="${esc(badge.Color ?? '')}" oninput="markDirty()">
-    <button type="button" class="btn btn-ghost btn-icon" onclick="this.closest('.ep-kv-row').remove(); markDirty()" title="Remove" aria-label="Remove badge">
+    <input type="text" class="input" data-badge="color" placeholder="Color" aria-label="Badge color" value="${esc(badge.Color ?? '')}" data-on="input:markDirty">
+    <button type="button" class="btn btn-ghost btn-icon" data-on="click:removeClosest click:markDirty" data-args='[{"ref":"this"}, ".ep-kv-row"]' title="Remove" aria-label="Remove badge">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>`;
@@ -734,7 +734,7 @@ function fieldText(id, label, value, placeholder = '', opts = {}) {
   ].filter(Boolean).join(' ');
   return `<div class="field">
     <label class="field-label" for="${id}">${label}${required ? '<span class="field-required" aria-hidden="true">*</span>' : ''}</label>
-    <input type="${type}" class="input" id="${id}" value="${esc(value ?? '')}" placeholder="${esc(placeholder)}" ${attrs} oninput="markDirty()">
+    <input type="${type}" class="input" id="${id}" value="${esc(value ?? '')}" placeholder="${esc(placeholder)}" ${attrs} data-on="input:markDirty">
     ${hint ? `<div class="field-help" id="${id}-hint">${esc(hint)}</div>` : ''}
   </div>`;
 }
@@ -777,7 +777,7 @@ function fieldSelect(id, label, value, options) {
   const opts = options.map(o => `<option ${value === o ? 'selected' : ''}>${esc(o)}</option>`).join('');
   return `<div class="field">
     <label class="field-label" for="${id}">${label}</label>
-    <select class="input" id="${id}" onchange="markDirty()">${opts}</select>
+    <select class="input" id="${id}" data-on="change:markDirty">${opts}</select>
   </div>`;
 }
 
@@ -787,9 +787,17 @@ function fieldMethods(selected, id = 'methodPicker') {
   return `<div class="field">
     <span class="field-label" id="${id}-label">Methods<span class="field-required" aria-hidden="true">*</span></span>
     <div class="method-picker" id="${id}" role="group" aria-labelledby="${id}-label">
-      ${all.map(m => `<button type="button" class="method-btn m-${m.toLowerCase()} ${sel.includes(m) ? 'active' : ''}" aria-pressed="${sel.includes(m)}" onclick="toggleMethod(this); markDirty()">${m}</button>`).join('')}
+      ${all.map(m => `<button type="button" class="method-btn m-${m.toLowerCase()} ${sel.includes(m) ? 'active' : ''}" aria-pressed="${sel.includes(m)}" data-on="click:toggleMethod click:markDirty" data-args='[{"ref":"this"}]'>${m}</button>`).join('')}
     </div>
   </div>`;
+}
+
+function addBadgeRow() {
+  document.getElementById('badges').insertAdjacentHTML('beforeend', badgeRow());
+}
+
+function showExampleTip(el, fnName) {
+  Tooltip.show(el, window[fnName](), { side: 'right' });
 }
 
 function toggleMethod(btn) {
@@ -801,7 +809,7 @@ function fieldKV(id, label, obj) {
   return `<div class="field">
     <label class="field-label">${label}</label>
     <div class="kv-editor" id="${id}">${rows}</div>
-    <button type="button" class="ep-add-row" onclick="addKvRow('${id}')">
+    <button type="button" class="ep-add-row" data-on="click:addKvRow" data-args="${actionArgs(id)}">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Add row
     </button>
@@ -811,7 +819,7 @@ function fieldKV(id, label, obj) {
 function fieldTextarea(id, label, value, minHeight = '80px', isCode = false) {
   return `<div class="field">
     <label class="field-label" for="${id}">${label}</label>
-    <textarea id="${id}" class="input${isCode ? ' input-code' : ''}" style="min-height:${minHeight}" oninput="markDirty()">${esc(value ?? '')}</textarea>
+    <textarea id="${id}" class="input${isCode ? ' input-code' : ''}" style="min-height:${minHeight}" data-on="input:markDirty">${esc(value ?? '')}</textarea>
   </div>`;
 }
 
@@ -833,9 +841,9 @@ function readDocumentation(c) {
 
 function kvRow(k = '', v = '', keyLabel = 'Key', valueLabel = 'Value') {
   return `<div class="ep-kv-row">
-    <input type="text" class="input" placeholder="${esc(keyLabel)}" aria-label="${esc(keyLabel)}" value="${esc(k)}" oninput="markDirty()">
-    <input type="text" class="input" placeholder="${esc(valueLabel)}" aria-label="${esc(valueLabel)}" value="${esc(v)}" oninput="markDirty()">
-    <button type="button" class="btn btn-ghost btn-icon" onclick="this.closest('.ep-kv-row').remove(); markDirty()" title="Remove">
+    <input type="text" class="input" placeholder="${esc(keyLabel)}" aria-label="${esc(keyLabel)}" value="${esc(k)}" data-on="input:markDirty">
+    <input type="text" class="input" placeholder="${esc(valueLabel)}" aria-label="${esc(valueLabel)}" value="${esc(v)}" data-on="input:markDirty">
+    <button type="button" class="btn btn-ghost btn-icon" data-on="click:removeClosest click:markDirty" data-args='[{"ref":"this"}, ".ep-kv-row"]' title="Remove">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>`;
@@ -850,7 +858,7 @@ function fieldTenancy(tenancy, valueLabel) {
   return `<div class="field">
     <label class="field-label" id="tenancyLabel">Tenant headers</label>
     <div class="ep-col-list" id="tenancy" role="group" aria-labelledby="tenancyLabel">${rows}</div>
-    <button type="button" class="ep-add-row" onclick="addKvRow('tenancy', 'Header', '${esc(valueLabel)}'); markDirty()">
+    <button type="button" class="ep-add-row" data-on="click:addKvRow click:markDirty" data-args="${actionArgs('tenancy', 'Header', valueLabel)}">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Add tenant header
     </button>
@@ -861,7 +869,7 @@ function fieldTenancy(tenancy, valueLabel) {
 function fieldFileTenancy(tenancy) {
   return `<div class="field">
     <label class="field-label" for="tenancyHeaders">Tenant headers</label>
-    <input type="text" class="input" id="tenancyHeaders" placeholder="X-Company-Id" value="${esc(Object.keys(tenancy ?? {}).join(', '))}" oninput="markDirty()">
+    <input type="text" class="input" id="tenancyHeaders" placeholder="X-Company-Id" value="${esc(Object.keys(tenancy ?? {}).join(', '))}" data-on="input:markDirty">
     <div class="field-help">Comma separated. Each header needs a placeholder in Base Directory, e.g. <code>invoices/{X-Company-Id}</code>.</div>
   </div>`;
 }
@@ -888,7 +896,7 @@ function fieldColumns(id, label, arr, addLabel = 'Add column', placeholder = 'Co
   return `<div class="field">
     <span class="field-label" id="${id}-label">${label}${required ? '<span class="field-required" aria-hidden="true">*</span>' : ''}</span>
     <div class="ep-col-list" id="${id}" role="group" aria-labelledby="${id}-label">${rows}</div>
-    <button type="button" class="ep-add-row" onclick="addColRow('${id}', '${placeholder}', '${esc(label)}')">
+    <button type="button" class="ep-add-row" data-on="click:addColRow" data-args="${actionArgs(id, placeholder, label)}">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       ${addLabel}
     </button>
@@ -897,8 +905,8 @@ function fieldColumns(id, label, arr, addLabel = 'Add column', placeholder = 'Co
 
 function colRow(val = '', placeholder = 'ColumnName', label = 'Value') {
   return `<div class="ep-col-row">
-    <input type="text" class="input" placeholder="${esc(placeholder)}" value="${esc(val)}" aria-label="${esc(label)}" spellcheck="false" oninput="markDirty()">
-    <button type="button" class="btn btn-ghost btn-icon" onclick="this.closest('.ep-col-row').remove(); markDirty()" title="Remove" aria-label="Remove ${esc(label)} ${esc(val)}">
+    <input type="text" class="input" placeholder="${esc(placeholder)}" value="${esc(val)}" aria-label="${esc(label)}" spellcheck="false" data-on="input:markDirty">
+    <button type="button" class="btn btn-ghost btn-icon" data-on="click:removeClosest click:markDirty" data-args='[{"ref":"this"}, ".ep-col-row"]' title="Remove" aria-label="Remove ${esc(label)} ${esc(val)}">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>`;
@@ -936,7 +944,7 @@ function readMethods(id = 'methodPicker') {
 function fieldToggle(id, label, checked) {
   return `<div class="toggle-row">
     <label class="switch">
-      <input type="checkbox" id="${id}" ${checked ? 'checked' : ''} onchange="markDirty()">
+      <input type="checkbox" id="${id}" ${checked ? 'checked' : ''} data-on="change:markDirty">
       <span class="slider"></span>
     </label>
     <label for="${id}">${esc(label)}</label>
@@ -947,7 +955,7 @@ function fieldAllowedEnvs(value) {
   const list = (Array.isArray(value) ? value : String(value ?? '*').split(',')).map(v => String(v).trim()).filter(v => v && v !== '*');
   const all = !list.length;
   const names = [...new Set([..._allowedEnvs, ...list])];
-  const option = (env, checked, extra = '') => `<label class="env-option"><input type="checkbox" data-env="${esc(env)}" ${checked ? 'checked' : ''} ${extra} onchange="envChanged(this)"><span>${env === '*' ? 'All allowed' : esc(env)}</span>${env !== '*' && !_allowedEnvs.includes(env) ? '<span class="env-flag">not in the global allowlist</span>' : ''}</label>`;
+  const option = (env, checked, extra = '') => `<label class="env-option"><input type="checkbox" data-env="${esc(env)}" ${checked ? 'checked' : ''} ${extra} data-on="change:envChanged" data-args='[{"ref": "this"}]'><span>${env === '*' ? 'All allowed' : esc(env)}</span>${env !== '*' && !_allowedEnvs.includes(env) ? '<span class="env-flag">not in the global allowlist</span>' : ''}</label>`;
   return `<div class="field">
     <span class="field-label" id="allowedEnvironments-label">Environments</span>
     <div class="env-picker" id="allowedEnvironments" role="group" aria-labelledby="allowedEnvironments-label">
@@ -972,7 +980,7 @@ function fieldJson(id, label, value, minHeight = '100px') {
 }
 
 function fieldExampleIcon(fnName) {
-  return `<span class="field-example-icon" onmouseenter="Tooltip.show(this,${fnName}(),{side:'right'})" onmouseleave="Tooltip.hide()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>`;
+  return `<span class="field-example-icon" data-on="mouseenter:showExampleTip mouseleave:Tooltip.hide" data-args="${actionArgs(ARG.THIS, fnName)}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>`;
 }
 
 function deletePatternsExample() {
@@ -994,7 +1002,7 @@ function readJsonField(id) {
 
 function accordion(label, contentHtml, open = false) {
   return `<div class="accordion${open ? ' open' : ''}">
-    <button type="button" class="accordion-trigger" onclick="this.closest('.accordion').classList.toggle('open')" style="font-size:0.8125rem;padding:0.625rem 0.875rem;">
+    <button type="button" class="accordion-trigger" data-on="click:toggleClosestClass" data-args='[{"ref":"this"}, ".accordion", "open"]' style="font-size:0.8125rem;padding:0.625rem 0.875rem;">
       <span>${label}</span>
       <svg class="accordion-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
     </button>
@@ -1224,12 +1232,12 @@ function verifyRow(id, v) {
   const mode = v.Scheme ? (WEBHOOK_MODES.find(m => m.toLowerCase() === v.Scheme.toLowerCase()) ?? v.Scheme) : 'None';
   const shared = mode === 'SharedSecret';
   const input = (key, label, placeholder, value, extra = '') => `<label class="wh-field"><span>${esc(label)}</span>
-      <input type="${key === 'ToleranceSeconds' ? 'number' : 'text'}" class="input" data-key="${key}" value="${esc(value ?? '')}" placeholder="${esc(placeholder)}" spellcheck="false" ${extra} oninput="markDirty()"></label>`;
+      <input type="${key === 'ToleranceSeconds' ? 'number' : 'text'}" class="input" data-key="${key}" value="${esc(value ?? '')}" placeholder="${esc(placeholder)}" spellcheck="false" ${extra} data-on="input:markDirty"></label>`;
   const select = (key, label, options) => `<label class="wh-field"><span>${esc(label)}</span>
-      <select class="input" data-key="${key}" onchange="markDirty()">${options.map(o => `<option ${(v[key] ?? options[0]) === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`;
+      <select class="input" data-key="${key}" data-on="change:markDirty">${options.map(o => `<option ${(v[key] ?? options[0]) === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`;
   const secret = (key, label) => `<label class="wh-field"><span>${esc(label)}</span>
-      <input type="text" class="input wh-secret" data-key="${key}" list="secretNames" value="${esc(secretRefName(v[key]))}" placeholder="SECRET-NAME" spellcheck="false" autocomplete="off" oninput="markDirty()"></label>`;
-  const toggle = (key, label) => `<label class="wh-toggle"><span class="switch"><input type="checkbox" data-key="${key}" ${v[key] ? 'checked' : ''} onchange="markDirty()"><span class="slider"></span></span>${esc(label)}</label>`;
+      <input type="text" class="input wh-secret" data-key="${key}" list="secretNames" value="${esc(secretRefName(v[key]))}" placeholder="SECRET-NAME" spellcheck="false" autocomplete="off" data-on="input:markDirty"></label>`;
+  const toggle = (key, label) => `<label class="wh-toggle"><span class="switch"><input type="checkbox" data-key="${key}" ${v[key] ? 'checked' : ''} data-on="change:markDirty"><span class="slider"></span></span>${esc(label)}</label>`;
   const hmacValue = key => {
     if (key === 'Header') return shared ? '' : v.Header;
     if (key === 'SignedContent') return v.SignedContent ?? '{body}';
@@ -1239,7 +1247,7 @@ function verifyRow(id, v) {
   return `<div class="wh-verify-row" data-id="${esc(id)}" data-mode="${esc(mode)}">
     <div class="wh-verify-head">
       <span class="wh-id">${esc(id)}</span>
-      <select class="input wh-mode" aria-label="Verification for ${esc(id)}" onchange="modeChanged(this)">${modeOptions(mode)}</select>
+      <select class="input wh-mode" aria-label="Verification for ${esc(id)}" data-on="change:modeChanged" data-args='[{"ref": "this"}]'>${modeOptions(mode)}</select>
     </div>
     <div class="wh-verify-body">
       <div class="wh-preset-info">${presetInfo(mode)}</div>
@@ -1833,7 +1841,7 @@ async function closeCreateDrawer() {
 
 function renderCreateTypePicker() {
   document.getElementById('createTypePicker').innerHTML = ENDPOINT_TYPES
-    .map(t => `<button type="button" class="btn ${_createType === t.key ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="setCreateType('${t.key}')">${t.label}</button>`)
+    .map(t => `<button type="button" class="btn ${_createType === t.key ? 'btn-primary' : 'btn-outline'} btn-sm" data-on="click:setCreateType" data-args="${actionArgs(t.key)}">${t.label}</button>`)
     .join('');
 }
 

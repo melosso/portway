@@ -4,9 +4,9 @@ using Xunit;
 namespace PortwayApi.Tests.Services;
 
 /// <summary>
-/// The sign-in page carries no inline script, handler or style: behaviour and styling come from files
+/// Console markup carries no inline event handler; the Content-Security-Policy runs inline scripts only with the request nonce
 /// </summary>
-public class SignInPageTests
+public class ConsoleMarkupTests
 {
     private static string Read(params string[] parts) =>
         File.ReadAllText(Path.Combine([AppContext.BaseDirectory, "wwwroot", .. parts]));
@@ -19,6 +19,22 @@ public class SignInPageTests
         Assert.DoesNotMatch(@"\son[a-z]+=", html);
         Assert.DoesNotMatch(@"<script(?![^>]*\ssrc=)[^>]*>", html);
         Assert.DoesNotContain("style=", html);
+    }
+
+    [Fact]
+    public void ConsoleFiles_HaveNoInlineEventHandlers()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "wwwroot");
+        var files = Directory.EnumerateFiles(root, "*.html", SearchOption.AllDirectories)
+            .Concat(Directory.EnumerateFiles(Path.Combine(root, "js"), "*.js", SearchOption.AllDirectories))
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}vendor{Path.DirectorySeparatorChar}"));
+
+        var offenders = files
+            .Where(f => Regex.IsMatch(File.ReadAllText(f), @"\son[a-z]+=[""']"))
+            .Select(f => Path.GetRelativePath(root, f))
+            .ToList();
+
+        Assert.Empty(offenders);
     }
 
     [Fact]

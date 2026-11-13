@@ -16,7 +16,7 @@
             </div>
         </div>
         <div class="page-actions">
-            <button class="btn btn-outline" onclick="refreshAll()">
+            <button class="btn btn-outline" data-on="click:refreshAll">
                 <svg
                     width="13"
                     height="13"
@@ -33,7 +33,7 @@
                 </svg>
                 Refresh
             </button>
-            <button class="btn btn-primary" onclick="openCreateDrawer()">
+            <button class="btn btn-primary" data-on="click:openCreateDrawer">
                 <svg
                     width="13"
                     height="13"
@@ -74,7 +74,7 @@
                     class="input"
                     id="envSearchInput"
                     placeholder="Search..."
-                    oninput="filterEnvList()"
+                    data-on="input:filterEnvList"
                 />
             </div>
         </div>
@@ -84,7 +84,7 @@
                     <div class="ep-empty" style="padding:1.5rem;font-size:0.8rem">Loading…</div>
                 </div>
                 <div class="ep-list-footer">
-                    <button class="btn btn-outline" style="width:100%;font-size:0.8rem" onclick="openCreateDrawer()">
+                    <button class="btn btn-outline" style="width:100%;font-size:0.8rem" data-on="click:openCreateDrawer">
                         <svg
                             width="12"
                             height="12"
@@ -153,7 +153,7 @@
                 id="createName"
                 placeholder="e.g. prod, staging"
                 class="input"
-                oninput="validateCreateName(this); syncDatabaseNameFromEnvName(this.value)"
+                data-on="input:createNameInput" data-args='[{"ref":"this"}]'
             />
             <div
                 id="createNameErr"
@@ -178,7 +178,7 @@
                 />
                 <button
                     type="button"
-                    onclick="togglePasswordVis('createConnStr', this)"
+                    data-on="click:togglePasswordVis" data-args='["createConnStr", {"ref": "this"}]'
                     style="position:absolute;right:0.375rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:hsl(var(--muted-foreground));padding:0.2rem;"
                     title="Show / hide"
                 >
@@ -205,7 +205,7 @@
                 HTTP headers forwarded with every request for this environment.
             </div>
             <div class="kv-editor" id="createHeaders"></div>
-            <button class="ep-add-row" onclick="addCreateHeader()">
+            <button class="ep-add-row" data-on="click:addCreateHeader">
                 <svg
                     width="12"
                     height="12"
@@ -226,7 +226,7 @@
     </div>
     <div class="drawer-footer">
         <button class="btn btn-outline" data-drawer-close="createDrawer">Cancel</button>
-        <button class="btn btn-primary" onclick="submitCreate()" style="margin-left:auto">
+        <button class="btn btn-primary" data-on="click:submitCreate" style="margin-left:auto">
             <span class="btn-label">Create</span>
             <span class="btn-spinner"></span>
         </button>
@@ -282,7 +282,7 @@ function renderTabs(envs) {
     { key: 'missing', label: 'Missing Config',  count: missing },
   ];
   document.getElementById('envTabs').innerHTML = tabs.map(t => `
-    <button class="filter-btn ${_activeTab === t.key ? 'active' : ''}" aria-pressed="${_activeTab === t.key}" onclick="switchTab('${t.key}')">
+    <button class="filter-btn ${_activeTab === t.key ? 'active' : ''}" aria-pressed="${_activeTab === t.key}" data-on="click:switchTab" data-args="${actionArgs(t.key)}">
       ${esc(t.label)}
       <span class="filter-count">${t.count}</span>
     </button>`).join('');
@@ -334,7 +334,7 @@ function renderList(envs) {
 
   const globalActive = state.selected === '__global__';
   let html = `<div class="ep-list-group">Global</div>
-    <div class="ep-list-item ${globalActive ? 'active' : ''}" id="item-__global__" onclick="trySelect('__global__')">
+    <div class="ep-list-item ${globalActive ? 'active' : ''}" id="item-__global__" data-on="click:trySelect" data-args='["__global__"]'>
       <span class="ep-type-dot" style="background:hsl(var(--muted-foreground))"></span>
       <span class="ep-list-name">Global Settings</span>
     </div>`;
@@ -343,7 +343,7 @@ function renderList(envs) {
     html += `<div class="ep-list-group">Environments</div>`;
     html += envs.map(name => {
       const isActive = state.selected === name;
-      return `<div class="ep-list-item ${isActive ? 'active' : ''}" id="item-${esc(name)}" data-env="${esc(name)}" onclick="trySelect('${esc(name)}')">
+      return `<div class="ep-list-item ${isActive ? 'active' : ''}" id="item-${esc(name)}" data-env="${esc(name)}" data-on="click:trySelect" data-args="${actionArgs(name)}">
         <span class="ep-type-dot dot-static" id="dot-${esc(name)}"></span>
         <span class="ep-list-name">${esc(name)}</span>
         <span id="badge-${esc(name)}"></span>
@@ -421,7 +421,7 @@ function renderGlobalDetail() {
         <div class="card-header"><h2 class="card-title">Server Name</h2></div>
         <div class="field">
           <label class="field-label" for="gServerName">Default SQL Server</label>
-          <input type="text" class="input" id="gServerName" value="${esc(d?.server_name ?? '')}" placeholder="." oninput="markDirty()">
+          <input type="text" class="input" id="gServerName" value="${esc(d?.server_name ?? '')}" placeholder="." data-on="input:markDirty">
           <div class="field-help">Used when an environment has no server name of its own.</div>
         </div>
       </div>
@@ -433,8 +433,8 @@ function renderGlobalDetail() {
       </div>
     </div>
     <div style="padding:0.75rem 1rem;border-top:1px solid hsl(var(--border));display:flex;gap:0.5rem;justify-content:flex-end;flex-shrink:0">
-      <button class="btn btn-outline btn-sm" onclick="selectGlobal()">Discard</button>
-      <button id="globalSaveBtn" class="btn btn-primary btn-sm" onclick="saveGlobal()">
+      <button class="btn btn-outline btn-sm" data-on="click:selectGlobal">Discard</button>
+      <button id="globalSaveBtn" class="btn btn-primary btn-sm" data-on="click:saveGlobal">
         <span class="btn-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save</span>
         <span class="btn-spinner"></span>
       </button>
@@ -480,29 +480,29 @@ let _envRenaming = false;
 function paintEnvDetail(name, d, rawMode) {
   const headersHtml = buildKvEditor(d.headers ?? {});
   const nameHeader = _envRenaming
-    ? `<input type="text" id="envRenameInput" value="${esc(name)}" class="input input-title" onkeydown="if(event.key==='Enter')confirmEnvRename('${esc(name)}');if(event.key==='Escape')cancelEnvRename()" autofocus>
-       <button class="btn btn-primary btn-sm" onclick="confirmEnvRename('${esc(name)}')">Save</button>
-       <button class="btn btn-outline btn-sm" onclick="cancelEnvRename()">Cancel</button>`
+    ? `<input type="text" id="envRenameInput" value="${esc(name)}" class="input input-title" data-on="keydown:keyAction" data-args="${actionArgs(ARG.EVENT, 'confirmEnvRename', 'cancelEnvRename', name)}" autofocus>
+       <button class="btn btn-primary btn-sm" data-on="click:confirmEnvRename" data-args="${actionArgs(name)}">Save</button>
+       <button class="btn btn-outline btn-sm" data-on="click:cancelEnvRename">Cancel</button>`
     : `<h2>${esc(name)}</h2>`;
   document.getElementById('envDetail').innerHTML = `
     <div id="changeBanner" class="env-change-banner" style="display:none">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       File changed externally.
-      <button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="reloadEnv('${esc(name)}')">Reload</button>
+      <button class="btn btn-outline btn-sm" style="margin-left:auto" data-on="click:reloadEnv" data-args="${actionArgs(name)}">Reload</button>
     </div>
     <div class="ep-detail-header">
       <span class="ep-type-dot dot-static"></span>
       ${nameHeader}
       ${_envRenaming ? '' : `<div class="actions">
-        <button class="btn btn-outline btn-sm" onclick="startEnvRename()" data-tooltip="Rename environment">
+        <button class="btn btn-outline btn-sm" data-on="click:startEnvRename" data-tooltip="Rename environment">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Rename
         </button>
-        <button class="btn btn-outline btn-sm" onclick="toggleRaw('${esc(name)}')" ${rawMode ? 'style="background:hsl(var(--muted))"' : ''}>
+        <button class="btn btn-outline btn-sm" data-on="click:toggleRaw" data-args="${actionArgs(name)}" ${rawMode ? 'style="background:hsl(var(--muted))"' : ''}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
           ${rawMode ? 'Form view' : 'Raw JSON'}
         </button>
-        <button class="btn btn-outline btn-sm" onclick="startRemove('${esc(name)}')" style="color:hsl(var(--destructive));border-color:hsl(var(--destructive)/0.4)">
+        <button class="btn btn-outline btn-sm" data-on="click:startRemove" data-args="${actionArgs(name)}" style="color:hsl(var(--destructive));border-color:hsl(var(--destructive)/0.4)">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           Remove
         </button>
@@ -512,14 +512,14 @@ function paintEnvDetail(name, d, rawMode) {
       ${rawMode ? buildRawView(name, d) : buildFormView(name, d, headersHtml)}
     </div>
     <div style="padding:0.75rem 1rem;border-top:1px solid hsl(var(--border));display:flex;gap:0.5rem;justify-content:flex-end;flex-shrink:0">
-      <button class="btn btn-outline btn-sm" onclick="reloadEnv('${esc(name)}')">Discard</button>
+      <button class="btn btn-outline btn-sm" data-on="click:reloadEnv" data-args="${actionArgs(name)}">Discard</button>
       ${rawMode
-        ? `<button class="btn btn-outline btn-sm" onclick="validateRaw(true)">Validate</button>
-           <button id="envSaveBtn" class="btn btn-primary btn-sm" onclick="saveRaw('${esc(name)}')">
+        ? `<button class="btn btn-outline btn-sm" data-on="click:validateRaw" data-args='[true]'>Validate</button>
+           <button id="envSaveBtn" class="btn btn-primary btn-sm" data-on="click:saveRaw" data-args="${actionArgs(name)}">
              <span class="btn-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save JSON</span>
              <span class="btn-spinner"></span>
            </button>`
-        : `<button id="envSaveBtn" class="btn btn-primary btn-sm" onclick="saveEnv('${esc(name)}')">
+        : `<button id="envSaveBtn" class="btn btn-primary btn-sm" data-on="click:saveEnv" data-args="${actionArgs(name)}">
              <span class="btn-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save</span>
              <span class="btn-spinner"></span>
            </button>`}
@@ -537,7 +537,7 @@ function buildFormView(name, d, headersHtml) {
       <div class="card-header"><h2 class="card-title">Server</h2></div>
       <div class="field">
         <label class="field-label" for="editServerName">Server Name</label>
-        <input type="text" class="input" id="editServerName" value="${esc(d.server_name ?? '')}" placeholder="localhost" oninput="markDirty()">
+        <input type="text" class="input" id="editServerName" value="${esc(d.server_name ?? '')}" placeholder="localhost" data-on="input:markDirty">
         <div class="field-help">Overrides the global server name for this environment.</div>
       </div>
     </div>
@@ -549,8 +549,8 @@ function buildFormView(name, d, headersHtml) {
                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                Encrypted
              </span>
-             <button class="btn btn-outline btn-sm" onclick="toggleReplaceCs()">Replace</button>
-             <button class="btn btn-outline btn-sm" id="testBtn" onclick="testConnection('${esc(name)}')">
+             <button class="btn btn-outline btn-sm" data-on="click:toggleReplaceCs">Replace</button>
+             <button class="btn btn-outline btn-sm" id="testBtn" data-on="click:testConnection" data-args="${actionArgs(name)}">
                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                Test
              </button>
@@ -558,8 +558,8 @@ function buildFormView(name, d, headersHtml) {
            <div id="testResult" style="display:none;font-size:0.78rem;margin-bottom:0.375rem;"></div>
            <div id="replaceCs" style="display:none;">
              <div style="position:relative;">
-               <input type="password" id="editConnStr" placeholder="New connection string, encrypted on save" class="input input-secret" oninput="markDirty()">
-               <button type="button" onclick="togglePasswordVis('editConnStr', this)"
+               <input type="password" id="editConnStr" placeholder="New connection string, encrypted on save" class="input input-secret" data-on="input:markDirty">
+               <button type="button" data-on="click:togglePasswordVis" data-args='["editConnStr", {"ref": "this"}]'
                  style="position:absolute;right:0.375rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:hsl(var(--muted-foreground));padding:0.2rem;">
                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                </button>
@@ -567,8 +567,8 @@ function buildFormView(name, d, headersHtml) {
              <div class="field-help" style="margin-top:0.25rem">Encrypted on save.</div>
            </div>`
         : `<div style="position:relative;">
-             <input type="password" id="editConnStr" value="${esc(d.connection_string ?? '')}" placeholder="Server=...;Database=...;" class="input input-secret" oninput="markDirty()">
-             <button type="button" onclick="togglePasswordVis('editConnStr', this)"
+             <input type="password" id="editConnStr" value="${esc(d.connection_string ?? '')}" placeholder="Server=...;Database=...;" class="input input-secret" data-on="input:markDirty">
+             <button type="button" data-on="click:togglePasswordVis" data-args='["editConnStr", {"ref": "this"}]'
                style="position:absolute;right:0.375rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:hsl(var(--muted-foreground));padding:0.2rem;">
                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
              </button>
@@ -582,7 +582,7 @@ function buildFormView(name, d, headersHtml) {
       <div class="card-header"><h2 class="card-title">Headers</h2></div>
       <div class="field-help" style="margin-bottom:0.375rem">HTTP headers forwarded with every request for this environment.</div>
       <div class="kv-editor" id="editHeadersContainer">${headersHtml}</div>
-      <button class="ep-add-row" onclick="addEditHeader()">
+      <button class="ep-add-row" data-on="click:addEditHeader">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Add header
       </button>
@@ -597,7 +597,7 @@ function buildSecretsSection(name, d) {
       <div class="card-header"><h2 class="card-title">Secrets</h2></div>
       <div class="field-help" style="margin-bottom:0.5rem">Use as <code>\${secret:NAME}</code>. Values are encrypted and never shown. Changes apply immediately.</div>
       <div class="secret-list" id="secretList">${secretRows(d.secret_names ?? [])}</div>
-      <form class="kv-row secret-add" onsubmit="event.preventDefault(); addSecret()">
+      <form class="kv-row secret-add" data-on="submit:addSecret">
         <input type="text" id="newSecretName" class="input secret-name-input" placeholder="NAME" maxlength="64" autocomplete="off" spellcheck="false" aria-label="Secret name">
         <input type="password" id="newSecretValue" class="input input-secret" placeholder="Value" autocomplete="new-password" aria-label="Secret value">
         <button type="submit" class="btn btn-outline btn-sm">Add</button>
@@ -611,8 +611,8 @@ function secretRows(names) {
     <div class="secret-row" data-secret="${esc(n)}">
       <span class="secret-name">${esc(n)}</span>
       <span class="secret-mask" aria-label="Value hidden">••••••••</span>
-      <button type="button" class="btn btn-outline btn-sm" onclick="startReplaceSecret(this)">Replace</button>
-      <button type="button" class="btn btn-outline btn-sm secret-delete" onclick="startDeleteSecret(this)">Delete</button>
+      <button type="button" class="btn btn-outline btn-sm" data-on="click:startReplaceSecret" data-args='[{"ref": "this"}]'>Replace</button>
+      <button type="button" class="btn btn-outline btn-sm secret-delete" data-on="click:startDeleteSecret" data-args='[{"ref": "this"}]'>Delete</button>
     </div>`).join('');
 }
 
@@ -661,9 +661,9 @@ function startReplaceSecret(btn) {
   row.innerHTML = `
     <span class="secret-name">${esc(secret)}</span>
     <input type="password" class="input input-secret" placeholder="New value" autocomplete="new-password" aria-label="New value for ${esc(secret)}"
-      onkeydown="if(event.key==='Enter')saveReplaceSecret(this);if(event.key==='Escape')refreshSecrets()">
-    <button type="button" class="btn btn-primary btn-sm" onclick="saveReplaceSecret(this)">Save</button>
-    <button type="button" class="btn btn-outline btn-sm" onclick="refreshSecrets()">Cancel</button>`;
+      data-on="keydown:keyAction" data-args='[{"ref":"event"}, "saveReplaceSecret", "refreshSecrets", {"ref":"this"}]'>
+    <button type="button" class="btn btn-primary btn-sm" data-on="click:saveReplaceSecret" data-args='[{"ref": "this"}]'>Save</button>
+    <button type="button" class="btn btn-outline btn-sm" data-on="click:refreshSecrets">Cancel</button>`;
   row.querySelector('input').focus();
 }
 
@@ -698,18 +698,18 @@ function buildAuthSection(auth, prefix = 'edit') {
       <div class="card-header"><h2 class="card-title">Authentication</h2></div>
       
       <div style="display:flex;flex-direction:column;gap:0.75rem;margin-bottom:1rem;">
-        <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;" onclick="document.getElementById('${prefix}AuthEnabled').click()">
-          <label class="switch" onclick="event.stopPropagation()">
-            <input type="checkbox" id="${prefix}AuthEnabled" ${auth.enabled ? 'checked' : ''} onchange="toggleAuthUI('${prefix}'); markDirty()">
+        <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;" data-on="click:clickElement" data-args="${actionArgs(prefix + 'AuthEnabled')}">
+          <label class="switch" data-stop>
+            <input type="checkbox" id="${prefix}AuthEnabled" ${auth.enabled ? 'checked' : ''} data-on="change:toggleAuthUI change:markDirty" data-args="${actionArgs(prefix)}">
             <span class="slider"></span>
           </label>
           <span style="font-size:0.8125rem;font-weight:500;" data-tooltip="Accepts API key, Bearer, Basic, JWT or HMAC credentials on every request to this environment.">Enable custom authentication</span>
         </div>
 
         <div id="${prefix}AuthOverrideContainer" style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;${auth.enabled ? '' : 'opacity:0.5;pointer-events:none'}"
-             onclick="document.getElementById('${prefix}AuthOverride').click()">
-          <label class="switch" onclick="event.stopPropagation()">
-            <input type="checkbox" id="${prefix}AuthOverride" ${auth.override_global_token ? 'checked' : ''} onchange="markDirty()">
+             data-on="click:clickElement" data-args="${actionArgs(prefix + 'AuthOverride')}">
+          <label class="switch" data-stop>
+            <input type="checkbox" id="${prefix}AuthOverride" ${auth.override_global_token ? 'checked' : ''} data-on="change:markDirty">
             <span class="slider"></span>
           </label>
           <span style="font-size:0.8125rem;font-weight:500;" data-tooltip="Rejects the Portway bearer token. Accepts the methods above.">Override global token</span>
@@ -720,7 +720,7 @@ function buildAuthSection(auth, prefix = 'edit') {
         <div id="${prefix}AuthMethodsList" style="display:flex;flex-direction:column;gap:0.75rem;margin-bottom:0.75rem;">
           ${methodsHtml}
         </div>
-        <button class="btn btn-outline btn-sm" onclick="addAuthMethod('${prefix}')">
+        <button class="btn btn-outline btn-sm" data-on="click:addAuthMethod" data-args="${actionArgs(prefix)}">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Add Method
         </button>
@@ -740,10 +740,10 @@ function buildAuthMethodCard(m) {
     <div class="card auth-method-item">
       <div class="card-header" style="padding:0.5rem 1rem;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));display:flex;align-items:center;gap:0.75rem;">
         <span class="badge badge-muted">Method</span>
-        <select class="input input-sm auth-type-sel" style="width:120px" onchange="updateAuthFields(this); markDirty()">
+        <select class="input input-sm auth-type-sel" style="width:120px" data-on="change:updateAuthFields change:markDirty" data-args='[{"ref":"this"}]'>
           ${typeOptions}
         </select>
-        <button class="btn-icon btn-destructive" style="margin-left:auto" onclick="this.closest('.auth-method-item').remove(); markDirty()" title="Remove method">
+        <button class="btn-icon btn-destructive" style="margin-left:auto" data-on="click:removeClosest click:markDirty" data-args='[{"ref":"this"}, ".auth-method-item"]' title="Remove method">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
@@ -762,7 +762,7 @@ function updateAuthFields(sel) {
 
 function buildAuthFieldsForType(m) {
   const toggleBtn = `
-    <button type="button" onclick="const input = this.previousElementSibling; input.type = input.type === 'password' ? 'text' : 'password'; this.style.color = input.type === 'text' ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))';"
+    <button type="button" data-on="click:toggleSiblingPasswordVis" data-args='[{"ref":"this"}]'
       style="position:absolute;right:0.375rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:hsl(var(--muted-foreground));padding:0.2rem;">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
     </button>`;
@@ -771,43 +771,43 @@ function buildAuthFieldsForType(m) {
     return `
       <div class="field">
         <label class="field-label">Issuer</label>
-        <input type="text" class="input auth-f-issuer" value="${esc(m.issuer || '')}" oninput="markDirty()">
+        <input type="text" class="input auth-f-issuer" value="${esc(m.issuer || '')}" data-on="input:markDirty">
       </div>
       <div class="field">
         <label class="field-label">Audience</label>
-        <input type="text" class="input auth-f-audience" value="${esc(m.audience || '')}" oninput="markDirty()">
+        <input type="text" class="input auth-f-audience" value="${esc(m.audience || '')}" data-on="input:markDirty">
       </div>
       <div class="field">
         <label class="field-label">Algorithm</label>
-        <select class="input auth-f-algorithm" onchange="markDirty()">
+        <select class="input auth-f-algorithm" data-on="change:markDirty">
           ${['HS256', 'RS256', 'None'].map(a => `<option value="${a}" ${m.algorithm === a ? 'selected' : ''}>${a}</option>`).join('')}
         </select>
       </div>
       <div class="field">
         <label class="field-label">Secret</label>
         <div style="position:relative;">
-          <input type="password" class="input input-secret auth-f-secret" placeholder="e.g. Abc" value="${esc(m.secret || '')}" oninput="markDirty()">
+          <input type="password" class="input input-secret auth-f-secret" placeholder="e.g. Abc" value="${esc(m.secret || '')}" data-on="input:markDirty">
           ${toggleBtn}
         </div>
       </div>
       <div class="field" style="grid-column:1/-1;">
         <label class="field-label">Public Key (PEM)</label>
-        <textarea class="input input-code auth-f-publickey" style="min-height:60px" placeholder="-----BEGIN PUBLIC KEY-----" oninput="markDirty()">${esc(m.publicKey || '')}</textarea>
+        <textarea class="input input-code auth-f-publickey" style="min-height:60px" placeholder="-----BEGIN PUBLIC KEY-----" data-on="input:markDirty">${esc(m.publicKey || '')}</textarea>
       </div>
       <div class="field">
         <label class="field-label">Client ID</label>
-        <input type="text" class="input auth-f-clientid" value="${esc(m.clientId || '')}" placeholder="Optional" oninput="markDirty()">
+        <input type="text" class="input auth-f-clientid" value="${esc(m.clientId || '')}" placeholder="Optional" data-on="input:markDirty">
       </div>
       <div class="field">
         <label class="field-label">Client Secret</label>
         <div style="position:relative;">
-          <input type="password" class="input input-secret auth-f-clientsecret" value="${esc(m.clientSecret || '')}" placeholder="Optional" oninput="markDirty()">
+          <input type="password" class="input input-secret auth-f-clientsecret" value="${esc(m.clientSecret || '')}" placeholder="Optional" data-on="input:markDirty">
           ${toggleBtn}
         </div>
       </div>
       <div class="field" style="grid-column:1/-1;">
         <label class="field-label">Introspection Endpoint</label>
-        <input type="text" class="input auth-f-introspection" value="${esc(m.introspectionEndpoint || '')}" placeholder="https://..." oninput="markDirty()">
+        <input type="text" class="input auth-f-introspection" value="${esc(m.introspectionEndpoint || '')}" placeholder="https://..." data-on="input:markDirty">
       </div>
     `;
   }
@@ -816,12 +816,12 @@ function buildAuthFieldsForType(m) {
     return `
       <div class="field">
         <label class="field-label">Header Name</label>
-        <input type="text" class="input auth-f-name" value="${esc(m.name || 'X-Signature')}" placeholder="e.g. X-Signature" oninput="markDirty()">
+        <input type="text" class="input auth-f-name" value="${esc(m.name || 'X-Signature')}" placeholder="e.g. X-Signature" data-on="input:markDirty">
       </div>
       <div class="field">
         <label class="field-label">Shared Secret</label>
         <div style="position:relative;">
-          <input type="password" class="input input-secret auth-f-secret" placeholder="E.g. Abc" value="${esc(m.secret || '')}" oninput="markDirty()">
+          <input type="password" class="input input-secret auth-f-secret" placeholder="E.g. Abc" value="${esc(m.secret || '')}" data-on="input:markDirty">
           ${toggleBtn}
         </div>
       </div>
@@ -831,18 +831,18 @@ function buildAuthFieldsForType(m) {
   return `
     <div class="field">
       <label class="field-label">${m.type === 'Basic' ? 'Username' : 'Name'}</label>
-      <input type="text" class="input auth-f-name" value="${esc(m.name || '')}" placeholder="${m.type === 'Bearer' ? 'n/a' : 'e.g. X-API-Key'}" oninput="markDirty()">
+      <input type="text" class="input auth-f-name" value="${esc(m.name || '')}" placeholder="${m.type === 'Bearer' ? 'n/a' : 'e.g. X-API-Key'}" data-on="input:markDirty">
     </div>
     <div class="field">
       <label class="field-label">${m.type === 'Basic' ? 'Password' : 'Value'}</label>
       <div style="position:relative;">
-        <input type="password" class="input input-secret auth-f-value" placeholder="e.g. ABC" value="${esc(m.value || '')}" oninput="markDirty()">
+        <input type="password" class="input input-secret auth-f-value" placeholder="e.g. ABC" value="${esc(m.value || '')}" data-on="input:markDirty">
         ${toggleBtn}
       </div>
     </div>
     <div class="field" style="grid-column:1/-1;">
       <label class="field-label">In</label>
-      <select class="input auth-f-in" onchange="markDirty()">
+      <select class="input auth-f-in" data-on="change:markDirty">
         ${['Header', 'Query', 'Cookie'].map(i => `<option value="${i}" ${m.in === i ? 'selected' : ''}>${i}</option>`).join('')}
       </select>
     </div>
@@ -913,7 +913,7 @@ function buildRawView(name, d) {
       Any plaintext <code style="font-family: var(--font-mono)">ConnectionString</code> will be automatically encrypted on save.
     </div>
     <div class="ep-raw-editor" style="flex:1;display:flex;flex-direction:column;">
-      <textarea id="rawTextarea" class="input input-code" spellcheck="false" oninput="validateRaw(); markDirty();" style="flex:1;min-height:260px">${esc(d._rawContent ?? '')}</textarea>
+      <textarea id="rawTextarea" class="input input-code" spellcheck="false" data-on="input:validateRaw input:markDirty" style="flex:1;min-height:260px">${esc(d._rawContent ?? '')}</textarea>
       <div id="rawError" style="font-size:0.75rem;color:hsl(var(--destructive));margin-top:0.25rem;"></div>
     </div>`;
 }
@@ -1090,8 +1090,8 @@ function startRemove(name) {
     title: `Remove "${name}"?`,
     description: 'Removes the environment from the allowed list.',
     actionLabel: 'Remove',
-    extraHtml: `<div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;margin-top:0.5rem;" onclick="document.getElementById('deleteFilesSwitch').click()">
-      <label class="switch" onclick="event.stopPropagation()">
+    extraHtml: `<div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;margin-top:0.5rem;" data-on="click:clickElement" data-args='["deleteFilesSwitch"]'>
+      <label class="switch" data-stop>
         <input type="checkbox" id="deleteFilesSwitch">
         <span class="slider"></span>
       </label>
@@ -1184,6 +1184,11 @@ function syncDatabaseNameFromEnvName(value) {
 
 function addCreateHeader() {
   addKvRow('createHeaders', { onValueInput: e => { e.target.dataset.userEdited = '1'; } });
+}
+
+function createNameInput(input) {
+  validateCreateName(input);
+  syncDatabaseNameFromEnvName(input.value);
 }
 
 function validateCreateName(input) {

@@ -97,7 +97,7 @@
             </div>
         </div>
         <div class="page-actions">
-            <button class="btn btn-outline" id="refreshBtn" onclick="load()">
+            <button class="btn btn-outline" id="refreshBtn" data-on="click:load">
                 <svg
                     width="13"
                     height="13"
@@ -401,13 +401,13 @@ async function loadBackups() {
   try {
     const d = await api('/_/api/backups', { silent: true });
     const pending = d.pending_restore
-      ? settingItemRaw('Restore pending', '<button class="btn btn-outline btn-sm" onclick="cancelRestore()">Cancel</button>',
+      ? settingItemRaw('Restore pending', '<button class="btn btn-outline btn-sm" data-on="click:cancelRestore">Cancel</button>',
           `${d.pending_restore} replaces the databases and configuration at the next start. Restart Portway to apply.`)
       : '';
     el.innerHTML = pending + ((d.backups ?? []).map(b => settingItemRaw(esc(b.name),
       `<div class="card-footer-actions">
-        <button class="btn btn-outline btn-sm" onclick="downloadBackup('${esc(b.name)}')">Download</button>
-        <button class="btn btn-outline btn-sm" onclick="restoreBackup('${esc(b.name)}')">Restore</button>
+        <button class="btn btn-outline btn-sm" data-on="click:downloadBackup" data-args="${actionArgs(b.name)}">Download</button>
+        <button class="btn btn-outline btn-sm" data-on="click:restoreBackup" data-args="${actionArgs(b.name)}">Restore</button>
       </div>`,
       `${new Date(b.created_utc).toLocaleString()} · ${Math.max(1, Math.round(b.bytes / 1024))} KB`)).join('')
       || settingItem('Snapshots', 'None yet', 'Create backup writes the first snapshot.'));
@@ -523,7 +523,7 @@ const CARDS = {
       ? `Sign-in through ${feat.oidc_providers} configured provider(s).`
       : 'Sign-in through an identity provider. No providers configured.'),
     ...(sec.legacy_admin_key && editable('Console:AdminApiKey') ? [settingItemRaw('Seeding key',
-      '<button class="btn btn-outline" onclick="clearAdminKey()">Remove</button>',
+      '<button class="btn btn-outline" data-on="click:clearAdminKey">Remove</button>',
       'Deprecated console key. Not used for sign-in.')] : []),
   ] },
 
@@ -568,7 +568,7 @@ const CARDS = {
     field('Console:Customization:LoginFooter', 'Sign-in footer', 'Markdown below the sign-in form.', { multiline: true, placeholder: 'Contact your [administrator](mailto:...)' }),
   ] },
 
-  maintenanceBody: { actions: '<button class="btn btn-outline" onclick="runMaintenance(this)">Run now</button>',
+  maintenanceBody: { actions: '<button class="btn btn-outline" data-on="click:runMaintenance" data-args="' + actionArgs(ARG.THIS) + '">Run now</button>',
     rows: ({ database_maintenance: dbm = {} }) => [
       field('DatabaseMaintenance:Enabled', 'Enabled', 'Checks, analyzes and compacts the SQLite databases daily.'),
       field('DatabaseMaintenance:Schedule', 'Run at', 'Server local time of the daily run.'),
@@ -583,7 +583,7 @@ const CARDS = {
         maintenanceSummary(r))),
     ] },
 
-  backupBody: { actions: '<button class="btn btn-outline" onclick="createBackup(this)">Create backup</button>', rows: () => [
+  backupBody: { actions: '<button class="btn btn-outline" data-on="click:createBackup" data-args="' + actionArgs(ARG.THIS) + '">Create backup</button>', rows: () => [
     field('DatabaseMaintenance:Backup:Enabled', 'Scheduled backup', 'Writes a snapshot at the maintenance time.'),
     field('DatabaseMaintenance:Backup:Retention', 'Retention', 'Retained snapshots. Older snapshots are deleted.', { unit: 'backups' }),
     '<div id="backupList"></div>',
@@ -730,7 +730,7 @@ async function loadAudit() {
     el.innerHTML = entries.map(e => {
       const when = new Date(e.timestamp).toLocaleString();
       const restore = e.restorable
-        ? `<button class="btn btn-outline btn-sm" onclick="restoreChange(${e.id})">Restore</button>`
+        ? `<button class="btn btn-outline btn-sm" data-on="click:restoreChange" data-args="${actionArgs(e.id)}">Restore</button>`
         : '';
       return `<div class="settings-item">
         <div>
@@ -774,7 +774,7 @@ async function loadAiConfig() {
       aiBody.innerHTML = `<div class="settings-item">
         <span class="settings-item-label" style="color:hsl(var(--muted-foreground));font-size:0.8rem;">Not configured</span>
       </div>`;
-      aiActions.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openAiReconfigure()">Configure</button>`;
+      aiActions.innerHTML = `<button class="btn btn-primary btn-sm" data-on="click:openAiReconfigure">Configure</button>`;
       return;
     }
 
@@ -796,10 +796,10 @@ async function loadAiConfig() {
       settingItemRaw('Model', esc(cfg.model || '—'), 'Model used for chat.'),
       settingItemRaw('API Key',  apiKeyHtml, envDesc)
     ].join('') + `<div class="ai-clear-row">
-      <button class="btn btn-ghost btn-sm" style="color:hsl(var(--destructive))" onclick="confirmClearAiConfig()">Clear configuration</button>
+      <button class="btn btn-ghost btn-sm" style="color:hsl(var(--destructive))" data-on="click:confirmClearAiConfig">Clear configuration</button>
     </div>`;
 
-    aiActions.innerHTML = `<button class="btn btn-outline btn-sm" onclick="openAiReconfigure()">Reconfigure</button>`;
+    aiActions.innerHTML = `<button class="btn btn-outline btn-sm" data-on="click:openAiReconfigure">Reconfigure</button>`;
 
   } catch(e) {
     aiBody.innerHTML = `<div class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</div>`;
@@ -832,8 +832,8 @@ function _aiWizardStep1() {
       <div class="wizard-providers">${rows}</div>
       <div id="wizard-step1-err" class="wizard-error" hidden></div>`,
     footer: `
-      <button type="button" class="btn btn-outline" onclick="Dialog.close('ai-setup')">Cancel</button>
-      <button type="button" class="btn btn-primary" onclick="_aiWizardNext1()">Next</button>`,
+      <button type="button" class="btn btn-outline" data-on="click:Dialog.close" data-args='["ai-setup"]'>Cancel</button>
+      <button type="button" class="btn btn-primary" data-on="click:_aiWizardNext1">Next</button>`,
     onOpen: () => {
       document.querySelectorAll('.wizard-provider-option').forEach(el => {
         el.addEventListener('click', () => {
@@ -875,7 +875,7 @@ function _aiWizardStep2() {
         <label class="field-label" for="wiz-key">API Key <span style="color:hsl(var(--destructive))">*</span></label>
         <div style="position:relative;display:flex;align-items:center;">
           <input id="wiz-key" type="password" class="input" style="flex:1;padding-right:2.5rem;" placeholder="${esc(p.label)} API key" autocomplete="off" spellcheck="false" />
-          <button type="button" class="btn btn-ghost btn-sm" style="position:absolute;right:0.375rem;padding:0.25rem;border:none;background:transparent;" onclick="document.getElementById('wiz-key').type=document.getElementById('wiz-key').type==='password'?'text':'password'">
+          <button type="button" class="btn btn-ghost btn-sm" style="position:absolute;right:0.375rem;padding:0.25rem;border:none;background:transparent;" data-on="click:togglePasswordVis" data-args='["wiz-key", {"ref":"this"}]'>
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
@@ -883,8 +883,8 @@ function _aiWizardStep2() {
       </div>
       <div id="wizard-step2-err" class="wizard-error" hidden></div>`,
     footer: `
-      <button type="button" class="btn btn-outline" onclick="_aiWizardStep1()">Back</button>
-      <button type="button" class="btn btn-primary" id="wiz-save-btn" onclick="_aiWizardSave()">Save configuration</button>`,
+      <button type="button" class="btn btn-outline" data-on="click:_aiWizardStep1">Back</button>
+      <button type="button" class="btn btn-primary" id="wiz-save-btn" data-on="click:_aiWizardSave">Save configuration</button>`,
     onOpen: () => {
       document.getElementById('wiz-key')?.focus();
       document.getElementById('wiz-key')?.addEventListener('keydown', e => { if (e.key === 'Enter') _aiWizardSave(); });

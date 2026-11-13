@@ -569,7 +569,7 @@ public class WebUiSecurityTests : IDisposable
         var start = html.IndexOf("id=\"editDrawer\"", StringComparison.Ordinal);
         var end = html.IndexOf("id=\"editFooter\"", start, StringComparison.Ordinal);
         Assert.Contains("id=\"rotateRow\"", html[start..end]);
-        Assert.Contains("onclick=\"confirmRotate()\"", html[start..end]);
+        Assert.Contains("data-on=\"click:confirmRotate\"", html[start..end]);
         Assert.DoesNotContain("data-tooltip=\"Rotate token\"", html);
     }
 

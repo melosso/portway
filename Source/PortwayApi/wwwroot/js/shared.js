@@ -39,6 +39,76 @@ function esc(s) {
         .replace(/'/g, '&#39;');
 }
 
+// CSP forbids inline handlers: markup binds with data-on="click:fn input:other" and optional data-args (JSON array, shared by every binding on the element)
+// {"ref": "this" | "event" | "value" | "checked"} in data-args resolves per call; a click inside data-stop runs no ancestor binding
+const ARG = { THIS: { ref: 'this' }, EVENT: { ref: 'event' }, VALUE: { ref: 'value' }, CHECKED: { ref: 'checked' } };
+
+// Shared targets for former one-line inline handlers
+function removeClosest(el, selector) {
+    el.closest(selector)?.remove();
+}
+
+function toggleClosestClass(el, selector, className) {
+    el.closest(selector)?.classList.toggle(className);
+}
+
+function clickElement(id) {
+    document.getElementById(id)?.click();
+}
+
+// Enter runs enterFn with the remaining arguments; Escape runs escapeFn
+function keyAction(e, enterFn, escapeFn, ...enterArgs) {
+    if (e.key === 'Enter') window[enterFn](...enterArgs);
+    else if (e.key === 'Escape') window[escapeFn]();
+}
+
+// Attribute-safe data-args value for markup built in template strings
+function actionArgs(...args) {
+    return esc(JSON.stringify(args));
+}
+
+function _resolveActionArg(a, el, e) {
+    if (a === null || typeof a !== 'object' || !('ref' in a)) return a;
+    if (a.ref === 'this') return el;
+    if (a.ref === 'event') return e;
+    if (a.ref === 'value') return el.value;
+    if (a.ref === 'checked') return el.checked;
+    return a;
+}
+
+// Enter and leave events reach document only in the capture phase and match their own target, never an ancestor
+const _TARGET_ONLY_EVENTS = new Set(['mouseenter', 'mouseleave', 'pointerenter', 'pointerleave']);
+
+function _dispatchAction(e) {
+    const targetOnly = _TARGET_ONLY_EVENTS.has(e.type);
+    for (
+        let el = e.target instanceof Element ? e.target : e.target?.parentElement;
+        el;
+        el = targetOnly ? null : el.parentElement
+    ) {
+        if (e.type === 'click' && el.hasAttribute('data-stop')) return;
+        const bindings = (el.getAttribute('data-on') || '').split(/\s+/).filter((b) => b.startsWith(e.type + ':'));
+        if (!bindings.length) continue;
+        if (e.type === 'submit') e.preventDefault();
+        const args = el.dataset.args ? JSON.parse(el.dataset.args).map((a) => _resolveActionArg(a, el, e)) : [];
+        // Bindings run in attribute order with the same arguments, like statements in a former inline handler
+        for (const binding of bindings) {
+            const path = binding.slice(e.type.length + 1).split('.');
+            const owner = path.slice(0, -1).reduce((o, k) => o?.[k], window);
+            const fn = owner?.[path[path.length - 1]];
+            if (typeof fn !== 'function') {
+                console.error('data-on target is not a function: ' + binding);
+                return;
+            }
+            fn.apply(owner, args);
+        }
+        if (e.cancelBubble) return;
+    }
+}
+
+for (const type of ['click', 'input', 'change', 'keydown', 'submit', ..._TARGET_ONLY_EVENTS])
+    document.addEventListener(type, _dispatchAction, true);
+
 const STATUS_ICON_PATHS = {
     ok: '<path d="M20 6 9 17l-5-5"/>',
     warn: '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
@@ -83,7 +153,14 @@ async function api(url, options = {}) {
 }
 
 function togglePasswordVis(inputId, btn) {
-    const el = document.getElementById(inputId);
+    _togglePasswordInput(document.getElementById(inputId), btn);
+}
+
+function toggleSiblingPasswordVis(btn) {
+    _togglePasswordInput(btn.previousElementSibling, btn);
+}
+
+function _togglePasswordInput(el, btn) {
     if (!el) return;
     const showing = el.type === 'text';
     el.type = showing ? 'password' : 'text';

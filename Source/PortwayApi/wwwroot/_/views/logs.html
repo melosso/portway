@@ -6,7 +6,7 @@
             </div>
         </div>
         <div class="page-actions">
-            <button class="btn btn-outline" id="autoRefreshBtn" onclick="toggleAutoRefresh()">
+            <button class="btn btn-outline" id="autoRefreshBtn" data-on="click:toggleAutoRefresh">
                 <svg
                     width="13"
                     height="13"
@@ -22,7 +22,7 @@
                 </svg>
                 Auto-refresh
             </button>
-            <button class="btn btn-outline" onclick="resetAndLoad()">
+            <button class="btn btn-outline" data-on="click:resetAndLoad">
                 <svg
                     width="13"
                     height="13"
@@ -44,20 +44,20 @@
 
     <div class="log-toolbar">
         <div class="filter-btns" role="group" aria-label="Log level">
-            <button class="filter-btn active" id="btn-ALL" aria-pressed="true" onclick="setLevel('ALL')">ALL</button>
-            <button class="filter-btn" id="btn-INF" aria-pressed="false" onclick="setLevel('INF')">INF</button>
-            <button class="filter-btn" id="btn-WRN" aria-pressed="false" onclick="setLevel('WRN')">WRN</button>
-            <button class="filter-btn" id="btn-ERR" aria-pressed="false" onclick="setLevel('ERR')">ERR</button>
-            <button class="filter-btn" id="btn-DBG" aria-pressed="false" onclick="setLevel('DBG')">DBG</button>
+            <button class="filter-btn active" id="btn-ALL" aria-pressed="true" data-on="click:setLevel" data-args='["ALL"]'>ALL</button>
+            <button class="filter-btn" id="btn-INF" aria-pressed="false" data-on="click:setLevel" data-args='["INF"]'>INF</button>
+            <button class="filter-btn" id="btn-WRN" aria-pressed="false" data-on="click:setLevel" data-args='["WRN"]'>WRN</button>
+            <button class="filter-btn" id="btn-ERR" aria-pressed="false" data-on="click:setLevel" data-args='["ERR"]'>ERR</button>
+            <button class="filter-btn" id="btn-DBG" aria-pressed="false" data-on="click:setLevel" data-args='["DBG"]'>DBG</button>
         </div>
         <div class="log-divider"></div>
-        <select id="limitSelect" class="input input-sm" onchange="resetAndLoad()">
+        <select id="limitSelect" class="input input-sm" data-on="change:resetAndLoad">
             <option value="100">100 lines</option>
             <option value="200" selected>200 lines</option>
             <option value="500">500 lines</option>
             <option value="1000">1000 lines</option>
         </select>
-        <button class="btn btn-outline" id="loadMoreBtn" onclick="loadMore()" style="display:none">Load More</button>
+        <button class="btn btn-outline" id="loadMoreBtn" data-on="click:loadMore" style="display:none">Load More</button>
         <span class="log-count" id="logCount"></span>
     </div>
 
