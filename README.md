@@ -64,17 +64,19 @@ Configuration and usage examples for each type are shown in the [Endpoints](http
 
 The [install guide](https://melosso.github.io/portway/guide/install) describes Docker, Linux and Windows Server installs, application pool identity for proxies, security settings and production hardening.
 
----
+### Connect
 
-## Security
-
-Portway uses a hardened token-based system for authentication. Include the token in request headers, with the Bearer prefix included:
+Every `/api` request requires a bearer token. The token is scoped to its endpoints and environments.
 
 ```bash
-Authorization: Bearer YOUR_TOKEN_HERE
+curl -H "Authorization: Bearer YOUR_TOKEN_HERE" https://your-host/api/{env}/{endpoint}
 ```
 
-You can find more about this topic in the [security guide](https://melosso.github.io/portway/guide/security).
+Portway is an MCP server over HTTP at `/mcp`. Endpoints with MCP enabled are tools for any MCP client. MCP is enabled per endpoint. Each tool call uses the client's own token and environment scope.
+
+The [security guide](https://melosso.github.io/portway/guide/security) and [MCP guide](https://melosso.github.io/portway/guide/mcp) describe tokens, scopes and client setup.
+
+---
 
 ## Documentation
 
@@ -83,11 +85,8 @@ The OpenAPI documentation endpoint is configurable and can be disabled.
 ### Interactive documentation
 The application uses [Scalar](https://github.com/scalar/scalar) to render your OpenAPI specification as interactive API documentation. `/docs` displays endpoints, request and response schemas and a request client, generated from the endpoint configuration.
 
-### Model Context Protocol (MCP)
-Portway is an MCP server over HTTP. Endpoints with MCP enabled are tools for any MCP client (e.g. Mistral, VS Code Copilot, custom agents or the built-in chat). MCP is opt-in per endpoint. Token authentication and environment scoping apply to every tool call. See the [MCP documentation](https://melosso.github.io/portway/guide/mcp).
-
 ### Walkthrough
-The [documentation](https://melosso.github.io/portway/) describes setup, usage and advanced configuration. Documentation changes are accepted as pull requests.
+The [documentation](https://melosso.github.io/portway/) describes setup, usage and advanced configuration, with configuration examples for each endpoint type and complete application examples.
 
 ## Contribution 
 
