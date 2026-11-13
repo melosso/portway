@@ -19,8 +19,10 @@ function saveUiSettings(patch) {
     } catch {}
 }
 
+let _themeChoice = uiSettings().theme || 'system';
+
 function themeChoice() {
-    return uiSettings().theme || 'system';
+    return _themeChoice;
 }
 
 function isDarkTheme() {
@@ -29,6 +31,7 @@ function isDarkTheme() {
 }
 
 function applyTheme(choice) {
+    _themeChoice = choice;
     saveUiSettings({ theme: choice });
     if (choice === 'system') document.documentElement.removeAttribute('data-theme');
     else document.documentElement.setAttribute('data-theme', choice);
