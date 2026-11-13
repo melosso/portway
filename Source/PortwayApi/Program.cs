@@ -186,15 +186,15 @@ try
     // Record request metrics for all non-health paths (UI and API tracked separately)
     app.UsePortwayRequestMetrics();
 
+    // Root path, legacy /swagger and docs redirects; before default files, which serve index.html at /
+    app.UsePortwayRootRedirects(webUiEnabled, publicOrigins, enableLandingPage);
+
     app.UseDefaultFilesWithOptions();
 
     // Inject PathBase into index.html before static files can serve it
     app.UseIndexHtmlPathBaseInjection();
 
     app.UseStaticFilesWithCaching();
-
-    // Root path, legacy /swagger and docs redirects
-    app.UsePortwayRootRedirects(webUiEnabled, publicOrigins, enableLandingPage);
 
     app.UsePortwayCors();
 

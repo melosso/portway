@@ -1,3 +1,6 @@
+using Microsoft.Extensions.Options;
+using PortwayApi.Classes.OpenApi;
+
 namespace PortwayApi.Middleware;
 
 public sealed record PortRouting(int ApiPort, int ConsolePort)
@@ -29,6 +32,7 @@ public static class PortRoutingExtensions
         var ports = app.Services.GetRequiredService<PortRouting>();
         if (!ports.IsSplit)
             return app;
+        var docsEnabled = app.Services.GetRequiredService<IOptionsMonitor<OpenApiSettings>>().CurrentValue.Enabled;
 
         app.Use((context, next) =>
         {
@@ -38,6 +42,8 @@ public static class PortRoutingExtensions
 
             if (ports.IsApiPort(localPort) && context.Request.Path == "/")
             {
+                if (!docsEnabled)
+                    return FallbackEndpointExtensions.WriteNotFoundAsync(context);
                 context.Response.Redirect($"{context.Request.PathBase}/docs");
                 return Task.CompletedTask;
             }
