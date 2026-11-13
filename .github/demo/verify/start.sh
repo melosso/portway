@@ -105,6 +105,7 @@ console() { "$(dirname "$0")/console.sh" "$@"; }
 scoped=$(console POST /_/api/tokens '{"username":"scoped-crm","allowed_scopes":"CRM/Accounts","allowed_environments":"*"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
 tenant=$(console POST /_/api/tokens '{"username":"tenant-nl","allowed_scopes":"*","allowed_environments":"*","allowed_tenants":{"X-Country":["NL"]}}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
 stock=$(console POST /_/api/tokens '{"username":"scoped-stock","allowed_scopes":"Inventory/StockLevels","allowed_environments":"*"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
-printf 'TOKEN=%s\nSCOPED=%s\nTENANT=%s\nSTOCK=%s\n' "$TOKEN" "$scoped" "$tenant" "$stock" > "$WORK/tokens.env"
+envwms=$(console POST /_/api/tokens '{"username":"env-wms","allowed_scopes":"*","allowed_environments":"WMS"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
+printf 'TOKEN=%s\nSCOPED=%s\nTENANT=%s\nSTOCK=%s\nENVWMS=%s\n' "$TOKEN" "$scoped" "$tenant" "$stock" "$envwms" > "$WORK/tokens.env"
 
 echo "test instance on http://127.0.0.1:$PORT (limit=$LIMIT traffic=$TRAFFIC, work dir $WORK)"

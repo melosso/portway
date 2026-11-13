@@ -21,7 +21,7 @@ The test instance listens on `127.0.0.1:8081` (`PORTWAY_VERIFY_PORT`). Builds on
 | `stress.py [SECONDS] [THREADS] [BURST] [FILTER]` | Runs 52 StressAnAPI scenarios with expected status codes and body text. Exit code `1` if a response differs. Use with `start.sh --no-limit`. |
 | `console.sh METHOD PATH [JSON]` | Calls the console API from inside `test-portway`. |
 
-`start.sh` copies `.github/demo` to `$PORTWAY_VERIFY_DIR` (default `/tmp/portway-verify`) and adds `$expand` fixtures to the copy. It creates the console account `tester` and the tokens `TOKEN`, `SCOPED` (`CRM/Accounts`), `TENANT` (`X-Country: NL`) and `STOCK` (`Inventory/StockLevels`) in `tokens.env`.
+`start.sh` copies `.github/demo` to `$PORTWAY_VERIFY_DIR` (default `/tmp/portway-verify`) and adds `$expand` fixtures to the copy. It creates the console account `tester` and the tokens `TOKEN`, `SCOPED` (`CRM/Accounts`), `TENANT` (`X-Country: NL`), `STOCK` (`Inventory/StockLevels`) and `ENVWMS` (environment `WMS`) in `tokens.env`.
 
 ## Usage
 
