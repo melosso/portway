@@ -40,4 +40,37 @@ public class MarkdownParserTests
     [Fact]
     public void ParseMarkdownToHtml_EmptyString_ReturnsEmpty()
         => Assert.Equal("", MarkdownParser.ParseMarkdownToHtml(""));
+
+    [Fact]
+    public void ParseMarkdownToHtml_Mailto_RendersAnchorInSameTab()
+    {
+        var html = MarkdownParser.ParseMarkdownToHtml("Ask your [administrator](mailto:support@example.com).");
+
+        Assert.Contains("<a href=\"mailto:support@example.com\">administrator</a>", html);
+    }
+
+    [Fact]
+    public void ParseMarkdownToHtml_UnderscoresInUrl_StayInHref()
+    {
+        var html = MarkdownParser.ParseMarkdownToHtml("[docs](https://example.com/a_b_c)");
+
+        Assert.Contains("href=\"https://example.com/a_b_c\"", html);
+        Assert.DoesNotContain("<em>", html);
+    }
+
+    [Fact]
+    public void ParseMarkdownToHtml_RefusedLink_EncodesTextOnce()
+    {
+        var html = MarkdownParser.ParseMarkdownToHtml("[Q&A](javascript:x)");
+
+        Assert.Equal("Q&amp;A", html);
+    }
+
+    [Fact]
+    public void ParseMarkdownToHtml_EmphasisAroundLink_StillRenders()
+    {
+        var html = MarkdownParser.ParseMarkdownToHtml("**Read** the [guide](https://example.com/x_y).");
+
+        Assert.Equal("<strong>Read</strong> the <a href=\"https://example.com/x_y\" target=\"_blank\" rel=\"noopener noreferrer\">guide</a>.", html);
+    }
 }
