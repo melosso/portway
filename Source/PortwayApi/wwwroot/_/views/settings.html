@@ -459,7 +459,7 @@ async function downloadBackup(name) {
 function clearAdminKey() {
   AlertDialog.show({
     title:       'Remove the seeding key?',
-    description: 'The deprecated console key is not used for sign-in. Accounts and sessions are unchanged. Restart to apply.',
+    description: 'The old console key no longer signs anyone in. Accounts and sessions stay as they are. Restart to apply.',
     actionLabel: 'Remove',
     variant:     'destructive',
     onConfirm:   async () => {
@@ -495,7 +495,7 @@ const CARDS = {
         ? 'The sign-in page is reachable from the configured origins. Origin matching does not restrict access.'
         : 'The console accepts requests from loopback and local addresses only.'),
     riskItem('HTTPS', sec.https_enabled, 'Enabled', 'Not detected',
-      'Scheme of this request. If a TLS proxy terminates HTTPS: add the proxy under Trusted proxies.'),
+      'Read from this request. Using an HTTPS proxy? Add it under Trusted proxies.'),
     riskItem('Secure cookies', sec.secure_cookies || !sec.https_enabled,
       sec.secure_cookies ? 'Enabled' : 'Not needed on HTTP', 'Off while serving HTTPS',
       'Sends the session cookie over HTTPS only.'),
@@ -507,7 +507,7 @@ const CARDS = {
   deploymentBody: { rows: ({ security: sec = {}, features: feat = {} }) => [
     field('ForwardedHeaders:KnownProxies', 'Trusted proxies', 'Proxies whose forwarded client address is accepted. One IP per line.',
       { placeholder: sec.behind_proxy && sec.client_ip ? sec.client_ip : '10.0.0.8' }),
-    field('ForwardedHeaders:KnownNetworks', 'Trusted proxy networks', 'Networks of proxies without a fixed address. One CIDR range per line.',
+    field('ForwardedHeaders:KnownNetworks', 'Trusted proxy networks', 'Address ranges for proxies that change address, like 10.0.0.0/8. One per line.',
       { placeholder: '172.18.0.0/16' }),
     field('Console:PublicOrigins', 'Public console origins', 'Origins that may open the console from outside the local network. One per line.',
       { placeholder: 'https://portway.example.com' }),
@@ -574,8 +574,8 @@ const CARDS = {
       field('DatabaseMaintenance:Schedule', 'Run at', 'Server local time of the daily run.'),
       field('DatabaseMaintenance:RunOnStartup', 'Run on start', 'Also runs once when Portway starts.'),
       field('DatabaseMaintenance:FreePageRatioThreshold', 'Compact above', 'Share of free pages that triggers compaction.', { placeholder: '0.25' }),
-      field('DatabaseMaintenance:AuditRetention:Days', 'Token audit retention', 'Maintenance deletes FailedAuth and AuthorizationFailed entries older than this. Use 0 to disable.', { unit: 'days' }),
-      field('DatabaseMaintenance:AuditRetention:MaxSizeMb', 'Token audit size limit', 'Maintenance deletes the oldest FailedAuth and AuthorizationFailed entries above this size. Use 0 to disable.', { unit: 'MB' }),
+      field('DatabaseMaintenance:AuditRetention:Days', 'Token audit retention', 'Failed sign-in and access-denied entries older than this are cleared. 0 keeps them all.', { unit: 'days' }),
+      field('DatabaseMaintenance:AuditRetention:MaxSizeMb', 'Token audit size limit', 'Oldest failed sign-in and access-denied entries are cleared above this size. 0 keeps them all.', { unit: 'MB' }),
       settingItem('Last run', dbm.last_run_utc ? new Date(dbm.last_run_utc).toLocaleString() : 'Not yet', 'Most recent completed run.'),
       ...(dbm.last_results ?? []).map(r => statusItem(esc(r.database),
         r.integrity === 'ok' ? 'ok' : r.integrity ? 'bad' : 'warn',
