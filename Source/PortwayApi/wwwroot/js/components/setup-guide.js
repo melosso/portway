@@ -86,14 +86,14 @@
                 label: 'Environments configured',
                 hint: 'Add at least one environment to route requests.',
                 link: '/_/environments',
-                linkLabel: 'Open Environments →'
+                linkLabel: 'Open Environments'
             },
             {
                 done: hasEps,
                 label: 'Endpoints registered',
                 hint: 'Create an entity.json in the endpoints/ directory.',
                 link: '/_/endpoints',
-                linkLabel: 'Open Endpoints →'
+                linkLabel: 'Open Endpoints'
             }
         ];
 
@@ -126,6 +126,7 @@
                   s.hint +
                   (s.link
                       ? ' <a href="' +
+                        (window.PortwayBase || '') +
                         s.link +
                         '" style="color:hsl(var(--foreground));' +
                         'text-decoration:underline;text-underline-offset:2px">' +
