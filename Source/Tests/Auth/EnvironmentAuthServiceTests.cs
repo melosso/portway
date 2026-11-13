@@ -402,4 +402,23 @@ public class EnvironmentAuthServiceTests
         Assert.True(await _service.ValidateAsync(context, settings,
             t => PortwayApi.Helpers.SecretReference.ContainsReference(t) ? throw new InvalidOperationException("resolved") : Task.FromResult(t)));
     }
+
+    [Fact]
+    public async Task EnvironmentAuth_ResolveFailure_LaterMethodStillAuthenticates()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers["X-API-Key"] = "k";
+        var settings = new AuthenticationSettings
+        {
+            Enabled = true,
+            Methods =
+            [
+                new AuthenticationMethod { Type = "Bearer", Name = "b", Value = "${secret:NOPE}" },
+                new AuthenticationMethod { Type = "ApiKey", Name = "X-API-Key", Value = "k", In = "Header" }
+            ]
+        };
+
+        Assert.True(await _service.ValidateAsync(context, settings,
+            _ => throw new PortwayApi.Helpers.SecretResolutionException(PortwayApi.Helpers.SecretResolution.Fail(PortwayApi.Helpers.SecretFailure.Missing, "NOPE"))));
+    }
 }

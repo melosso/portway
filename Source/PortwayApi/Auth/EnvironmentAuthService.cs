@@ -41,11 +41,12 @@ public sealed class EnvironmentAuthService
             return false;
         }
 
+        Helpers.SecretResolutionException? unresolved = null;
         foreach (var configured in settings.Methods)
         {
-            var method = await ResolveAsync(configured, resolve);
             try
             {
+                var method = await ResolveAsync(configured, resolve);
                 bool success = method.Type.ToLowerInvariant() switch
                 {
                     "apikey" => ValidateApiKey(context, method),
@@ -68,11 +69,18 @@ public sealed class EnvironmentAuthService
                     return true;
                 }
             }
-            catch (Exception ex)
+            catch (Helpers.SecretResolutionException ex)
             {
-                _logger.Warning(ex, "Error during environment authentication validation ({Type})", method.Type);
+                unresolved ??= ex;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.Warning(ex, "Error during environment authentication validation ({Type})", configured.Type);
             }
         }
+
+        if (unresolved is not null)
+            throw unresolved;
 
         return false;
     }
