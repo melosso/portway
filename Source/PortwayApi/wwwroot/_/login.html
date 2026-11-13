@@ -18,13 +18,13 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <div class="signin-theme">
-  <button type="button" class="theme-toggle" id="themeToggle" onclick="cycleTheme()" data-tooltip="Toggle theme" aria-label="Toggle theme"></button>
+  <button type="button" class="theme-toggle" id="themeToggle" data-theme-toggle></button>
 </div>
 
 <main class="signin">
 
   <div class="signin-mark select-none">
-    <div class="brand-avatar" style="width:28px;height:28px">
+    <div class="brand-avatar brand-avatar--lg">
       <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" class="brand-avatar-bg" aria-hidden="true">
           <g clip-path="url(#portway-login-clip)">
             <rect width="20" height="20" fill="#000" rx="5.5"/>
@@ -33,7 +33,7 @@
             <g filter="url(#portway-login-blur-2)" opacity="0.1"><circle cx="16" cy="16" r="6" fill="#FF64B4" fill-opacity="0.671"/></g>
             <g filter="url(#portway-login-blur-3)" opacity="0.4"><circle cx="17" cy="19" r="6" fill="#FF64B4" fill-opacity="0.671"/></g>
             <rect width="20" height="20" fill="#FF64B4" fill-opacity="0.15" rx="5.5"/>
-            <g style="mix-blend-mode:hard-light"><rect width="20" height="20" fill="#6A62FF" fill-opacity="0.1" rx="5.5"/></g>
+            <g class="blend-hard-light"><rect width="20" height="20" fill="#6A62FF" fill-opacity="0.1" rx="5.5"/></g>
           </g>
           <rect width="19" height="19" x="0.5" y="0.5" stroke="#FDFDFD" stroke-opacity="0.1" rx="5"/>
           <defs>
@@ -60,7 +60,7 @@
     <span class="signin-wordmark">Portway</span>
   </div>
 
-  <form class="signin-panel" onsubmit="event.preventDefault();signIn()">
+  <form class="signin-panel" id="signinForm">
     <header class="signin-header">
       <h1>Sign in</h1>
       <p id="signinIntro"></p>
@@ -69,13 +69,13 @@
     <div class="field">
       <label class="field-label" for="usernameInput">Username</label>
       <input type="text" id="usernameInput" class="input" autocomplete="username"
-             placeholder="Enter username" required autofocus aria-describedby="authError">
+             required autofocus aria-describedby="authError">
     </div>
 
     <div class="field">
       <label class="field-label" for="passwordInput">Password</label>
       <input type="password" id="passwordInput" class="input" autocomplete="current-password"
-             placeholder="Enter password" required aria-describedby="authError">
+             required aria-describedby="authError">
     </div>
 
     <div class="field" id="newPasswordField" hidden>
@@ -88,7 +88,7 @@
       <input type="checkbox" id="rememberInput"><span>Remember me for 30 days</span>
     </label>
 
-    <div class="signin-error" id="authError" role="alert" aria-live="assertive">Invalid username or password</div>
+    <div class="signin-error" id="authError" role="alert" hidden>Invalid username or password</div>
 
     <button type="submit" class="btn btn-primary btn-block signin-submit" id="signInBtn">
       <span class="btn-label">Sign in</span><span class="btn-spinner"></span>
@@ -104,118 +104,6 @@
 
 </main>
 
-<script>
-
-  let csrfToken = '';
-
-  async function initCsrf() {
-    try {
-      const r = await fetch('/_/api/auth/csrf');
-      if (r.ok) {
-        const d = await r.json();
-        csrfToken = d.csrf;
-        if (d.setup_pending)
-          document.getElementById('signinIntro').textContent = 'Find the account name and one-time password in the startup log.';
-      }
-    } catch(e) {
-      console.error('Failed to fetch CSRF token:', e);
-    }
-  }
-  let csrfReady = initCsrf();
-
-  async function initProviders() {
-    const base = window.PortwayBase || '';
-    let providers = [];
-    try {
-      const r = await fetch('/_/api/auth/providers');
-      if (!r.ok) return;
-      providers = (await r.json()).providers || [];
-    } catch(e) {
-      return;
-    }
-    if (!providers.length) return;
-    const host = document.getElementById('ssoProviders');
-    for (const p of providers) {
-      const a = document.createElement('a');
-      a.className = 'btn btn-outline sso-btn';
-      a.rel = 'nofollow';
-      a.href = base + '/_/api/auth/oidc/' + encodeURIComponent(p.slug) + '/start';
-      a.textContent = 'Continue with ' + p.name;
-      host.append(a);
-    }
-    document.getElementById('ssoBlock').hidden = false;
-  }
-  initProviders();
-
-  // A federated sign-in that was refused comes back here with a reason
-  (function () {
-    const reason = new URLSearchParams(location.search).get('sso');
-    if (!reason) return;
-    const messages = {
-      failed:     'Sign-in failed. See the server log.',
-      denied:     'Sign-in cancelled.',
-      no_account: 'Account not permitted for this console.',
-      inactive:   'Account inactive.',
-    };
-    const err = document.getElementById('authError');
-    err.textContent = messages[reason] ?? messages.failed;
-    err.style.display = 'block';
-    history.replaceState(null, '', location.pathname);
-  })();
-
-  let _changing = false;
-
-  async function signIn() {
-    const username = document.getElementById('usernameInput').value;
-    const password = document.getElementById('passwordInput').value;
-    const newPassword = document.getElementById('newPasswordInput').value;
-    const remember = document.getElementById('rememberInput').checked;
-    const btn = document.getElementById('signInBtn');
-    const err = document.getElementById('authError');
-    err.style.display = 'none';
-    btn.classList.add('is-loading');
-    btn.disabled = true;
-    try {
-      // a cold start answers the token request after the first submit
-      await csrfReady;
-      const r = await fetch(_changing ? '/_/api/auth/password' : '/_/api/auth', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, newPassword, remember, csrf: csrfToken })
-      });
-      const d = await r.json().catch(() => ({}));
-
-      // A first sign-in stops here: the account picks its own password before it gets a session
-      if (r.ok && d.must_change_password) {
-        _changing = true;
-        csrfToken = d.csrf;
-        document.getElementById('newPasswordField').hidden = false;
-        document.querySelector('.signin-header p').textContent = 'Set a new password to complete sign-in.';
-        document.querySelector('#signInBtn .btn-label').textContent = 'Set password';
-        err.style.display = 'none';
-        btn.classList.remove('is-loading');
-        btn.disabled = false;
-        document.getElementById('newPasswordInput').focus();
-        return;
-      }
-
-      if (r.ok) {
-        window.location.href = (window.PortwayBase || '') + '/_/dashboard';
-      } else {
-        err.textContent = d.error || 'Invalid username or password';
-        err.style.display = 'block';
-        btn.classList.remove('is-loading');
-        btn.disabled = false;
-        document.getElementById('passwordInput').focus();
-        csrfReady = initCsrf();
-      }
-    } catch(e) {
-      toast('Connection error. Server unreachable.', 'error');
-      btn.classList.remove('is-loading');
-      btn.disabled = false;
-    }
-  }
-</script>
+<script src="js/login.js"></script>
 </body>
 </html>

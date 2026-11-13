@@ -2301,6 +2301,9 @@ textarea.input-code {
     line-height: 1.4;
     margin-top: 0.875rem;
     margin-bottom: 0;
+}
+
+.signin-error[hidden] {
     display: none;
 }
 
