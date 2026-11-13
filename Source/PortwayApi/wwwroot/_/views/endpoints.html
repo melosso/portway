@@ -571,11 +571,15 @@ function prettyPayload(payload) {
 
 async function loadDeliveries() {
   const list = document.getElementById('deliveriesList');
-  const env = document.getElementById('deliveriesEnv').value;
+  const envSelect = document.getElementById('deliveriesEnv');
+  const env = envSelect.value;
+  const name = _selected?.name;
+  const stale = () => envSelect.value !== env || _selected?.name !== name;
   if (!env) { list.innerHTML = `<div class="secret-empty">No environment allows this endpoint.</div>`; return; }
   list.innerHTML = `<div class="secret-empty">Loading…</div>`;
   try {
-    const d = await api(`/_/api/webhooks/${_selected.name.split('/').map(encodeURIComponent).join('/')}/deliveries?env=${encodeURIComponent(env)}`, { silent: true });
+    const d = await api(`/_/api/webhooks/${name.split('/').map(encodeURIComponent).join('/')}/deliveries?env=${encodeURIComponent(env)}`, { silent: true });
+    if (stale()) return;
     const rows = d.deliveries ?? [];
     list.innerHTML = rows.length
       ? `<div class="wh-deliveries">
@@ -587,6 +591,7 @@ async function loadDeliveries() {
         </div>`
       : `<div class="secret-empty">No deliveries in ${esc(env)}.</div>`;
   } catch (e) {
+    if (stale()) return;
     list.innerHTML = `<div class="secret-empty" style="color:hsl(var(--destructive))">${esc(e.status === 403 ? 'Deliveries need an administrator account.' : e.message)}</div>`;
   }
 }

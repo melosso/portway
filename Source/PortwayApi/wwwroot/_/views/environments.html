@@ -623,6 +623,7 @@ async function refreshSecrets() {
   try {
     const d = await api(`/_/api/environments/${encodeURIComponent(name)}`, { silent: true });
     state.envData[name] = d;
+    if (state.selected !== name || state.secretEnv !== name) return;
     state.polledLastMod = d.last_modified;
     const list = document.getElementById('secretList');
     if (list) list.innerHTML = secretRows(d.secret_names ?? []);
