@@ -62,7 +62,7 @@ public static class RootNavigationExtensions
                     var html = await File.ReadAllTextAsync(filePath);
                     html = html.Replace("<head>", $"<head>\n  <base href=\"{pb}/\">\n  <script>window.PortwayBase=\"{pb}\";</script>");
                     context.Response.ContentType = "text/html; charset=utf-8";
-                    await context.Response.WriteAsync(html);
+                    await context.Response.WriteAsync(CspNonce.Apply(html, context));
                     return;
                 }
             }

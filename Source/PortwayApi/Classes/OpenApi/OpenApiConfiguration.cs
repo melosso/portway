@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 using PortwayApi.Helpers;
+using PortwayApi.Middleware;
 using Serilog;
 
 namespace PortwayApi.Classes.OpenApi;
@@ -479,7 +480,7 @@ public static class OpenApiConfiguration
     </script>
 </body>
 </html>";
-            return Results.Content(html, "text/html");
+            return Results.Content(CspNonce.Apply(html, context), "text/html");
         }
 
         // every operation has its own url under /docs, the more specific document route still wins

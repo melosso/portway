@@ -2,8 +2,28 @@ namespace PortwayApi.Middleware;
 
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+
+/// <summary>
+/// Per-request nonce for the inline scripts the server emits; the Content-Security-Policy runs no other inline script
+/// </summary>
+public static partial class CspNonce
+{
+    private const string ItemKey = "portway.csp-nonce";
+
+    public static string For(HttpContext context) =>
+        (string)(context.Items[ItemKey] ??= Convert.ToBase64String(RandomNumberGenerator.GetBytes(16)));
+
+    /// <summary>Adds the request nonce to every script element without a src attribute</summary>
+    public static string Apply(string html, HttpContext context) =>
+        InlineScript().Replace(html, $"<script nonce=\"{For(context)}\"");
+
+    [GeneratedRegex(@"<script(?![^>]*\ssrc=)")]
+    private static partial Regex InlineScript();
+}
 
 public sealed class SecurityHeadersMiddleware
 {
@@ -34,19 +54,6 @@ public sealed class SecurityHeadersMiddleware
             // Prevent clickjacking completely
             { "X-Frame-Options", "DENY" },
             
-            // Restrictive Content Security Policy
-            { "Content-Security-Policy",
-                "default-src 'self'; " +
-                "script-src 'self' 'unsafe-inline'; " +
-                "style-src 'self' 'unsafe-inline'; " +
-                "img-src 'self' data:; " +
-                "connect-src 'self'; " +
-                "font-src 'self'; " +
-                "object-src 'none'; " +
-                "base-uri 'self'; " +
-                "frame-ancestors 'none'; " +
-                "form-action 'none'"
-            },
             
             // Strict referrer policy
             { "Referrer-Policy", "strict-origin-when-cross-origin" },
@@ -97,6 +104,8 @@ public sealed class SecurityHeadersMiddleware
 
             // Add security headers
             AddSecurityHeaders(context.Response.Headers);
+            if (!context.Response.Headers.ContainsKey("Content-Security-Policy"))
+                context.Response.Headers["Content-Security-Policy"] = ContentSecurityPolicy(CspNonce.For(context));
 
             // Console-only isolation: same-origin here would break cross-origin consumers of the gateway itself
             if (context.Request.Path.StartsWithSegments("/_"))
@@ -116,6 +125,19 @@ public sealed class SecurityHeadersMiddleware
 
         await _next(context);
     }
+
+    // Inline scripts run only with the request nonce; inline event handlers never run
+    private static string ContentSecurityPolicy(string nonce) =>
+        "default-src 'self'; " +
+        $"script-src 'self' 'nonce-{nonce}'; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "img-src 'self' data:; " +
+        "connect-src 'self'; " +
+        "font-src 'self'; " +
+        "object-src 'none'; " +
+        "base-uri 'self'; " +
+        "frame-ancestors 'none'; " +
+        "form-action 'none'";
 
     private static bool IsFontRequest(PathString path)
     {
@@ -153,7 +175,6 @@ public sealed class SecurityHeadersMiddleware
     private static bool ShouldSkipSecurityHeaders(PathString path)
     {
         return path.StartsWithSegments("/static") ||
-               path.StartsWithSegments("/index.html") ||
                path.StartsWithSegments("/health/live");
     }
 

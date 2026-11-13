@@ -1851,6 +1851,64 @@ public class WebUiSecurityTests : IDisposable
         Assert.Equal(behindProxy && !trusted, ignored);
     }
 
+    private static string ScriptNonce(HttpResponseMessage resp)
+    {
+        var csp = resp.Headers.GetValues("Content-Security-Policy").Single();
+        var scriptSrc = csp.Split(';').Single(d => d.Trim().StartsWith("script-src"));
+        Assert.DoesNotContain("'unsafe-inline'", scriptSrc);
+        return System.Text.RegularExpressions.Regex.Match(scriptSrc, "'nonce-([^']+)'").Groups[1].Value;
+    }
+
+    private static void AssertInlineScriptsCarry(string html, string nonce)
+    {
+        var inline = System.Text.RegularExpressions.Regex.Matches(html, @"<script(?![^>]*\ssrc=)[^>]*>");
+        Assert.NotEmpty(inline);
+        Assert.All(inline, m => Assert.Contains($"nonce=\"{nonce}\"", m.Value));
+        Assert.DoesNotMatch(@"\son[a-z]+=""", html);
+    }
+
+    [Theory]
+    [InlineData("/_/login")]
+    [InlineData("/docs")]
+    [InlineData("/index.html")]
+    public async Task PublicPages_InlineScriptsCarryTheRequestNonce(string path)
+    {
+        var client = CreateClient();
+        var resp = await client.GetAsync(path, TestContext.Current.CancellationToken);
+        var nonce = ScriptNonce(resp);
+
+        Assert.False(string.IsNullOrEmpty(nonce));
+        AssertInlineScriptsCarry(await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), nonce);
+    }
+
+    [Theory]
+    [InlineData("/_/dashboard")]
+    [InlineData("/_/endpoints")]
+    [InlineData("/_/environments")]
+    [InlineData("/_/tokens")]
+    [InlineData("/_/settings")]
+    [InlineData("/_/mcp/chat")]
+    public async Task ConsolePages_InlineScriptsCarryTheRequestNonce(string path)
+    {
+        var client = CreateClient();
+        var (authCookie, _) = await LoginAsync(client);
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, path, authCookie), TestContext.Current.CancellationToken);
+        var nonce = ScriptNonce(resp);
+
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        AssertInlineScriptsCarry(await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), nonce);
+    }
+
+    [Fact]
+    public async Task ScriptNonce_ChangesPerRequest()
+    {
+        var client = CreateClient();
+        var first = ScriptNonce(await client.GetAsync("/_/login", TestContext.Current.CancellationToken));
+        var second = ScriptNonce(await client.GetAsync("/_/login", TestContext.Current.CancellationToken));
+
+        Assert.NotEqual(first, second);
+    }
+
     [Fact]
     public async Task ConsoleResponses_IncludeTheHardenedSecurityHeaders()
     {

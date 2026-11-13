@@ -12,6 +12,7 @@ using Microsoft.Extensions.Options;
 using PortwayApi.Auth;
 using PortwayApi.Classes;
 using PortwayApi.Helpers;
+using PortwayApi.Middleware;
 using PortwayApi.Services;
 
 public static partial class WebUiEndpointExtensions
@@ -311,7 +312,7 @@ public static partial class WebUiEndpointExtensions
     /// <summary>
     /// Composes a page from the shared shell, its view fragment and the footer, then applies the standard post-processing
     /// </summary>
-    private static IResult ServeComposedPage(string wwwroot, string page, string title, PathString pathBase, string version)
+    private static IResult ServeComposedPage(string wwwroot, string page, string title, HttpContext context, string version)
     {
         var shellPath = Path.Combine(wwwroot, "_shell.html");
         var viewPath = Path.Combine(wwwroot, "views", $"{page}.html");
@@ -323,10 +324,10 @@ public static partial class WebUiEndpointExtensions
             + File.ReadAllText(viewPath)
             + (File.Exists(footerPath) ? File.ReadAllText(footerPath) : "\n</body>\n</html>\n");
 
-        return FinishHtml(html, pathBase, version);
+        return FinishHtml(html, context, version);
     }
 
-    private static IResult ServeHtml(string filePath, PathString pathBase, string version, IConfiguration? config = null)
+    private static IResult ServeHtml(string filePath, HttpContext context, string version, IConfiguration? config = null)
     {
         if (!File.Exists(filePath)) return Results.NotFound();
         var html = File.ReadAllText(filePath);
@@ -341,22 +342,22 @@ public static partial class WebUiEndpointExtensions
             }
         }
 
-        return FinishHtml(html, pathBase, version);
+        return FinishHtml(html, context, version);
     }
 
     /// <summary>
-    /// Shared post-processing: base href + PortwayBase injection and cache-busting of local assets
+    /// Shared post-processing: base href + PortwayBase injection, script nonces and cache-busting of local assets
     /// </summary>
-    private static IResult FinishHtml(string html, PathString pathBase, string version)
+    private static IResult FinishHtml(string html, HttpContext context, string version)
     {
-        var pb = pathBase.Value ?? "";
+        var pb = context.Request.PathBase.Value ?? "";
         var v = Uri.EscapeDataString(version);
         html = html.Replace("<head>", $"<head>\n  <base href=\"{pb}/\">\n  <script>window.PortwayBase=\"{pb}\";</script>");
         html = Regex.Replace(
             html,
             @"(href|src)=""(?!https?://)([^""]+\.(css|js))""",
             m => $"{m.Groups[1]}=\"{m.Groups[2]}?v={v}\"");
-        return Results.Content(html, "text/html; charset=utf-8");
+        return Results.Content(CspNonce.Apply(html, context), "text/html; charset=utf-8");
     }
 
     private static string ParseMarkdownToHtml(string md) =>

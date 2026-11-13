@@ -42,7 +42,7 @@ public static partial class WebUiEndpointExtensions
         // Login
         app.MapGet("/_/login", (HttpContext ctx) =>
             WebUiAuthState.Enabled
-                ? ServeHtml(Path.Combine(wwwroot, "login.html"), ctx.Request.PathBase, appVersion, app.Configuration)
+                ? ServeHtml(Path.Combine(wwwroot, "login.html"), ctx, appVersion, app.Configuration)
                 : Results.Redirect($"{ctx.Request.PathBase}/_/dashboard"))
             .ExcludeFromDescription();
         app.MapGet("/_/login.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/_/login"))
@@ -184,19 +184,19 @@ public static partial class WebUiEndpointExtensions
         {
             var p = page;
             var t = title;
-            app.MapGet($"/_/{p}", (HttpContext ctx) => ServeComposedPage(wwwroot, p, t, ctx.Request.PathBase, appVersion)).ExcludeFromDescription();
+            app.MapGet($"/_/{p}", (HttpContext ctx) => ServeComposedPage(wwwroot, p, t, ctx, appVersion)).ExcludeFromDescription();
             app.MapGet($"/_/{p}.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/_/{p}")).ExcludeFromDescription();
         }
 
         // MCP explorer page
         var mcpExplorerPath = Path.Combine(wwwroot, "mcp", "explorer.html");
-        app.MapGet("/_/mcp/explorer", (HttpContext ctx) => ServeHtml(mcpExplorerPath, ctx.Request.PathBase, appVersion, app.Configuration)).ExcludeFromDescription();
+        app.MapGet("/_/mcp/explorer", (HttpContext ctx) => ServeHtml(mcpExplorerPath, ctx, appVersion, app.Configuration)).ExcludeFromDescription();
         app.MapGet("/_/mcp/explorer.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/_/mcp/explorer")).ExcludeFromDescription();
 
         // MCP chat page
         var mcpChatPath = Path.Combine(wwwroot, "mcp", "chat.html");
-        app.MapGet("/_/mcp", (HttpContext ctx) => ServeHtml(mcpChatPath, ctx.Request.PathBase, appVersion, app.Configuration)).ExcludeFromDescription();
-        app.MapGet("/_/mcp/chat", (HttpContext ctx) => ServeHtml(mcpChatPath, ctx.Request.PathBase, appVersion, app.Configuration)).ExcludeFromDescription();
+        app.MapGet("/_/mcp", (HttpContext ctx) => ServeHtml(mcpChatPath, ctx, appVersion, app.Configuration)).ExcludeFromDescription();
+        app.MapGet("/_/mcp/chat", (HttpContext ctx) => ServeHtml(mcpChatPath, ctx, appVersion, app.Configuration)).ExcludeFromDescription();
         app.MapGet("/_/mcp/chat.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/_/mcp/chat")).ExcludeFromDescription();
 
         // Data endpoints
