@@ -27,26 +27,35 @@ public static class FallbackEndpointExtensions
         if (isBrowserRequest)
         {
             context.Response.ContentType = "text/html; charset=utf-8";
-            await context.Response.WriteAsync("""
+            // PathBase prefixes asset and link URLs when the gateway runs under a route prefix
+            var pathBase = System.Net.WebUtility.HtmlEncode(context.Request.PathBase.Value ?? "");
+            var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+            await context.Response.WriteAsync($$"""
                 <!DOCTYPE html>
                 <html lang="en">
                 <head>
                   <meta charset="utf-8">
                   <meta name="viewport" content="width=device-width, initial-scale=1">
+                  <meta name="robots" content="noindex,nofollow">
                   <title>404 Not Found · Portway</title>
-                  <link href="/css/site.css" rel="stylesheet">
+                  <link href="{{pathBase}}/css/site.css" rel="stylesheet">
+                  <script src="{{pathBase}}/js/theme-toggle.js"></script>
                 </head>
-                <body style="display:flex;align-items:center;justify-content:center;height:100vh">
-                  <div style="text-align:center;max-width:420px;padding:2rem">
-                    <div style="font-size:3rem;font-weight:700;letter-spacing:-0.04em;color:hsl(var(--muted-foreground))">404</div>
-                    <div style="font-size:1rem;font-weight:600;margin:0.75rem 0 0.5rem">Page not found</div>
-                    <div style="font-size:0.875rem;color:hsl(var(--muted-foreground));margin-bottom:1.5rem">
-                      The page you're looking for doesn't exist or has been moved.
-                    </div>
-                    <a href="/_/dashboard" style="display:inline-flex;align-items:center;gap:0.375rem;padding:0.5rem 1rem;background:hsl(var(--primary));color:hsl(var(--primary-foreground));border-radius:var(--radius);text-decoration:none;font-size:0.875rem;font-weight:500">
-                      Go to Dashboard
-                    </a>
-                  </div>
+                <body>
+                  <main class="status-page">
+                    <section class="status-card">
+                      <div class="status-head">
+                        <span class="status-code">404</span>
+                        <h1>Page not found</h1>
+                      </div>
+                      <p>No page exists at this address.</p>
+                      <dl class="status-meta">
+                        <div><dt>Code</dt><dd>NOT_FOUND</dd></div>
+                        <div><dt>Timestamp</dt><dd>{{timestamp}} UTC</dd></div>
+                      </dl>
+                      <a href="{{pathBase}}/_/dashboard" class="btn btn-primary">Go to dashboard</a>
+                    </section>
+                  </main>
                 </body>
                 </html>
                 """);
