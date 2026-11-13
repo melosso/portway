@@ -672,7 +672,18 @@ const CARDS = {
   ] },
 };
 
-async function load() {
+function load() {
+  if (!document.querySelector('.card-save:not([disabled])')) return reload();
+  AlertDialog.show({
+    title: 'Discard changes?',
+    description: 'Unsaved settings changes are discarded.',
+    actionLabel: 'Discard',
+    cancelLabel: 'Keep editing',
+    onConfirm: reload
+  });
+}
+
+async function reload() {
   const btn = document.getElementById('refreshBtn');
   if (btn) { btn.classList.add('is-refreshing'); setTimeout(() => btn.classList.remove('is-refreshing'), 600); }
 

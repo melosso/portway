@@ -467,7 +467,9 @@ window.addEventListener('popstate', () => {
 
 async function selectEndpoint(type, name, scroll = true, history_ = 'push') {
   _selected = { type, name };
+  _detailData = null;
   _confirmingDelete = false;
+  _renaming = false;
   renderList();
   syncSplit();
   const hash = selectionHash(type, name);
@@ -480,13 +482,16 @@ async function selectEndpoint(type, name, scroll = true, history_ = 'push') {
   const detail = document.getElementById('epDetail');
   detail.innerHTML = `<div class="ep-empty"><span style="font-size:0.8rem;color:hsl(var(--muted-foreground))">Loading…</span></div>`;
 
+  const current = () => _selected?.type === type && _selected?.name === name;
   try {
     const d = await api(`/_/api/endpoints/${type}/${name}`, { silent: true });
+    if (!current()) return;
     _detailData = d;
     _dirty = false;
     _rawMode = false;
     renderDetail();
   } catch(e) {
+    if (!current()) return;
     detail.innerHTML = `<div class="ep-empty"><span style="color:hsl(var(--destructive))">Error: ${esc(e.message)}</span></div>`;
   }
 }

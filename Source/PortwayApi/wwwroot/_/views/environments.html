@@ -402,6 +402,7 @@ async function selectEnv(name) {
   state.selected = name;
   state.rawMode  = false;
   state.isDirty  = false;
+  _envRenaming   = false;
   setActiveItem(name);
   stopPoll();
   await renderEnvDetail(name);
@@ -463,9 +464,11 @@ async function renderEnvDetail(name) {
   let d;
   try {
     d = await api(`/_/api/environments/${encodeURIComponent(name)}`);
+    if (state.selected !== name) return;
     state.envData[name] = d;
     state.polledLastMod = d.last_modified;
   } catch(e) {
+    if (state.selected !== name) return;
     detail.innerHTML = `<div class="ep-empty"><span style="color:hsl(var(--destructive))">Error: ${esc(e.message)}</span></div>`;
     return;
   }
