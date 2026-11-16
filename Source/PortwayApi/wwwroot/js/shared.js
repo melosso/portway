@@ -51,13 +51,38 @@ function removeClosest(el, selector) {
 
 let hasUnsavedChanges = () => false;
 
+function confirmDiscard(actionLabel, onConfirm) {
+    AlertDialog.show({
+        title: 'Discard unsaved changes?',
+        description: 'Changes on this page are not saved.',
+        actionLabel,
+        cancelLabel: 'Stay here',
+        onConfirm: () => {
+            hasUnsavedChanges = () => false;
+            onConfirm();
+        }
+    });
+}
+
 function trackUnsavedChanges(check) {
     hasUnsavedChanges = check;
+    // browsers allow only their own prompt for reload, close and typed urls
     window.addEventListener('beforeunload', (e) => {
         if (hasUnsavedChanges()) {
             e.preventDefault();
             e.returnValue = '';
         }
+    });
+    document.addEventListener('click', (e) => {
+        const link = e.target.closest('a[href]');
+        if (!link || link.target || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey)
+            return;
+        const url = new URL(link.href, location.href);
+        if (url.origin !== location.origin || url.pathname === location.pathname || !hasUnsavedChanges()) return;
+        e.preventDefault();
+        confirmDiscard('Leave page', () => {
+            location.href = url.href;
+        });
     });
 }
 

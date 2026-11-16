@@ -316,16 +316,7 @@ Promise.all([
 
 function logout() {
     if (!hasUnsavedChanges()) return signOut();
-    AlertDialog.show({
-        title: 'Discard changes?',
-        description: 'Unsaved changes are discarded.',
-        actionLabel: 'Sign out',
-        cancelLabel: 'Stay here',
-        onConfirm: () => {
-            hasUnsavedChanges = () => false;
-            signOut();
-        }
-    });
+    confirmDiscard('Discard and sign out', signOut);
 }
 
 function signOut() {
