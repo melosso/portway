@@ -1214,6 +1214,24 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task UserUpdate_RefusesDeactivatingTheSignedInAccount()
+    {
+        var client = CreateClient();
+        var (cookie, csrf) = await LoginAsync(client);
+        using var list = AuthedRequest(HttpMethod.Get, "/_/api/users", cookie);
+        var users = await (await client.SendAsync(list, TestContext.Current.CancellationToken)).Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        var me = users.GetProperty("signed_in_user_id").GetInt32();
+
+        using var deactivate = AuthedRequest(HttpMethod.Put, $"/_/api/users/{me}", cookie, csrf,
+            new Dictionary<string, object> { ["is_active"] = false, ["current_password"] = SeededPassword });
+        var resp = await client.SendAsync(deactivate, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Conflict, resp.StatusCode);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        Assert.Equal("is_active", body.GetProperty("field").GetString());
+    }
+
+    [Fact]
     public async Task DeactivatedAccount_LosesAccessImmediately_EvenOnAPlainReadRequest()
     {
         // One client per account, the factory client tracks Set-Cookie
