@@ -9,8 +9,14 @@ using PortwayApi.Helpers;
 
 public static partial class WebUiEndpointExtensions
 {
-    private static void MapTokenRoutes(WebApplication app)
+    private static void MapTokenRoutes(WebApplication app, PortwayApi.Services.Configuration.ConfigAuditService configAudit)
     {
+        void Audit(HttpContext ctx, string action, string target, string? details = null)
+            => configAudit.Record(action, "token", target, ctx.Connection.RemoteIpAddress?.ToString(), details, null);
+
+        static async Task<string> NameOf(TokenService tokens, int id)
+            => (await tokens.GetAllTokensAsync()).FirstOrDefault(t => t.Id == id)?.Username ?? $"#{id}";
+
         app.MapGet("/_/api/tokens", async (HttpRequest request, TokenService tokenService) =>
         {
             var includeRevoked = request.Query["include_revoked"] == "true";
@@ -47,6 +53,7 @@ public static partial class WebUiEndpointExtensions
                 request.Username.Trim(), request.AllowedScopes, request.AllowedEnvironments, request.Description,
                 request.ExpiresInDays, request.RateLimitRequests, request.RateLimitWindowSeconds,
                 TenantGrants.TryCreate(request.AllowedTenants, out var grants, out _) ? TenantGrants.Serialize(grants) : TenantGrants.Empty);
+            Audit(context, "create", request.Username.Trim());
             return Results.Json(new { ok = true, token });
         }).ExcludeFromDescription();
 
@@ -101,10 +108,13 @@ public static partial class WebUiEndpointExtensions
                 await tokenService.UpdateTokenRateLimitAsync(id, requests, requests.HasValue ? window ?? 60 : null);
             }
 
+            var changed = new[] { "allowed_scopes", "allowed_environments", "allowed_tenants", "description", "expires_at", "rate_limit_requests" }
+                .Where(key => body.TryGetProperty(key, out _));
+            Audit(context, "update", await NameOf(tokenService, id), string.Join(", ", changed));
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
-        app.MapDelete("/_/api/tokens/{id:int}", async (int id, TokenService tokenService) =>
+        app.MapDelete("/_/api/tokens/{id:int}", async (int id, HttpContext context, TokenService tokenService) =>
         {
             var blockReason = await tokenService.GetRevokeBlockReasonAsync(id);
 
@@ -112,17 +122,19 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { error = blockReason }, statusCode: 409);
 
             var ok = await tokenService.RevokeTokenAsync(id);
+            if (ok) Audit(context, "archive", await NameOf(tokenService, id));
 
             return ok ? Results.Ok(new { ok = true }) : Results.Json(new { error = "Token not found" }, statusCode: 404);
         }).ExcludeFromDescription();
 
-        app.MapPost("/_/api/tokens/{id:int}/unarchive", async (int id, TokenService tokenService) =>
+        app.MapPost("/_/api/tokens/{id:int}/unarchive", async (int id, HttpContext context, TokenService tokenService) =>
         {
             var ok = await tokenService.UnarchiveTokenAsync(id);
+            if (ok) Audit(context, "restore", await NameOf(tokenService, id));
             return ok ? Results.Ok(new { ok = true }) : Results.Json(new { error = "Token not found or not archived" }, statusCode: 404);
         }).ExcludeFromDescription();
 
-        app.MapPost("/_/api/tokens/{id:int}/rotate", async (int id, TokenService tokenService) =>
+        app.MapPost("/_/api/tokens/{id:int}/rotate", async (int id, HttpContext context, TokenService tokenService) =>
         {
             var existing = (await tokenService.GetAllTokensAsync()).FirstOrDefault(t => t.Id == id);
 
@@ -152,6 +164,7 @@ public static partial class WebUiEndpointExtensions
                 existing.AllowedTenants);
 
             await tokenService.RevokeTokenAsync(id);
+            Audit(context, "rotate", existing.Username, $"replaced token {id}");
 
             return Results.Json(new
             {
@@ -165,9 +178,13 @@ public static partial class WebUiEndpointExtensions
             });
         }).ExcludeFromDescription();
 
+        // history follows the token name so rotated and archived predecessors stay visible
         app.MapGet("/_/api/tokens/{id:int}/audit", async (int id, TokenService tokenService) =>
         {
-            var entries = await tokenService.GetAuditLogAsync(tokenId: id, maxRecords: 50);
+            var token = (await tokenService.GetAllTokensAsync()).FirstOrDefault(t => t.Id == id);
+            if (token is null)
+                return Results.Json(new { error = "Token not found" }, statusCode: 404);
+            var entries = await tokenService.GetAuditLogAsync(username: token.Username, maxRecords: 50);
             return Results.Json(entries.Select(e => new
             {
                 operation = e.Operation,

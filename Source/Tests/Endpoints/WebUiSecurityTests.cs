@@ -622,6 +622,40 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task TokenAudit_ContainsRotatedHistoryAndConsoleActions()
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+        var ct = TestContext.Current.CancellationToken;
+
+        await client.SendAsync(AuthedRequest(HttpMethod.Post, "/_/api/tokens", authCookie, csrfCookie,
+            new { username = "audit-me", allowed_scopes = "CRM/Accounts", allowed_environments = "dev" }), ct);
+        async Task<int> ActiveId() => (await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/tokens", authCookie), ct))
+            .Content.ReadFromJsonAsync<JsonElement>(ct)).EnumerateArray()
+            .Single(t => t.GetProperty("username").GetString() == "audit-me").GetProperty("id").GetInt32();
+        var original = await ActiveId();
+
+        await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/tokens/{original}", authCookie, csrfCookie, new { description = "billing" }), ct);
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/_/api/tokens/{original}/rotate", authCookie, csrfCookie), ct)).StatusCode);
+        var replacement = await ActiveId();
+
+        var history = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, $"/_/api/tokens/{replacement}/audit", authCookie), ct))
+            .Content.ReadFromJsonAsync<JsonElement>(ct);
+        var operations = history.EnumerateArray().Select(e => e.GetProperty("operation").GetString()).ToList();
+        Assert.Contains("DescriptionUpdated", operations);
+        Assert.Contains("Revoked", operations);
+
+        var audit = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/audit?limit=20", authCookie), ct))
+            .Content.ReadFromJsonAsync<JsonElement>(ct);
+        var tokenEntries = audit.GetProperty("entries").EnumerateArray()
+            .Where(e => e.GetProperty("target_type").GetString() == "token" && e.GetProperty("target").GetString() == "audit-me")
+            .Select(e => e.GetProperty("action").GetString()).ToList();
+        Assert.Contains("create", tokenEntries);
+        Assert.Contains("update", tokenEntries);
+        Assert.Contains("rotate", tokenEntries);
+    }
+
+    [Fact]
     public async Task SettingsEndpoint_ReportsSecurityPosture()
     {
         var client = CreateClient();
