@@ -362,8 +362,8 @@ function renderList() {
         `<div style="padding:1.75rem 1.5rem;display:flex;flex-direction:column;gap:0.6rem">` +
           `<div style="font-size:0.82rem;font-weight:500;color:hsl(var(--foreground))">No endpoints configured</div>` +
           `<div style="font-size:0.76rem;color:hsl(var(--muted-foreground));line-height:1.5">` +
-            `Add an <code style="font-size:0.73rem;background:hsl(var(--muted));padding:0.1em 0.35em;border-radius:3px">entity.json</code> ` +
-            `file to the <code style="font-size:0.73rem;background:hsl(var(--muted));padding:0.1em 0.35em;border-radius:3px">endpoints/</code> directory.` +
+            `Add an <code style="font-size:0.73rem;background:hsl(var(--muted));padding:0.1em 0.35em;border-radius:var(--nav-radius)">entity.json</code> ` +
+            `file to the <code style="font-size:0.73rem;background:hsl(var(--muted));padding:0.1em 0.35em;border-radius:var(--nav-radius)">endpoints/</code> directory.` +
           `</div>` +
           `<pre style="font-size:0.72rem;color:hsl(var(--muted-foreground));line-height:1.6;margin:0.25rem 0 0;` +
             `background:hsl(var(--muted));border-radius:4px;padding:0.65rem 0.75rem;overflow:hidden">` +
@@ -615,7 +615,27 @@ function renderStructuredForm(type, content) {
     case 'webhook':   inner = renderWebhookForm(c);   break;
     default:          return `<div class="ep-empty">Unknown type</div>`;
   }
-  return `<div class="ep-form">${inner}${renderLifecycleCard(c)}</div>`;
+  return `<div class="ep-form" data-sql-type="${esc(c.DatabaseObjectType ?? 'Table')}" data-write-mode="${esc(writeModeOf(c))}">${rawOnlyNotice(c)}${inner}${renderLifecycleCard(c)}</div>`;
+}
+
+// config keys without a form field
+const RAW_ONLY_KEYS = ['FallbackUrls', 'Retry', 'Headers', 'SupportsOData', 'Relationships', 'ResponseTransforms.Remove', 'ResponseTransforms.Rename', 'Mcp.Instruction', 'Mcp.AllowedMethods'];
+
+function rawOnlyNotice(c) {
+  const isSet = v => v != null && v !== false && v !== '' && !(Array.isArray(v) && !v.length) && !(typeof v === 'object' && !Object.keys(v).length);
+  const keys = RAW_ONLY_KEYS.filter(k => isSet(k.split('.').reduce((o, p) => o?.[p], c)));
+  return keys.length ? `<p class="field-help ep-raw-notice">Set in Raw JSON: ${keys.map(k => `<code>${esc(k)}</code>`).join(', ')}</p>` : '';
+}
+
+function writeModeOf(c) {
+  return String(c.WriteMode ?? '').toLowerCase() === 'table' ? 'Table' : 'Procedure';
+}
+
+function sqlShapeChanged() {
+  const form = document.querySelector('.ep-form');
+  if (!form) return;
+  form.dataset.sqlType = document.getElementById('objectType')?.value ?? 'Table';
+  form.dataset.writeMode = document.getElementById('writeMode')?.value ?? 'Procedure';
 }
 
 function renderVersionBar(type) {
@@ -690,8 +710,8 @@ function applyLifecycle(cfg) {
 
 function fieldBadges(badges) {
   return `<div class="field">
-    <label class="field-label">Badges</label>
-    <div class="kv-editor" id="badges">${(badges ?? []).map(badgeRow).join('')}</div>
+    <span class="field-label" id="badges-label">Badges</span>
+    <div class="kv-editor" id="badges" role="group" aria-labelledby="badges-label">${(badges ?? []).map(badgeRow).join('')}</div>
     <button type="button" class="ep-add-row" data-on="click:addBadgeRow click:markDirty">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Add badge
@@ -754,13 +774,13 @@ function fieldRow(...fields) {
   return `<div class="field-row">${fields.join('')}</div>`;
 }
 
-function fieldMetadata(c, open = false) {
+function fieldMetadata(c) {
   const set = !!(c.Namespace || c.NamespaceDisplayName || c.DisplayName);
   return accordion('Metadata', fieldRow(
     fieldNamespace(c),
     fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '', 'e.g. Sales orders'),
     fieldText('displayName', 'Display Name', c.DisplayName ?? '', 'e.g. Order lines')
-  ), open || set);
+  ), set);
 }
 
 function fieldMcp(c) {
@@ -773,11 +793,11 @@ function readMcp(c) {
   return on ? { Exposed: true } : undefined;
 }
 
-function fieldSelect(id, label, value, options) {
+function fieldSelect(id, label, value, options, onChange) {
   const opts = options.map(o => `<option ${value === o ? 'selected' : ''}>${esc(o)}</option>`).join('');
   return `<div class="field">
     <label class="field-label" for="${id}">${label}</label>
-    <select class="input" id="${id}" data-on="change:markDirty">${opts}</select>
+    <select class="input" id="${id}" data-on="change:markDirty${onChange ? ` change:${onChange}` : ''}">${opts}</select>
   </div>`;
 }
 
@@ -932,6 +952,12 @@ function readCacheProperties(existing) {
   return Object.keys(props).length ? props : undefined;
 }
 
+function readResponseTransforms(existing) {
+  const mask = readColumns('maskFields');
+  const transforms = { ...(existing ?? {}), Mask: mask.length ? mask : undefined };
+  return Object.values(transforms).some(v => v !== undefined) ? transforms : undefined;
+}
+
 function readColumns(id) {
   return Array.from(document.querySelectorAll(`#${id} .ep-col-row input`))
     .map(i => i.value.trim()).filter(Boolean);
@@ -984,7 +1010,7 @@ function fieldExampleIcon(fnName) {
 }
 
 function deletePatternsExample() {
-  const row = (code) => `<code style="display:block;background:hsl(0 0% 10%/0.5);padding:0.15rem 0.4rem;border-radius:3px;margin-bottom:0.2rem;font-size:0.75rem">${code}</code>`;
+  const row = (code) => `<code style="display:block;background:hsl(var(--muted));padding:0.15rem 0.4rem;border-radius:var(--nav-radius);margin-bottom:0.2rem;font-size:0.75rem">${code}</code>`;
   return '<div style="white-space:normal;max-width:260px;font-size:0.72rem;line-height:1.6">'
     + '<div style="font-weight:600;margin-bottom:0.4rem">Delete Pattern examples</div>'
     + row('[{"Style":"PathParameter"}]')
@@ -1002,7 +1028,7 @@ function readJsonField(id) {
 
 function accordion(label, contentHtml, open = false) {
   return `<div class="accordion${open ? ' open' : ''}">
-    <button type="button" class="accordion-trigger" data-on="click:toggleClosestClass" data-args='[{"ref":"this"}, ".accordion", "open"]' style="font-size:0.8125rem;padding:0.625rem 0.875rem;">
+    <button type="button" class="accordion-trigger" aria-expanded="${open}" data-on="click:toggleClosestClass" data-args='[{"ref":"this"}, ".accordion", "open"]' style="font-size:0.8125rem;padding:0.625rem 0.875rem;">
       <span>${label}</span>
       <svg class="accordion-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
     </button>
@@ -1034,9 +1060,15 @@ function renderSqlForm(c) {
         fieldText('objectName', 'Object Name', c.DatabaseObjectName ?? '', 'e.g. Items', { required: true }),
         fieldText('schema', 'Schema', c.DatabaseSchema ?? '', 'dbo', { hint: 'Empty uses the provider default schema' }))}
       ${fieldRow(
-        fieldSelect('objectType', 'Type', c.DatabaseObjectType ?? 'Table', ['Table','View','StoredProcedure','TableValuedFunction']),
+        fieldSelect('objectType', 'Type', c.DatabaseObjectType ?? 'Table', ['Table','View','StoredProcedure','TableValuedFunction'], 'sqlShapeChanged'),
         fieldText('primaryKey', 'Primary Key', c.PrimaryKey ?? '', 'e.g. ItemId'))}
-      ${fieldText('procedure', 'Procedure', c.Procedure ?? '', 'e.g. dbo.SaveItem')}
+      <div class="sql-writes">
+        ${fieldRow(
+          fieldSelect('writeMode', 'Write mode', writeModeOf(c), ['Procedure', 'Table'], 'sqlShapeChanged'),
+          `<div class="sql-only-procedure">${fieldText('procedure', 'Procedure', c.Procedure ?? '', 'e.g. dbo.SaveItem')}</div>`)}
+        <div class="field-help sql-only-table-writes">Table writes use Primary Key and Allowed Columns.</div>
+      </div>
+      ${fieldColumns('allowedCols', 'Allowed Columns', c.AllowedColumns, 'Add column', 'Column or Column;Alias')}
     </div>
     <div class="card">
       <div class="card-header"><h2 class="card-title">Access</h2></div>
@@ -1048,16 +1080,15 @@ function renderSqlForm(c) {
       ${fieldMcp(c)}
     </div>
     ${fieldMetadata(c)}
-    ${accordion('Columns',
-        fieldColumns('allowedCols', 'Allowed Columns', c.AllowedColumns, 'Add column', 'Column or Column;Alias') +
-        fieldColumns('requiredCols', 'Required Columns', c.RequiredColumns))}
+    ${accordion('Required Columns',
+        fieldColumns('requiredCols', 'Required Columns', c.RequiredColumns), !!c.RequiredColumns?.length)}
     ${accordion('Caching',
         fieldToggle('cacheEnabled', 'Cache reads', (c.Properties?.CacheEnabled ?? true) !== false) +
         fieldText('cacheDurationMinutes', 'Duration (minutes)', c.Properties?.CacheDurationMinutes ?? '', 'Provider default', { type: 'number', min: 1 }) +
         fieldColumns('cacheInvalidatedBy', 'Invalidated by tables', c.Properties?.CacheInvalidatedBy, 'Add table', 'Schema.Table'))}
     ${accordion('Advanced',
         fieldJson('columnValidation', 'Column Validation (JSON)', c.ColumnValidation) +
-        fieldJson('functionParameters', 'Function Parameters (JSON, TVF only)', c.FunctionParameters))}
+        `<div class="sql-only-tvf">${fieldJson('functionParameters', 'Function Parameters (JSON)', c.FunctionParameters)}</div>`)}
     ${fieldDocumentation(c)}`;
 }
 
@@ -1069,6 +1100,8 @@ function renderProxyForm(c) {
     <div class="card">
       <div class="card-header"><h2 class="card-title">Target</h2></div>
       ${fieldText('url', 'URL', c.Url ?? '', 'https://erp.internal/api/items', { required: true, hint: 'Checked against the network access policy on every call' })}
+      ${fieldToggle('forwardAuthorization', 'Forward Authorization header', c.ForwardAuthorization ?? false)}
+      ${fieldColumns('maskFields', 'Masked response fields', c.ResponseTransforms?.Mask, 'Add field', 'e.g. email')}
     </div>
     <div class="card">
       <div class="card-header"><h2 class="card-title">Access</h2></div>
@@ -1166,8 +1199,13 @@ function renderWebhookForm(c) {
       <div class="card-header"><h2 class="card-title">Webhook IDs</h2>
         <a class="card-doc" href="https://melosso.github.io/portway/guide/endpoints-webhook" target="_blank" rel="noopener noreferrer" aria-label="Webhook documentation" title="Documentation"></a></div>
       <div class="field-help">Senders post to <code>/api/{env}/${esc(_selected?.name ?? '')}/{id}</code>. Each ID requires a Portway token or the signature of its verification mode.</div>
-      ${fieldColumns('allowedCols', 'IDs', c.AllowedColumns, 'Add webhook ID', 'e.g. github', true)}
-      <div id="verificationList" class="wh-verify-list">${renderVerificationRows(c.AllowedColumns ?? [], c.Verification ?? {})}</div>
+      <span class="field-label" id="webhookIds-label">IDs<span class="field-required" aria-hidden="true">*</span></span>
+      <div id="verificationList" class="wh-verify-list" role="group" aria-labelledby="webhookIds-label">${renderVerificationRows(c.AllowedColumns ?? [], c.Verification ?? {})}</div>
+      <button type="button" class="ep-add-row" data-on="click:addWebhookRow click:markDirty">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add webhook ID
+      </button>
+      <datalist id="secretNames" data-secret-names></datalist>
     </div>
     <div class="card">
       <div class="card-header"><h2 class="card-title">Storage</h2></div>
@@ -1182,7 +1220,7 @@ function renderWebhookForm(c) {
       ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
       ${fieldMcp(c)}
     </div>
-    ${fieldMetadata(c, true)}
+    ${fieldMetadata(c)}
     ${fieldDocumentation(c)}`;
 }
 
@@ -1195,6 +1233,15 @@ const HMAC_FIELDS = [
 ];
 const HMAC_SELECTS = [['Encoding', 'Encoding', ['Hex', 'Base64']], ['KeyEncoding', 'Key encoding', ['Utf8', 'Base64']], ['Format', 'Format', ['Plain', 'TimestampList']]];
 const DELIVERY_FIELDS = [['DeliveryIdHeader', 'Delivery ID header', 'e.g. X-Delivery-Id'], ['DeliveryIdField', 'Delivery ID field', 'e.g. id']];
+
+function createModeOptions() {
+  return ['None', ...WEBHOOK_PRESETS].map(m => `<option value="${m}">${esc(WEBHOOK_MODE_LABELS[m] ?? m)}</option>`).join('');
+}
+
+function createModeChanged(select) {
+  select.closest('.wh-create-verify').dataset.mode = select.value;
+  if (select.value !== 'None') loadSecretNames();
+}
 
 function modeOptions(mode) {
   const option = m => `<option value="${m}" ${m === mode ? 'selected' : ''}>${esc(WEBHOOK_MODE_LABELS[m] ?? m)}</option>`;
@@ -1244,10 +1291,13 @@ function verifyRow(id, v) {
     return v[key];
   };
   const extra = key => key === 'ToleranceSeconds' ? 'min="60" max="900" step="1"' : '';
-  return `<div class="wh-verify-row" data-id="${esc(id)}" data-mode="${esc(mode)}">
+  return `<div class="wh-verify-row" data-mode="${esc(mode)}">
     <div class="wh-verify-head">
-      <span class="wh-id">${esc(id)}</span>
-      <select class="input wh-mode" aria-label="Verification for ${esc(id)}" data-on="change:modeChanged" data-args='[{"ref": "this"}]'>${modeOptions(mode)}</select>
+      <input type="text" class="input wh-id-input" value="${esc(id)}" placeholder="e.g. github" aria-label="Webhook ID" spellcheck="false" autocomplete="off" data-on="input:markDirty">
+      <select class="input wh-mode" aria-label="Verification mode" data-on="change:modeChanged" data-args='[{"ref": "this"}]'>${modeOptions(mode)}</select>
+      <button type="button" class="btn btn-ghost btn-icon" data-on="click:removeClosest click:markDirty" data-args='[{"ref":"this"}, ".wh-verify-row"]' title="Remove" aria-label="Remove webhook ID">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
     <div class="wh-verify-body">
       <div class="wh-preset-info">${presetInfo(mode)}</div>
@@ -1262,42 +1312,42 @@ function verifyRow(id, v) {
 }
 
 function renderVerificationRows(ids, verification) {
-  if (!ids.length) return `<div class="secret-empty">Add a webhook ID to choose its verification.</div><datalist id="secretNames"></datalist>`;
   const byId = Object.fromEntries(Object.entries(verification).map(([k, v]) => [k.toLowerCase(), v]));
-  return ids.map(id => verifyRow(id, byId[id.toLowerCase()])).join('') + `<datalist id="secretNames"></datalist>`;
+  return ids.map(id => verifyRow(id, byId[id.toLowerCase()])).join('');
 }
 
-function syncVerificationRows() {
+function addWebhookRow() {
   const list = document.getElementById('verificationList');
-  if (!list) return;
-  const ids = readColumns('allowedCols');
-  const rows = [...list.querySelectorAll('.wh-verify-row')].map(r => r.dataset.id);
-  if (ids.join('\n').toLowerCase() === rows.join('\n').toLowerCase()) return;
-  const current = collectVerification(true);
-  list.innerHTML = renderVerificationRows(ids, current);
-  loadSecretNames();
+  list?.insertAdjacentHTML('beforeend', verifyRow('', {}));
+  list?.lastElementChild?.querySelector('.wh-id-input')?.focus();
+}
+
+function readWebhookIds() {
+  return [...document.querySelectorAll('#verificationList .wh-id-input')].map(i => i.value.trim()).filter(Boolean);
 }
 
 async function loadSecretNames() {
-  const list = document.getElementById('secretNames');
-  if (!list) return;
+  const lists = document.querySelectorAll('datalist[data-secret-names]');
+  if (!lists.length) return;
   const envs = readEnvs() ?? (await api('/_/api/environments', { silent: true }).catch(() => ({}))).allowed_environments ?? [];
   const names = new Set();
   await Promise.all(envs.map(async env => {
     try { (await api(`/_/api/environments/${encodeURIComponent(env)}`, { silent: true })).secret_names?.forEach(n => names.add(n)); } catch (e) {}
   }));
-  list.innerHTML = [...names].sort().map(n => `<option value="${esc(n)}"></option>`).join('');
+  const options = [...names].sort().map(n => `<option value="${esc(n)}"></option>`).join('');
+  lists.forEach(list => { list.innerHTML = options; });
 }
 
 function collectVerification(keepAll = false) {
   const result = {};
   document.querySelectorAll('#verificationList .wh-verify-row').forEach(row => {
+    const id = row.querySelector('.wh-id-input')?.value?.trim();
     const mode = row.querySelector('.wh-mode').value;
-    if (mode === 'None' && !keepAll) return;
+    if (!id || (mode === 'None' && !keepAll)) return;
     const read = key => row.querySelector(`[data-key="${key}"]`);
     const text = key => read(key)?.value?.trim() || undefined;
     const secretRef = key => (text(key) ? '${secret:' + text(key) + '}' : undefined);
-    const saved = Object.entries(_detailData?.content?.Verification ?? {}).find(([k]) => k.toLowerCase() === row.dataset.id.toLowerCase())?.[1] ?? {};
+    const saved = Object.entries(_detailData?.content?.Verification ?? {}).find(([k]) => k.toLowerCase() === id.toLowerCase())?.[1] ?? {};
     const choice = (key, fallback) => (keepAll || saved[key] !== undefined || text(key) !== fallback ? text(key) : undefined);
     const v = {
       Scheme: mode === 'None' ? undefined : mode,
@@ -1318,18 +1368,12 @@ function collectVerification(keepAll = false) {
       v.DedupeKey = choice('DedupeKey', 'DeliveryId');
     }
     if (keepAll && mode !== 'SharedSecret') v.Username = text('Username');
-    result[row.dataset.id] = JSON.parse(JSON.stringify(v));
+    result[id] = JSON.parse(JSON.stringify(v));
   });
   return result;
 }
 
 function wireWebhookForm() {
-  const ids = document.getElementById('allowedCols');
-  if (!ids) return;
-  ids.addEventListener('focusout', syncVerificationRows);
-  new MutationObserver(records => {
-    if (records.some(r => [...r.addedNodes, ...r.removedNodes].some(n => n.classList?.contains('ep-col-row')))) syncVerificationRows();
-  }).observe(ids, { childList: true });
   document.getElementById('allowedEnvironments')?.addEventListener('change', loadSecretNames);
   loadSecretNames();
   loadWebhookPresets();
@@ -1348,8 +1392,8 @@ async function loadWebhookPresets() {
 const WEBHOOK_ID = /^[^\s\/\\()'"?#%]+$/;
 const HEADER_NAME = /^[A-Za-z0-9!#$%&'*+\-.^_`|~]+$/;
 
-function validateWebhookIds(errors, listId) {
-  const inputs = [...document.querySelectorAll(`#${listId} .ep-col-row input`)];
+function validateWebhookIds(errors, listId, inputSelector = '.ep-col-row input') {
+  const inputs = [...document.querySelectorAll(`#${listId} ${inputSelector}`)];
   const seen = new Set();
   for (const input of inputs) {
     const id = input.value.trim();
@@ -1469,7 +1513,9 @@ function showFieldErrors(errors) {
     first ??= el;
   }
   if (first) {
-    first.closest('.accordion')?.classList.add('open');
+    const section = first.closest('.accordion');
+    section?.classList.add('open');
+    section?.querySelector('.accordion-trigger')?.setAttribute('aria-expanded', 'true');
     first.scrollIntoView({ block: 'center' });
     first.focus({ preventScroll: true });
   }
@@ -1485,13 +1531,13 @@ document.addEventListener('change', e => {
 });
 
 const SERVER_FIELDS = [
-  ['DatabaseObjectName', ['objectName', 'createObjectName']], ['Url', ['url', 'createUrl']], ['Namespace', ['namespace', 'createNamespace']],
-  ['AllowedColumns', ['allowedCols', 'createWebhookIds']], ['Tenancy', ['tenancy', 'tenancyHeaders']], ['Badges', ['badges']], ['Stability', ['lcStability', 'lcDeprecated']]
+  ['DatabaseObjectName', ['objectName', 'createObjectName']], ['Url', ['url', 'createUrl']], ['Namespace', ['namespace', 'createName']],
+  ['AllowedColumns', ['allowedCols', 'verificationList', 'createWebhookIds']], ['Tenancy', ['tenancy', 'tenancyHeaders']], ['Badges', ['badges']], ['Stability', ['lcStability', 'lcDeprecated']]
 ];
 
 function serverErrorTarget(message) {
   const id = /^Verification\.([^:]+):/.exec(message)?.[1];
-  if (id) return [...document.querySelectorAll('#verificationList .wh-verify-row')].find(r => r.dataset.id.toLowerCase() === id.toLowerCase())?.querySelector('.wh-mode') ?? null;
+  if (id) return [...document.querySelectorAll('#verificationList .wh-verify-row')].find(r => r.querySelector('.wh-id-input')?.value.trim().toLowerCase() === id.toLowerCase())?.querySelector('.wh-mode') ?? null;
   const hit = SERVER_FIELDS.find(([key]) => message.includes(key));
   return hit?.[1].map(x => document.getElementById(x)).find(Boolean) ?? null;
 }
@@ -1509,6 +1555,11 @@ function validateForm(type) {
   switch(type) {
     case 'sql': {
       requireText(errors, 'objectName', 'Object Name is required');
+      if (document.getElementById('writeMode')?.value === 'Table' && methods.some(m => m !== 'GET' && m !== 'QUERY')) {
+        if (document.getElementById('objectType')?.value !== 'Table') errors.push(fieldError('writeMode', 'Table writes need Type set to Table'));
+        requireText(errors, 'primaryKey', 'Table writes need a Primary Key');
+        if (!readColumns('allowedCols').length) errors.push(fieldError('allowedCols', 'Table writes need at least one Allowed Column'));
+      }
       const minutes = document.getElementById('cacheDurationMinutes')?.value?.trim() ?? '';
       if (minutes && !/^[1-9]\d*$/.test(minutes)) errors.push(fieldError('cacheDurationMinutes', 'Duration must be a whole number of minutes'));
       needMethods();
@@ -1530,7 +1581,7 @@ function validateForm(type) {
       requireText(errors, 'contentType', 'Content-Type is required');
       break;
     case 'webhook':
-      validateWebhookIds(errors, 'allowedCols');
+      validateWebhookIds(errors, 'verificationList', '.wh-id-input');
       validateVerification(errors);
       requireText(errors, 'objectName', 'Object Name is required');
       break;
@@ -1570,7 +1621,8 @@ function collectFormConfig(type, existingContent) {
         Mcp:                  readMcp(c),
         AllowedEnvironments:  envs,
         AllowedMethods:       keepDefault(c, 'AllowedMethods', methods, ['GET']),
-        Procedure:            document.getElementById('procedure')?.value?.trim() || undefined,
+        WriteMode:            keepDefault(c, 'WriteMode', document.getElementById('writeMode')?.value ?? 'Procedure', 'Procedure'),
+        Procedure:            document.getElementById('writeMode')?.value === 'Table' ? undefined : document.getElementById('procedure')?.value?.trim() || undefined,
         PrimaryKey:           document.getElementById('primaryKey')?.value?.trim() || undefined,
         AllowedColumns:       cols.length ? cols : undefined,
         RequiredColumns:      reqCols.length ? reqCols : undefined,
@@ -1604,6 +1656,8 @@ function collectFormConfig(type, existingContent) {
         Enabled:           keepDefault(c, 'Enabled', document.getElementById('enabled')?.checked ?? true, true),
         IsMcpExposed:         undefined,
         Mcp:                  readMcp(c),
+        ForwardAuthorization: keepDefault(c, 'ForwardAuthorization', document.getElementById('forwardAuthorization')?.checked ?? false, false),
+        ResponseTransforms:   readResponseTransforms(c.ResponseTransforms),
         DeletePatterns:       readJsonField('deletePatterns'),
         CustomProperties:     customProps,
         Tenancy:              readTenancy(),
@@ -1677,7 +1731,7 @@ function collectFormConfig(type, existingContent) {
       };
     }
     case 'webhook': {
-      const cols    = readColumns('allowedCols');
+      const cols    = readWebhookIds();
       const verification = collectVerification();
       const doc     = readDocumentation(c);
       return {
@@ -1854,14 +1908,13 @@ function setCreateType(key) {
 function renderCreateForm() {
   let html = `<div class="card">
     <div class="card-header"><h2 class="card-title">Identity</h2></div>
-    ${_createType === 'webhook' ? fieldText('createNamespace', 'Namespace', '', 'e.g. Hooks', { required: true, hint: 'Verified webhook IDs need a namespace' }) : ''}
-    ${fieldText('createName', 'Name', '', _createType === 'webhook' ? 'e.g. Payments' : 'e.g. Orders', { required: true, hint: 'Letters, numbers, hyphens and underscores. Slashes add a namespace.' })}
+    ${fieldText('createName', 'Name', '', _createType === 'webhook' ? 'e.g. Hooks/Payments' : 'e.g. Orders', { required: true, hint: 'Letters, numbers, hyphens and underscores. Slashes add a namespace.' })}
   </div>`;
   const access = (methods) => `<div class="card">
     <div class="card-header"><h2 class="card-title">Access</h2></div>
     ${methods ? fieldMethods(['GET'], 'createMethodPicker') : ''}
     ${fieldAllowedEnvs('*')}
-    ${fieldToggle('createHidden', 'Private', false)}
+    ${fieldToggle('createHidden', 'Hidden', false)}
   </div>`;
 
   switch(_createType) {
@@ -1922,7 +1975,18 @@ function renderCreateForm() {
       html += `<div class="card">
         <div class="card-header"><h2 class="card-title">Webhook IDs</h2></div>
         ${fieldColumns('createWebhookIds', 'IDs', [''], 'Add webhook ID', 'e.g. github', true)}
-        <div class="field-help">New IDs require a Portway token. Choose a signature mode per ID after create.</div>
+        <div class="wh-create-verify" data-mode="None">
+          <div class="field">
+            <label class="field-label" for="createWhMode">Verification</label>
+            <select class="input" id="createWhMode" data-on="change:createModeChanged" data-args='[{"ref": "this"}]'>${createModeOptions()}</select>
+          </div>
+          <div class="field wh-create-secret">
+            <label class="field-label" for="createWhSecret">Secret</label>
+            <input type="text" class="input wh-secret" id="createWhSecret" list="createSecretNames" placeholder="SECRET-NAME" spellcheck="false" autocomplete="off">
+            <datalist id="createSecretNames" data-secret-names></datalist>
+            <div class="field-help">Signed modes require a secret and a namespace in Name, for example Hooks/Payments.</div>
+          </div>
+        </div>
       </div>
       <div class="card">
         <div class="card-header"><h2 class="card-title">Storage</h2></div>
@@ -1994,16 +2058,23 @@ function createContent(errors, baseName) {
         AllowedEnvironments: envs,
         Hidden: hidden
       };
-    case 'webhook':
-      if (!NAME_PART.test(val('createNamespace'))) errors.push(fieldError('createNamespace', 'Namespace is required: letters, numbers, hyphens or underscores'));
+    case 'webhook': {
       validateWebhookIds(errors, 'createWebhookIds');
+      const ids = readColumns('createWebhookIds');
+      const mode = val('createWhMode') || 'None';
+      if (mode !== 'None') {
+        if (!baseName.includes('/')) errors.push(fieldError('createName', 'Signed webhooks need a namespace, for example Hooks/Payments'));
+        if (!/^[A-Za-z0-9-]{1,64}$/.test(val('createWhSecret'))) errors.push(fieldError('createWhSecret', 'Pick a secret name'));
+      }
       return {
         DatabaseObjectName: val('createObjectName') || 'WebhookData',
         DatabaseSchema: val('createSchema') || undefined,
         AllowedMethods: ['POST'],
-        AllowedColumns: readColumns('createWebhookIds'),
-        AllowedEnvironments: envs
+        AllowedColumns: ids,
+        AllowedEnvironments: envs,
+        Verification: mode === 'None' ? undefined : Object.fromEntries(ids.map(id => [id, { Scheme: mode, Secret: '${secret:' + val('createWhSecret') + '}' }]))
       };
+    }
   }
   return {};
 }
@@ -2014,8 +2085,7 @@ async function submitCreate() {
   const nameOk = baseName.split('/').every(part => NAME_PART.test(part));
   if (!baseName) errors.push(fieldError('createName', 'Name is required'));
   else if (!nameOk) errors.push(fieldError('createName', 'Use letters, numbers, hyphens or underscores; slashes separate namespaces'));
-  const webhookNamespace = (document.getElementById('createNamespace')?.value ?? '').trim();
-  const name = _createType === 'webhook' && webhookNamespace ? `${webhookNamespace}/${baseName}` : baseName;
+  const name = baseName;
 
   const content = createContent(errors, baseName);
   validateEnvs(errors);

@@ -49,7 +49,8 @@ function removeClosest(el, selector) {
 }
 
 function toggleClosestClass(el, selector, className) {
-    el.closest(selector)?.classList.toggle(className);
+    const on = el.closest(selector)?.classList.toggle(className);
+    if (el.hasAttribute('aria-expanded')) el.setAttribute('aria-expanded', String(!!on));
 }
 
 function clickElement(id) {

@@ -3497,6 +3497,27 @@ th.sortable.sort-desc .sort-icon {
     }
 }
 
+.ep-form:not([data-sql-type='Table']):not([data-sql-type='View']) .sql-writes,
+.ep-form[data-write-mode='Table'] .sql-only-procedure,
+.ep-form:not([data-write-mode='Table']) .sql-only-table-writes,
+.ep-form:not([data-sql-type='TableValuedFunction']) .sql-only-tvf,
+.wh-verify-row:not(:has([data-key='Deduplicate']:checked)) .wh-only-custom {
+    display: none;
+}
+.ep-raw-notice {
+    margin: 0;
+}
+.ep-form .card > .sql-writes {
+    max-width: 45rem;
+    margin-bottom: 0.875rem;
+}
+.ep-form .card > .toggle-row + .field {
+    margin-top: 0.875rem;
+}
+.sql-writes > .field-help {
+    margin-top: 0.375rem;
+}
+
 .wh-verify-list {
     display: flex;
     flex-direction: column;
@@ -3521,6 +3542,23 @@ th.sortable.sort-desc .sort-icon {
 }
 .wh-verify-head .wh-mode {
     flex: 0 0 11rem;
+}
+.wh-verify-head .wh-id-input {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-mono);
+}
+.wh-verify-list:empty {
+    display: none;
+}
+.wh-create-verify {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+.wh-create-verify[data-mode='None'] .wh-create-secret {
+    display: none;
 }
 .wh-verify-body {
     display: flex;
@@ -3642,6 +3680,7 @@ th.sortable.sort-desc .sort-icon {
     }
     .wh-verify-head .wh-mode {
         flex: 1 1 100%;
+        order: 1;
     }
     .wh-delivery-head,
     .wh-delivery summary {
