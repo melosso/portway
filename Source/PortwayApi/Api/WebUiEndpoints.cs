@@ -351,13 +351,19 @@ public static partial class WebUiEndpointExtensions
     private static IResult FinishHtml(string html, HttpContext context, string version)
     {
         var pb = context.Request.PathBase.Value ?? "";
-        var v = Uri.EscapeDataString(version);
         html = html.Replace("<head>", $"<head>\n  <base href=\"{pb}/\">\n  <script>window.PortwayBase=\"{pb}\";window.PortwayCsrfCookie=\"{CsrfCookieName}\";</script>");
         html = Regex.Replace(
             html,
             @"(href|src)=""(?!https?://)([^""]+\.(css|js))""",
-            m => $"{m.Groups[1]}=\"{m.Groups[2]}?v={v}\"");
+            m => $"{m.Groups[1]}=\"{m.Groups[2]}?v={Uri.EscapeDataString(AssetVersion(m.Groups[2].Value, version))}\"");
         return Results.Content(CspNonce.Apply(html, context), "text/html; charset=utf-8");
+    }
+
+    // the file timestamp changes on every build, the app version only on a new commit
+    private static string AssetVersion(string relativePath, string fallback)
+    {
+        var file = Path.Combine(AppContext.BaseDirectory, "wwwroot", relativePath.TrimStart('/'));
+        return File.Exists(file) ? File.GetLastWriteTimeUtc(file).Ticks.ToString("x") : fallback;
     }
 
     private static string ParseMarkdownToHtml(string md) =>

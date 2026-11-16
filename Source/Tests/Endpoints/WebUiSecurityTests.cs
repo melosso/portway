@@ -1965,6 +1965,18 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task ConsolePages_VersionScriptsByFileTimestamp()
+    {
+        var client = CreateClient();
+        var (authCookie, _) = await LoginAsync(client);
+        var html = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/tokens", authCookie), TestContext.Current.CancellationToken))
+            .Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var stamp = File.GetLastWriteTimeUtc(Path.Combine(AppContext.BaseDirectory, "wwwroot", "js", "shared.js")).Ticks.ToString("x");
+
+        Assert.Contains($"js/shared.js?v={stamp}", html);
+    }
+
+    [Fact]
     public async Task ScriptNonce_ChangesPerRequest()
     {
         var client = CreateClient();
