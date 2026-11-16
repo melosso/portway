@@ -103,6 +103,8 @@ public static partial class EndpointHandler
                 if (rule.Warning is not null)
                     warnings.Add($"Verification.{id}: {rule.Warning}");
             }
+            if (definition is { UsesTableWrites: true } && SqlTableWriteBuilder.ValidateConfig(definition) is { } tableWriteError)
+                warnings.Add($"WriteMode: {tableWriteError}. The endpoint refuses writes");
             return (errors, warnings);
         }
         catch (JsonException ex)
