@@ -38,6 +38,20 @@ public class ConsoleMarkupTests
     }
 
     [Fact]
+    public void ConsoleViews_KeepThePagePathWhenSettingAHash()
+    {
+        // pages set <base href>, so a bare hash resolves against the site root
+        var views = Directory.EnumerateFiles(Path.Combine(AppContext.BaseDirectory, "wwwroot", "_", "views"), "*.html");
+
+        var offenders = views
+            .Where(f => Regex.IsMatch(File.ReadAllText(f), @"history\.(push|replace)State\([^;]*,\s*'',\s*('#|hash\b|selectionHash)"))
+            .Select(Path.GetFileName)
+            .ToList();
+
+        Assert.Empty(offenders);
+    }
+
+    [Fact]
     public void SignInPage_LabelsCarryTheFieldNames()
     {
         var html = Read("_", "login.html");

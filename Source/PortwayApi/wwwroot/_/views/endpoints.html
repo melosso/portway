@@ -455,7 +455,7 @@ window.addEventListener('popstate', () => {
   const target = selectionFromHash();
   if (target && _selected && target.type === _selected.type && target.name === _selected.name) return;
   if (_dirty && !confirmNavigateSync()) {
-    if (_selected) history.pushState({ fromList: true }, '', selectionHash(_selected.type, _selected.name));
+    if (_selected) history.pushState({ fromList: true }, '', location.pathname + selectionHash(_selected.type, _selected.name));
     return;
   }
   _dirty = false;
@@ -472,8 +472,8 @@ async function selectEndpoint(type, name, scroll = true, history_ = 'push') {
   syncSplit();
   const hash = selectionHash(type, name);
   if (history_ !== 'none' && decodeURIComponent(location.hash) !== hash) {
-    if (history_ === 'replace') history.replaceState({ fromList: history.state?.fromList === true }, '', hash);
-    else history.pushState({ fromList: true }, '', hash);
+    if (history_ === 'replace') history.replaceState({ fromList: history.state?.fromList === true }, '', location.pathname + hash);
+    else history.pushState({ fromList: true }, '', location.pathname + hash);
   }
   if (scroll && matchMedia('(max-width: 768px)').matches) document.querySelector('main')?.scrollTo(0, 0);
 

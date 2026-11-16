@@ -958,7 +958,7 @@ function showSettingsSection(key) {
     el.classList.toggle('active', el.id === 'section-' + key));
   document.querySelectorAll('.nav-child').forEach(el =>
     el.classList.toggle('active', el.dataset.section === key));
-  if (location.hash !== '#' + key) history.replaceState(null, '', '#' + key);
+  if (location.hash !== '#' + key) history.replaceState(null, '', location.pathname + '#' + key);
 }
 
 // pre-0.11 deep links
