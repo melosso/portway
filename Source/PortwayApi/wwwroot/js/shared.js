@@ -48,6 +48,12 @@ function removeClosest(el, selector) {
     el.closest(selector)?.remove();
 }
 
+const RECENT_DAYS = 7;
+
+function isRecent(iso) {
+    return !!iso && Date.now() - Date.parse(iso) < RECENT_DAYS * 86400000;
+}
+
 function toggleClosestClass(el, selector, className) {
     const on = el.closest(selector)?.classList.toggle(className);
     if (el.hasAttribute('aria-expanded')) el.setAttribute('aria-expanded', String(!!on));
