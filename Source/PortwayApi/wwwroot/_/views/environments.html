@@ -269,9 +269,7 @@ function confirmNavigateSync() {
   return confirm('Discard unsaved changes?');
 }
 
-window.addEventListener('beforeunload', e => {
-  if (state.isDirty) { e.preventDefault(); e.returnValue = ''; }
-});
+trackUnsavedChanges(() => state.isDirty);
 
 function renderTabs(envs) {
   const total = envs.length;
@@ -1245,11 +1243,4 @@ async function init() {
 }
 
 init();
-
-function logout() {
-  confirmNavigate(() => {
-    api('/_/api/auth/logout', { method: 'POST', silent: true })
-      .catch(() => {}).finally(() => { window.location.href = (window.PortwayBase || '') + '/_/login'; });
-  });
-}
 </script>

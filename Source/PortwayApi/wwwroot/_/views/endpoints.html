@@ -259,9 +259,7 @@ function confirmNavigateSync() {
   return confirm('Discard unsaved changes?');
 }
 
-window.addEventListener('beforeunload', e => {
-  if (_dirty) { e.preventDefault(); e.returnValue = ''; }
-});
+trackUnsavedChanges(() => _dirty);
 
 async function refreshAll() {
   confirmNavigate(async () => {

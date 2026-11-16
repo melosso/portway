@@ -48,6 +48,18 @@ function removeClosest(el, selector) {
     el.closest(selector)?.remove();
 }
 
+let hasUnsavedChanges = () => false;
+
+function trackUnsavedChanges(check) {
+    hasUnsavedChanges = check;
+    window.addEventListener('beforeunload', (e) => {
+        if (hasUnsavedChanges()) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+}
+
 const RECENT_DAYS = 7;
 
 function isRecent(iso) {
