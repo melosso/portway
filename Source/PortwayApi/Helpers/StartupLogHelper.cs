@@ -58,6 +58,13 @@ public static class StartupLogHelper
         return null;
     }
 
+    internal static IReadOnlyList<(string Role, string Url)> HostingUrls(PortRouting ports, bool useHttps, string? pathBase)
+    {
+        var scheme = useHttps ? "https" : "http";
+        var basePath = string.IsNullOrEmpty(pathBase) ? "" : "/" + pathBase.Trim('/');
+        return [("API", $"{scheme}://localhost:{ports.ApiPort}{basePath}/api"), ("Console", $"{scheme}://localhost:{ports.ConsolePort}{basePath}/_")];
+    }
+
     /// <summary>
     /// Logs hosting URLs and configuration reload status
     /// </summary>
@@ -65,10 +72,13 @@ public static class StartupLogHelper
     {
         if (app.Environment.IsProduction() && Environment.GetEnvironmentVariable("ASPNETCORE_IIS_PHYSICAL_PATH") != null)
             Log.Debug("Application is hosted in IIS");
-        else if (ports.IsSplit)
-            Log.Information("Application is hosted on API port {ApiPort} and console port {ConsolePort}", ports.ApiPort, ports.ConsolePort);
         else
-            Log.Information("Application is hosted on port {Port} for API and console", ports.ApiPort);
+        {
+            Log.Information("Application is hosted on the following URLs:");
+            var https = Services.Configuration.WebHostConfigurationExtensions.HttpsEnabled(app.Environment);
+            foreach (var (role, url) in HostingUrls(ports, https, Middleware.RootNavigationExtensions.ConfiguredPathBase(configuration)))
+                Log.Information("   {Role,-8} {Url}", role + ":", url);
+        }
 
         if (!app.Environment.IsProduction())
             Log.Warning("Application Environment: {Environment}", app.Environment.EnvironmentName);

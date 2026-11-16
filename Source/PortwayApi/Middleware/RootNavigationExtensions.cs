@@ -14,10 +14,12 @@ public static class RootNavigationExtensions
     /// <summary>
     /// Applies ASPNETCORE_PATHBASE or PathBase config when set; no-op otherwise
     /// </summary>
+    internal static string? ConfiguredPathBase(IConfiguration configuration) =>
+        Environment.GetEnvironmentVariable("ASPNETCORE_PATHBASE") ?? configuration["PathBase"];
+
     public static WebApplication UsePortwayPathBase(this WebApplication app)
     {
-        var pathBase = Environment.GetEnvironmentVariable("ASPNETCORE_PATHBASE")
-            ?? app.Configuration["PathBase"];
+        var pathBase = ConfiguredPathBase(app.Configuration);
 
         if (string.IsNullOrEmpty(pathBase))
             return app;
