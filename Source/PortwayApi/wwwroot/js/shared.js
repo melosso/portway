@@ -1,10 +1,11 @@
 // Shared utilities for every console page
 
-// CSRF: echo the portway_csrf cookie on every mutating /_/api request (double-submit pattern)
+// CSRF: echo this instance's csrf cookie on every mutating /_/api request (double-submit pattern)
 (function () {
     function csrfToken() {
-        var m = document.cookie.match(/(?:^|;\s*)portway_csrf=([^;]+)/);
-        return m ? decodeURIComponent(m[1]) : null;
+        var prefix = (window.PortwayCsrfCookie || 'portway_csrf') + '=';
+        var pair = document.cookie.split(/;\s*/).find((c) => c.startsWith(prefix));
+        return pair ? decodeURIComponent(pair.slice(prefix.length)) : null;
     }
     var origFetch = window.fetch;
     window.fetch = function (input, init) {

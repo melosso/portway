@@ -4,6 +4,7 @@ using Moq;
 using PortwayApi.Middleware;
 using PortwayApi.Tests.Support;
 using System.Net;
+using PortwayApi.Helpers;
 using Xunit;
 
 namespace PortwayApi.Tests.Middleware;
@@ -169,7 +170,7 @@ public class RateLimiterTests
         for (var i = 0; i < 5; i++)
         {
             var ctx = BuildContext(path: "/_/api/settings");
-            ctx.Request.Headers.Cookie = $"portway_auth={cookie}";
+            ctx.Request.Headers.Cookie = $"{SessionKeyProvider.SessionCookieName}={cookie}";
             await limiter.InvokeAsync(ctx);
         }
 
@@ -186,7 +187,7 @@ public class RateLimiterTests
         for (var i = 0; i < 6; i++)
         {
             var ctx = BuildContext(path: "/_/api/settings");
-            ctx.Request.Headers.Cookie = "portway_auth=forged-value";
+            ctx.Request.Headers.Cookie = $"{SessionKeyProvider.SessionCookieName}=forged-value";
             await limiter.InvokeAsync(ctx);
         }
 
@@ -204,7 +205,7 @@ public class RateLimiterTests
         for (var i = 0; i < 6; i++)
         {
             var ctx = BuildContext(path: "/_/api/auth/csrf");
-            ctx.Request.Headers.Cookie = $"portway_auth={cookie}";
+            ctx.Request.Headers.Cookie = $"{SessionKeyProvider.SessionCookieName}={cookie}";
             await limiter.InvokeAsync(ctx);
         }
 

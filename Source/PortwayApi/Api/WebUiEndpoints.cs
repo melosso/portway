@@ -17,8 +17,8 @@ using PortwayApi.Services;
 
 public static partial class WebUiEndpointExtensions
 {
-    private const string CookieName = "portway_auth";
-    private const string CsrfCookieName = "portway_csrf";
+    private static string CookieName => SessionKeyProvider.SessionCookieName;
+    private static string CsrfCookieName => SessionKeyProvider.CsrfCookieName;
     private static readonly TimeSpan SessionLifetime = TimeSpan.FromHours(12);
     private static readonly TimeSpan RememberedSessionLifetime = TimeSpan.FromDays(30);
     private static readonly DateTime ProcessStartTime = DateTime.UtcNow;
@@ -352,7 +352,7 @@ public static partial class WebUiEndpointExtensions
     {
         var pb = context.Request.PathBase.Value ?? "";
         var v = Uri.EscapeDataString(version);
-        html = html.Replace("<head>", $"<head>\n  <base href=\"{pb}/\">\n  <script>window.PortwayBase=\"{pb}\";</script>");
+        html = html.Replace("<head>", $"<head>\n  <base href=\"{pb}/\">\n  <script>window.PortwayBase=\"{pb}\";window.PortwayCsrfCookie=\"{CsrfCookieName}\";</script>");
         html = Regex.Replace(
             html,
             @"(href|src)=""(?!https?://)([^""]+\.(css|js))""",

@@ -106,7 +106,7 @@ public sealed class RateLimiter
             bool isAuthPath = context.Request.Path.StartsWithSegments("/_/api/auth") ||
                               context.Request.Path.StartsWithSegments("/_/login");
 
-            bool hasValidSession = context.Request.Cookies.TryGetValue("portway_auth", out var sessionCookie) &&
+            bool hasValidSession = context.Request.Cookies.TryGetValue(SessionKeyProvider.SessionCookieName, out var sessionCookie) &&
                                    WebUiAuthHelper.ResolveSession(sessionCookie) is not null;
 
             if (!isAuthPath && hasValidSession)

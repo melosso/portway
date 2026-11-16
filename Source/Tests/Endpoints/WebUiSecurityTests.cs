@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using PortwayApi.Classes;
 using PortwayApi.Tests.Base;
+using PortwayApi.Helpers;
 using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
@@ -134,8 +135,8 @@ public class WebUiSecurityTests : IDisposable
         foreach (var setCookie in login.Headers.GetValues("Set-Cookie"))
         {
             var pair = setCookie.Split(';')[0];
-            if (pair.StartsWith("portway_auth=")) authCookie = pair["portway_auth=".Length..];
-            if (pair.StartsWith("portway_csrf=")) csrfCookie = pair["portway_csrf=".Length..];
+            if (pair.StartsWith(SessionKeyProvider.SessionCookieName + "=")) authCookie = pair[(SessionKeyProvider.SessionCookieName + "=").Length..];
+            if (pair.StartsWith(SessionKeyProvider.CsrfCookieName + "=")) csrfCookie = pair[(SessionKeyProvider.CsrfCookieName + "=").Length..];
         }
         Assert.NotNull(authCookie);
         Assert.NotNull(csrfCookie);
@@ -145,10 +146,10 @@ public class WebUiSecurityTests : IDisposable
     private static HttpRequestMessage AuthedRequest(HttpMethod method, string url, string authCookie, string? csrfHeader = null, object? body = null)
     {
         var req = new HttpRequestMessage(method, url);
-        var cookies = $"portway_auth={authCookie}";
+        var cookies = $"{SessionKeyProvider.SessionCookieName}={authCookie}";
         if (csrfHeader != null)
         {
-            cookies += $"; portway_csrf={csrfHeader}";
+            cookies += $"; {SessionKeyProvider.CsrfCookieName}={csrfHeader}";
             req.Headers.Add("X-CSRF-Token", Uri.UnescapeDataString(csrfHeader));
         }
         req.Headers.Add("Cookie", cookies);
@@ -198,8 +199,8 @@ public class WebUiSecurityTests : IDisposable
         var login = await client.PostAsJsonAsync("/_/api/auth", new { username = "admin", password = SeededPassword, csrf, remember }, ct);
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
 
-        var setCookie = login.Headers.GetValues("Set-Cookie").First(c => c.StartsWith("portway_auth="));
-        var signedExpiry = DateTimeOffset.FromUnixTimeSeconds(long.Parse(Uri.UnescapeDataString(setCookie.Split(';')[0]["portway_auth=".Length..]).Split('.')[1]));
+        var setCookie = login.Headers.GetValues("Set-Cookie").First(c => c.StartsWith(SessionKeyProvider.SessionCookieName + "="));
+        var signedExpiry = DateTimeOffset.FromUnixTimeSeconds(long.Parse(Uri.UnescapeDataString(setCookie.Split(';')[0][(SessionKeyProvider.SessionCookieName + "=").Length..]).Split('.')[1]));
         var lifetime = TimeSpan.FromHours(hours);
         Assert.InRange(signedExpiry - DateTimeOffset.UtcNow, lifetime - TimeSpan.FromMinutes(1), lifetime);
         Assert.Contains("httponly", setCookie, StringComparison.OrdinalIgnoreCase);
@@ -1949,6 +1950,18 @@ public class WebUiSecurityTests : IDisposable
 
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         AssertInlineScriptsCarry(await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), nonce);
+    }
+
+    [Fact]
+    public async Task ConsolePages_ContainTheInstanceCsrfCookieName()
+    {
+        var client = CreateClient();
+        var (authCookie, _) = await LoginAsync(client);
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/tokens", authCookie), TestContext.Current.CancellationToken);
+        var html = await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        Assert.Contains($"window.PortwayCsrfCookie=\"{SessionKeyProvider.CsrfCookieName}\"", html);
+        Assert.DoesNotContain("portway_auth=", html);
     }
 
     [Fact]
