@@ -15,4 +15,5 @@ public sealed record ProxyEndpointInfo(
     List<string>? FallbackUrls = null,
     ProxyRetryOptions? Retry = null,
     ProxyResponseTransforms? ResponseTransforms = null,
-    bool HasTenancy = false);
+    bool HasTenancy = false,
+    IReadOnlyDictionary<string, string>? Headers = null);

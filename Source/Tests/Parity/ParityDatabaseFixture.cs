@@ -41,7 +41,7 @@ public abstract class ParityDatabaseFixture : IAsyncLifetime
     /// </summary>
     public abstract string GuidKeyProcedureName { get; }
 
-    public const string GuidKey ="3f2a1b4c-1111-4222-8333-444455556666";
+    public const string GuidKey = "3f2a1b4c-1111-4222-8333-444455556666";
     public const string RemovableGuidKey = "7b1d2e3f-1111-4222-8333-444455556666";
 
     protected const string GuidKeySeedValues = $"('{GuidKey}', 'Kept'), ('{RemovableGuidKey}', 'Removed')";

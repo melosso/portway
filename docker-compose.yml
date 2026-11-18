@@ -3,6 +3,7 @@ services:
     image: ghcr.io/melosso/portway:latest
     ports:
       - "8080:8080"
+      - "8081:8081"
     volumes:
       - portway_app:/app:z
       - ./environments:/app/environments:z
@@ -11,6 +12,8 @@ services:
       - ./data:/app/data:z
     environment:
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
+      #- PORTWAY_PORT_API=8080
+      #- PORTWAY_PORT_CONSOLE=8081
       #- PORTWAY_PUBLIC_ORIGINS=https://example.com,https://api.example.com
       #- PORTWAY_SECURE_COOKIES=true
     restart: unless-stopped

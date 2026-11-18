@@ -3,5 +3,8 @@
   "ServerName": "localhost",
   "Headers": {
     "Origin": "Portway"
+  },
+  "Secrets": {
+    "GITHUB-WEBHOOK": "demo-github-webhook-secret"
   }
 }

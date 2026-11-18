@@ -29,4 +29,9 @@ public sealed class EnvironmentConfig
     /// Set false to keep this settings.json plaintext, skips at-rest encryption on load. Meant for dev checkouts. Null means encrypt (default)
     /// </summary>
     public bool? Encrypt { get; set; }
+
+    public Dictionary<string, string>? Secrets { get; set; }
+
+    [System.Text.Json.Serialization.JsonExtensionData]
+    public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; set; }
 }

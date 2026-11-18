@@ -1,31 +1,56 @@
-using Microsoft.Extensions.Configuration;
+using System.Net;
+using System.Net.Sockets;
 using PortwayApi.Helpers;
+using PortwayApi.Middleware;
 using Xunit;
 
 namespace PortwayApi.Tests.Helpers;
 
 /// <summary>
-/// The startup banner and port preflight name the URLs Kestrel binds
+/// The port preflight reports the first taken API or console port
 /// </summary>
 public class StartupLogHelperTests
 {
-    private static IConfiguration Config(params (string Key, string Value)[] values) =>
-        new ConfigurationBuilder().AddInMemoryCollection(values.ToDictionary(v => v.Key, v => (string?)v.Value)).Build();
+    [Fact]
+    public void TakenPort_IsReported()
+    {
+        var listener = TcpListener.Create(0);
+        listener.Start();
+        try
+        {
+            var taken = ((IPEndPoint)listener.LocalEndpoint).Port;
+            Assert.Equal(taken, StartupLogHelper.FirstTakenPort([taken]));
+        }
+        finally
+        {
+            listener.Stop();
+        }
+    }
 
     [Fact]
-    public void ContainerHttpPorts_AreUsed() =>
-        Assert.Equal("http://*:8080", StartupLogHelper.ConfiguredUrls(Config(("http_ports", "8080"))));
+    public void FreePort_IsNotReported()
+    {
+        var probe = TcpListener.Create(0);
+        probe.Start();
+        var free = ((IPEndPoint)probe.LocalEndpoint).Port;
+        probe.Stop();
+
+        Assert.Null(StartupLogHelper.FirstTakenPort([free]));
+    }
 
     [Fact]
-    public void HttpAndHttpsPorts_AreCombined() =>
-        Assert.Equal("http://*:8080;http://*:8081;https://*:8443",
-            StartupLogHelper.ConfiguredUrls(Config(("http_ports", "8080;8081"), ("https_ports", "8443"))));
+    public void HostingUrls_ReturnsApiAndConsoleUrlsPerPort()
+    {
+        var urls = StartupLogHelper.HostingUrls(new PortRouting(8080, 8081), useHttps: false, pathBase: null);
+
+        Assert.Equal([("API", "http://localhost:8080/api"), ("Console", "http://localhost:8081/_")], urls);
+    }
 
     [Fact]
-    public void Urls_WinOverPorts() =>
-        Assert.Equal("http://0.0.0.0:9000", StartupLogHelper.ConfiguredUrls(Config(("urls", "http://0.0.0.0:9000"), ("http_ports", "8080"))));
+    public void HostingUrls_IncludesSchemeAndPathBase()
+    {
+        var urls = StartupLogHelper.HostingUrls(new PortRouting(443, 443), useHttps: true, pathBase: "gateway");
 
-    [Fact]
-    public void NothingConfigured_FallsBackToKestrelDefault() =>
-        Assert.Equal("http://localhost:5000", StartupLogHelper.ConfiguredUrls(Config()));
+        Assert.Equal([("API", "https://localhost:443/gateway/api"), ("Console", "https://localhost:443/gateway/_")], urls);
+    }
 }

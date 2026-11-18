@@ -7,6 +7,9 @@ public sealed class EndpointDefinition
 {
     public string Url { get; set; } = string.Empty;
     public List<string>? FallbackUrls { get; set; }
+    public Dictionary<string, string>? Headers { get; set; }
+
+    public IReadOnlyDictionary<string, Services.WebhookRule>? Verification { get; set; }
     public bool ForwardAuthorization { get; set; } = false;
     public ProxyRetryOptions? Retry { get; set; }
     public ProxyResponseTransforms? ResponseTransforms { get; set; }
@@ -67,7 +70,7 @@ public sealed class EndpointDefinition
     /// </summary>
     public string? DatabaseObjectName { get; set; }
     public string? DatabaseSchema { get; set; }
-    public List<string>? AllowedColumns { get; set; }
+    public List<string> AllowedColumns { get; set; } = [];
     public List<string>? RequiredColumns { get; set; }
     public Dictionary<string, ColumnValidationRule>? ColumnValidation { get; set; }
     public string? Procedure { get; set; }
@@ -304,7 +307,8 @@ public sealed class EndpointDefinition
             FallbackUrls,
             Retry,
             ResponseTransforms,
-            HasTenancy
+            HasTenancy,
+            Headers
         );
     }
 }

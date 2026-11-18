@@ -1,3 +1,4 @@
+using PortwayApi.Auth;
 using PortwayApi.Services.Mcp;
 using Xunit;
 
@@ -39,11 +40,29 @@ public class McpDiscoveryTests
         Assert.Equal(["CountryInfo"], info.Expandable);
     }
 
-    [Fact]
-    public void Describe_WithoutOwnEnvironments_ListsAllowedEnvironments() =>
-        Assert.Equal(["WMS", "500"], PortwayMcpTools.Describe("crm_accounts", Versioned with { AllowedEnvironments = null }, ["GET"], ["WMS", "500"]).AllowedEnvironments);
+    private static AuthToken Caller(string environments) =>
+        new() { Username = "caller", TokenHash = "h", TokenSalt = "s", AllowedEnvironments = environments };
 
     [Fact]
-    public void Describe_WithOwnEnvironments_KeepsThem() =>
-        Assert.Equal(["700"], PortwayMcpTools.Describe("crm_accounts", Versioned with { AllowedEnvironments = ["700"] }, ["GET"], ["WMS", "500"]).AllowedEnvironments);
+    public void CallerEnvironments_WithoutOwnEnvironments_ListsAllowedEnvironments() =>
+        Assert.Equal(["WMS", "500"], PortwayMcpTools.CallerEnvironments(Versioned with { AllowedEnvironments = null }, ["WMS", "500"], Caller("*")));
+
+    [Fact]
+    public void CallerEnvironments_WithOwnEnvironments_KeepsThem() =>
+        Assert.Equal(["700"], PortwayMcpTools.CallerEnvironments(Versioned with { AllowedEnvironments = ["700"] }, ["WMS", "500"], Caller("*")));
+
+    [Fact]
+    public void McpGetEndpointInfo_ReturnsCallerEnvironmentsOnly() =>
+        Assert.Equal(["dev"], PortwayMcpTools.CallerEnvironments(Versioned with { AllowedEnvironments = ["dev", "prod"] }, ["WMS"], Caller("dev")));
+
+    [Fact]
+    public void McpListEndpoints_EnvironmentOutOfScope_Omitted()
+    {
+        Assert.Empty(PortwayMcpTools.CallerEnvironments(Versioned with { AllowedEnvironments = ["prod"] }, ["prod", "dev"], Caller("dev")));
+        Assert.Empty(PortwayMcpTools.CallerEnvironments(Versioned with { AllowedEnvironments = null }, ["prod"], Caller("dev")));
+    }
+
+    [Fact]
+    public void Describe_ListsGivenEnvironments() =>
+        Assert.Equal(["dev"], PortwayMcpTools.Describe("crm_accounts", Versioned with { AllowedEnvironments = ["dev", "prod"] }, ["GET"], ["dev"]).AllowedEnvironments);
 }

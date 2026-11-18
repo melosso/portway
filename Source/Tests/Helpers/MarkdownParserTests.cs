@@ -40,4 +40,52 @@ public class MarkdownParserTests
     [Fact]
     public void ParseMarkdownToHtml_EmptyString_ReturnsEmpty()
         => Assert.Equal("", MarkdownParser.ParseMarkdownToHtml(""));
+
+    [Fact]
+    public void ParseMarkdownToHtml_Mailto_RendersAnchorInSameTab()
+    {
+        var html = MarkdownParser.ParseMarkdownToHtml("Ask your [administrator](mailto:support@example.com).");
+
+        Assert.Contains("<a href=\"mailto:support@example.com\">administrator</a>", html);
+    }
+
+    [Fact]
+    public void ParseMarkdownToHtml_UnderscoresInUrl_StayInHref()
+    {
+        var html = MarkdownParser.ParseMarkdownToHtml("[docs](https://example.com/a_b_c)");
+
+        Assert.Contains("href=\"https://example.com/a_b_c\"", html);
+        Assert.DoesNotContain("<em>", html);
+    }
+
+    [Fact]
+    public void ParseMarkdownToHtml_RefusedLink_EncodesTextOnce()
+    {
+        var html = MarkdownParser.ParseMarkdownToHtml("[Q&A](javascript:x)");
+
+        Assert.Equal("Q&amp;A", html);
+    }
+
+    [Fact]
+    public void ParseMarkdownToHtml_EmphasisAroundLink_StillRenders()
+    {
+        var html = MarkdownParser.ParseMarkdownToHtml("**Read** the [guide](https://example.com/x_y).");
+
+        Assert.Equal("<strong>Read</strong> the <a href=\"https://example.com/x_y\" target=\"_blank\" rel=\"noopener noreferrer\">guide</a>.", html);
+    }
+
+    [Fact]
+    public void ParseMarkdownToHtml_EmphasisInLinkLabel_Renders()
+    {
+        var html = MarkdownParser.ParseMarkdownToHtml("[**Help**](https://example.com/a_b_c)");
+
+        Assert.Equal("<a href=\"https://example.com/a_b_c\" target=\"_blank\" rel=\"noopener noreferrer\"><strong>Help</strong></a>", html);
+    }
+
+    [Theory]
+    [InlineData("Set snake_case_name here", "Set snake_case_name here")]
+    [InlineData("Set PORTWAY__USE__HTTPS here", "Set PORTWAY__USE__HTTPS here")]
+    [InlineData("an _italic_ and __bold__ word", "an <em>italic</em> and <strong>bold</strong> word")]
+    public void ParseMarkdownToHtml_UnderscoresInsideWords_StayLiteral(string md, string expected) =>
+        Assert.Equal(expected, MarkdownParser.ParseMarkdownToHtml(md));
 }

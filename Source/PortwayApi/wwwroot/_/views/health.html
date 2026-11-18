@@ -51,17 +51,17 @@
         </div>
         <div class="page-actions">
             <div id="healthPeriodSel"></div>
-            <button id="healthPurgeBtn" class="btn btn-outline" type="button" hidden onclick="purgeHealth()">Purge</button>
+            <button id="healthPurgeBtn" class="btn btn-outline" type="button" hidden data-on="click:purgeHealth">Purge</button>
         </div>
     </div>
 
     <div class="main-content">
         <div class="health-filters">
-            <select id="filterEnv" class="input input-sm" aria-label="Environment" onchange="loadHealth()"></select>
-            <select id="filterEndpoint" class="input input-sm" aria-label="Endpoint" onchange="loadHealth()"></select>
-            <select id="filterVersion" class="input input-sm" aria-label="Version" onchange="loadHealth()"></select>
-            <select id="filterMethod" class="input input-sm" aria-label="Method" onchange="loadHealth()"></select>
-            <button id="healthClearFiltersBtn" class="btn btn-ghost btn-sm" type="button" hidden onclick="clearHealthFilters()">Clear filters</button>
+            <select id="filterEnv" class="input input-sm" aria-label="Environment" data-on="change:loadHealth"></select>
+            <select id="filterEndpoint" class="input input-sm" aria-label="Endpoint" data-on="change:loadHealth"></select>
+            <select id="filterVersion" class="input input-sm" aria-label="Version" data-on="change:loadHealth"></select>
+            <select id="filterMethod" class="input input-sm" aria-label="Method" data-on="change:loadHealth"></select>
+            <button id="healthClearFiltersBtn" class="btn btn-ghost btn-sm" type="button" hidden data-on="click:clearHealthFilters">Clear filters</button>
         </div>
 
         <div class="summary-cards health-cards">
@@ -112,34 +112,34 @@
                     <table class="table health-table">
                         <thead>
                             <tr>
-                            <th class="sortable" data-col="environment" tabindex="0" onclick="setSort('environment')">
+                            <th class="sortable" data-col="environment" tabindex="0" data-on="click:setSort" data-args='["environment"]'>
                                 Environment <span class="sort-icon">↕</span>
                             </th>
-                            <th class="sortable" data-col="endpoint" tabindex="0" onclick="setSort('endpoint')">
+                            <th class="sortable" data-col="endpoint" tabindex="0" data-on="click:setSort" data-args='["endpoint"]'>
                                 Endpoint <span class="sort-icon">↕</span>
                             </th>
-                            <th class="sortable" data-col="version" tabindex="0" onclick="setSort('version')">
+                            <th class="sortable" data-col="version" tabindex="0" data-on="click:setSort" data-args='["version"]'>
                                 Version <span class="sort-icon">↕</span>
                             </th>
-                            <th class="sortable" data-col="method" tabindex="0" onclick="setSort('method')">
+                            <th class="sortable" data-col="method" tabindex="0" data-on="click:setSort" data-args='["method"]'>
                                 Method <span class="sort-icon">↕</span>
                             </th>
-                            <th class="sortable num" data-col="total" tabindex="0" onclick="setSort('total')">
+                            <th class="sortable num" data-col="total" tabindex="0" data-on="click:setSort" data-args='["total"]'>
                                 Requests <span class="sort-icon">↕</span>
                             </th>
-                            <th class="sortable num" data-col="success" tabindex="0" onclick="setSort('success')">
+                            <th class="sortable num" data-col="success" tabindex="0" data-on="click:setSort" data-args='["success"]'>
                                 Success <span class="sort-icon">↕</span>
                             </th>
-                            <th class="sortable num" data-col="failures" tabindex="0" onclick="setSort('failures')">
+                            <th class="sortable num" data-col="failures" tabindex="0" data-on="click:setSort" data-args='["failures"]'>
                                 Failures <span class="sort-icon">↕</span>
                             </th>
-                            <th class="sortable num" data-col="p50" tabindex="0" onclick="setSort('p50')">
+                            <th class="sortable num" data-col="p50" tabindex="0" data-on="click:setSort" data-args='["p50"]'>
                                 p50 <span class="sort-icon">↕</span>
                             </th>
-                            <th class="sortable num" data-col="p95" tabindex="0" onclick="setSort('p95')">
+                            <th class="sortable num" data-col="p95" tabindex="0" data-on="click:setSort" data-args='["p95"]'>
                                 p95 <span class="sort-icon">↕</span>
                             </th>
-                            <th class="sortable num" data-col="p99" tabindex="0" onclick="setSort('p99')">
+                            <th class="sortable num" data-col="p99" tabindex="0" data-on="click:setSort" data-args='["p99"]'>
                                 p99 <span class="sort-icon">↕</span>
                             </th>
                             </tr>

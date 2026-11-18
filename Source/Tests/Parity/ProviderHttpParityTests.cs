@@ -27,18 +27,16 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
 
     protected virtual HttpStatusCode NonGuidKeyOnGuidColumnStatus => HttpStatusCode.BadRequest;
 
-    // sqlite never converts text keys
-    protected virtual bool KeyMismatchIsAnError => true;
-
     protected ProviderHttpParityTests(TFixture fixture) : base(connectTimeoutSeconds: 15)
     {
         _fixture = fixture;
-        _namespace = $"Http{fixture.ProviderType}";
+        _namespace = $"Http{typeof(TFixture).Name.Replace("ParityFixture", "")}";
         _endpointDir = Path.Combine("endpoints", "SQL", _namespace);
 
         var schema = fixture.QualifiedGuidKeysTable.Split('.')[0];
         WriteEndpoint("Native", TableEndpoint(fixture.QualifiedGuidKeysTable, "Id", "Name"));
         WriteEndpoint("Text", TableEndpoint(fixture.QualifiedTextKeysTable, "Id", "Name"));
+        WriteEndpoint("TextAliased", TableEndpoint(fixture.QualifiedTextKeysTable, "Id", "Name;Label"));
         WriteEndpoint("Int", TableEndpoint(fixture.QualifiedProductsTable, "Id", "Name", "Price"));
         WriteEndpoint("IntCopy", TableEndpoint(fixture.QualifiedProductsTable, "Id", "Name"));
         var readOnly = TableEndpoint(fixture.QualifiedProductsTable, "Id", "Name");
@@ -54,18 +52,52 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
         procedure["Procedure"] = $"{schema}.{fixture.GuidKeyProcedureName}";
         WriteEndpoint("Proc", procedure);
 
+        var writeProcedure = TableEndpoint(fixture.QualifiedGuidKeysTable, "Id", "Name", "Price");
+        writeProcedure.Remove("WriteMode");
+        writeProcedure["AllowedMethods"] = new[] { "POST" };
+        writeProcedure["Procedure"] = $"{schema}.{(fixture.WriteProcedureName.Length > 0 ? fixture.WriteProcedureName : "NoProcedure")}";
+        WriteEndpoint("ProcUnlinked", writeProcedure);
+        writeProcedure = new Dictionary<string, object?>(writeProcedure)
+        {
+            ["Properties"] = new { CacheInvalidatedBy = new[] { fixture.QualifiedProductsTable } }
+        };
+        WriteEndpoint("ProcLinked", writeProcedure);
+
         var function = TableEndpoint($"{schema}.{(fixture.TvfName.Length > 0 ? fixture.TvfName : "NoFunction")}", "Id", "Name", "Price");
         function["DatabaseObjectType"] = "TableValuedFunction";
         function["AllowedMethods"] = new[] { "GET" };
         function.Remove("WriteMode");
         function["FunctionParameters"] = new[] { new { Name = "MinPrice", SqlType = "decimal", Source = "Path", Position = 1, Required = true } };
         WriteEndpoint("Tvf", function);
+
+        var webhookTable = fixture.QualifiedWebhookTable.Split('.');
+        Directory.CreateDirectory(Path.Combine(WebhookDir, "Hooks"));
+        File.WriteAllText(Path.Combine(WebhookDir, "Hooks", "entity.json"), JsonSerializer.Serialize(new
+        {
+            DatabaseSchema = webhookTable[0],
+            DatabaseObjectName = webhookTable[1],
+            AllowedEnvironments = new[] { Env },
+            AllowedColumns = new[] { "dedupe" },
+            Verification = new Dictionary<string, object>
+            {
+                ["dedupe"] = new { Scheme = "SharedSecret", Header = "X-Hook-Key", Secret = "${secret:HOOK}", DeliveryIdHeader = "X-Message-Id", Deduplicate = true }
+            }
+        }));
+        _mockEnvironmentSettingsProvider.Setup(p => p.GetSecretAsync(It.IsAny<string>(), "HOOK", It.IsAny<CancellationToken>())).ReturnsAsync(HookSecret);
+        var hookRows = TableEndpoint(fixture.QualifiedWebhookTable, "Id", "WebhookId", "DeliveryId", "ProcessedAt");
+        hookRows["AllowedMethods"] = new[] { "GET", "PATCH" };
+        WriteEndpoint("HookRows", hookRows);
         EndpointHandler.ReloadAllEndpoints();
 
         SetAllowedEnvironments(Env);
         _mockEnvironmentSettingsProvider
             .Setup(p => p.LoadEnvironmentOrThrowAsync(It.IsAny<string>()))
             .ReturnsAsync((fixture.ConnectionString, "localhost", new Dictionary<string, string>()));
+
+        _mockSqlMetadataService.CallBase = true;
+        _mockSqlMetadataService.Object.InitializeAsync(
+            EndpointHandler.GetSqlEndpoints().Where(e => e.Key.StartsWith(_namespace + "/", StringComparison.Ordinal)).ToDictionary(),
+            _testEnvironmentSettings, _ => Task.FromResult(fixture.ConnectionString), CancellationToken.None).GetAwaiter().GetResult();
 
         var converter = new ODataToSqlConverter([new MsSqlProvider(), new PostgreSqlProvider(), new MySqlProvider(), new SqliteProvider()]);
         _mockODataToSqlConverter
@@ -105,9 +137,14 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
         File.WriteAllText(Path.Combine(target, "entity.json"), JsonSerializer.Serialize(definition));
     }
 
+    private const string HookSecret = "parity-hook-secret-0000";
+
+    private string WebhookDir => Path.Combine("endpoints", "Webhooks", _namespace);
+
     public new void Dispose()
     {
         Directory.Delete(_endpointDir, recursive: true);
+        Directory.Delete(WebhookDir, recursive: true);
         EndpointHandler.ReloadAllEndpoints();
         base.Dispose();
     }
@@ -123,6 +160,48 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
 
         var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
         return (response.StatusCode, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
+
+    [DockerFact]
+    public async Task Webhook_DuplicateDelivery_Returns200AndStoresOnce()
+    {
+        async Task<HttpStatusCode> Deliver(string messageId)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/{Env}/{_namespace}/Hooks/dedupe")
+            {
+                Content = new StringContent("""{"a":1}""", Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Hook-Key", HookSecret);
+            request.Headers.Add("X-Message-Id", messageId);
+            return (await _client.SendAsync(request, TestContext.Current.CancellationToken)).StatusCode;
+        }
+
+        var messageId = $"http-{Guid.NewGuid():N}";
+        Assert.Equal(HttpStatusCode.Created, await Deliver(messageId));
+        Assert.Equal(HttpStatusCode.OK, await Deliver(messageId));
+        Assert.Equal(HttpStatusCode.Created, await Deliver(messageId + "-next"));
+    }
+
+    [DockerFact]
+    public async Task WebhookRecipe_SqlEndpointMarksDeliveryProcessed()
+    {
+        var messageId = $"recipe-{Guid.NewGuid():N}";
+        using (var request = new HttpRequestMessage(HttpMethod.Post, $"/api/{Env}/{_namespace}/Hooks/dedupe") { Content = new StringContent("""{"a":1}""", Encoding.UTF8, "application/json") })
+        {
+            request.Headers.Add("X-Hook-Key", HookSecret);
+            request.Headers.Add("X-Message-Id", messageId);
+            Assert.Equal(HttpStatusCode.Created, (await _client.SendAsync(request, TestContext.Current.CancellationToken)).StatusCode);
+        }
+
+        var pending = Url("HookRows", $"?$filter=DeliveryId eq '{messageId}' and ProcessedAt eq null");
+        var (status, body) = await Send(HttpMethod.Get, pending);
+        Assert.Equal(HttpStatusCode.OK, status);
+        var id = JsonDocument.Parse(body).RootElement.GetProperty("value")[0].GetProperty("Id").GetInt64();
+
+        var (patchStatus, patchBody) = await Send(HttpMethod.Patch, Url("HookRows"), $$"""{ "Id": {{id}}, "ProcessedAt": "2026-11-11 10:00:00" }""");
+        Assert.True(patchStatus == HttpStatusCode.OK, patchBody);
+
+        Assert.Equal(0, JsonDocument.Parse((await Send(HttpMethod.Get, pending)).Body).RootElement.GetProperty("value").GetArrayLength());
     }
 
     [DockerFact]
@@ -181,7 +260,7 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
     {
         const string payload = """{ "Id": "abc", "Name": "Bad", "Price": 1 }""";
 
-        foreach (var method in KeyMismatchIsAnError ? new[] { HttpMethod.Post, HttpMethod.Patch } : [HttpMethod.Post])
+        foreach (var method in new[] { HttpMethod.Post, HttpMethod.Patch })
         {
             var (status, body) = await Send(method, Url("Int"), payload);
 
@@ -190,12 +269,6 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
         }
 
         var (deleteStatus, deleteBody) = await Send(HttpMethod.Delete, Url("Int", "('abc')"));
-        if (!KeyMismatchIsAnError)
-        {
-            Assert.Equal(HttpStatusCode.NotFound, deleteStatus);
-            return;
-        }
-
         Assert.Equal(HttpStatusCode.BadRequest, deleteStatus);
         Assert.Contains("Invalid record ID", deleteBody);
     }
@@ -232,6 +305,24 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
 
         Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, Url("Int", "(9002)"))).Status);
         Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Get, Url("Int", "(9002)"))).Status);
+    }
+
+    [DockerFact]
+    public async Task KeyedRead_KeyEqualToAlias_ReturnsThatRecord()
+    {
+        Assert.Equal(HttpStatusCode.Created, (await Send(HttpMethod.Post, Url("TextAliased"), """{ "Id": "Label", "Label": "Aliased key" }""")).Status);
+        try
+        {
+            var (status, body) = await Send(HttpMethod.Get, Url("TextAliased", "('Label')"));
+            Assert.Equal(HttpStatusCode.OK, status);
+            Assert.Contains("Aliased key", body);
+
+            Assert.Contains("Aliased key", (await Send(HttpMethod.Get, Url("TextAliased", "?$filter=Id eq 'Label'"))).Body);
+        }
+        finally
+        {
+            await Send(HttpMethod.Delete, Url("TextAliased", "('Label')"));
+        }
     }
 
     [DockerFact]
@@ -334,6 +425,24 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
     {
         if (_fixture.Provider.SupportsProcedures)
             Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, Url("Proc", $"({GuidKey})"))).Status);
+    }
+
+    [DockerFact]
+    public async Task ProcedureWrite_RefreshesReadsOfListedTable()
+    {
+        if (!_fixture.Provider.SupportsProcedures)
+            return;
+
+        var id = Random.Shared.Next(100_000, 900_000);
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Get, Url("Int", $"?$filter=Id ge {id}"))).Status);
+
+        Assert.True((await Send(HttpMethod.Post, Url("ProcUnlinked"), $$"""{ "Id": {{id}}, "Name": "Unlinked", "Price": 1 }""")).Status is HttpStatusCode.Created or HttpStatusCode.OK);
+        Assert.DoesNotContain("Unlinked", (await Send(HttpMethod.Get, Url("Int", $"?$filter=Id ge {id}"))).Body);
+
+        Assert.True((await Send(HttpMethod.Post, Url("ProcLinked"), $$"""{ "Id": {{id + 1}}, "Name": "Linked", "Price": 1 }""")).Status is HttpStatusCode.Created or HttpStatusCode.OK);
+        var body = (await Send(HttpMethod.Get, Url("Int", $"?$filter=Id ge {id}"))).Body;
+        Assert.Contains("Unlinked", body);
+        Assert.Contains("Linked", body);
     }
 
     [DockerFact]

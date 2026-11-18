@@ -1,9 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 
-using Dapper;
-using System.Text.Json;
 using PortwayApi.Classes;
 using PortwayApi.Helpers;
+using PortwayApi.Services;
 using Serilog;
 
 namespace PortwayApi.Api;
@@ -11,67 +10,71 @@ namespace PortwayApi.Api;
 public sealed partial class EndpointController
 {
     /// <summary>
-    /// Handles webhook requests
+    /// A verified id accepts only the marker its own verification set; an unverified id needs none
     /// </summary>
-    private async Task<IActionResult> HandleWebhookRequest(
-        string env,
-        string webhookEndpointKey,
-        string webhookId,
-        JsonElement payload)
+    internal static bool AcceptsVerification(WebhookRoute route, EndpointDefinition endpoint, object? marker) =>
+        endpoint.Verification?.Keys.FirstOrDefault(k => k.Equals(route.Id, StringComparison.OrdinalIgnoreCase)) is not { } verifiedId
+        || (marker is WebhookRoute verified && verified == route with { Id = verifiedId });
+
+    private async Task<IActionResult> HandleWebhookRequest(string env, string[] segments, string requestBody)
     {
-        var requestUrl = $"{Request.Scheme}://{Request.Host}{Request.Path}";
-        Log.Debug("Webhook received: {Method} {Url}", Request.Method, UrlRedaction.Redact(requestUrl));
+        if (!WebhookRoute.TryParse(env, segments, HttpContext, out var route))
+            return PortwayResults.NotFound("Webhook not found.");
+
+        if (!TryResolveEndpoint(EndpointType.Webhook, route.EndpointKey, null, out var endpoint, out var resolveError,
+            $"Endpoint '{route.EndpointKey}' is not configured properly."))
+            return resolveError;
+
+        if (!endpoint.AllowedColumns.Contains(route.Id, StringComparer.OrdinalIgnoreCase))
+            return PortwayResults.NotFound("Webhook not found.");
+
+        if (!AcceptsVerification(route, endpoint, HttpContext.Items[Middleware.TokenAuthMiddleware.VerifiedWebhookKey]))
+            return PortwayResults.Unauthorized("Authentication required");
+
+        var rule = endpoint.Verification?.GetValueOrDefault(route.Id);
+        var isForm = Microsoft.Net.Http.Headers.MediaTypeHeaderValue.TryParse(Request.ContentType, out var media)
+            && media.MediaType.Equals("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase);
+        if (isForm && rule is not { AcceptForm: true })
+            return PortwayResults.UnsupportedMediaType("Form bodies are not accepted for this webhook id.");
+
+        if (!isForm)
+        {
+            if (!JsonBody.TryParse(requestBody, out var json))
+                return PortwayResults.BadRequest(JsonBody.InvalidMessage);
+
+            if (rule?.Scheme == "Slack" && json.ValueKind == System.Text.Json.JsonValueKind.Object
+                && json.TryGetProperty("type", out var type) && type.ValueEquals("url_verification")
+                && json.TryGetProperty("challenge", out var challenge) && challenge.ValueKind == System.Text.Json.JsonValueKind.String)
+                return Ok(new { challenge = challenge.GetString() });
+        }
 
         try
         {
-            // Validate environment and get connection string
-            var (connectionString, serverName, _) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
+            var result = await _webhookRequestHandler.StoreAsync(route, endpoint, requestBody, Request.Headers, HttpContext.RequestAborted);
+            var metrics = HttpContext.RequestServices.GetService<Services.Telemetry.PortwayMetrics>();
 
-            if (string.IsNullOrWhiteSpace(connectionString))
+            if (result.Outcome == WebhookOutcome.Stored)
+                metrics?.WebhookStored(route.EndpointKey, rule?.Scheme);
+            else if (result.Outcome == WebhookOutcome.Duplicate)
+                metrics?.WebhookDuplicate(route.EndpointKey, rule?.Scheme);
+
+            return result.Outcome switch
             {
-                return PortwayResults.BadRequest("Environment is not configured properly.");
-            }
-
-            // Load webhook endpoint configuration using the namespace-aware key
-            if (!TryResolveEndpoint(EndpointType.Webhook, webhookEndpointKey, null, out var endpointConfig, out var resolveError,
-                $"Endpoint '{webhookEndpointKey}' is not configured properly."))
-            {
-                return resolveError;
-            }
-
-            var allowedColumns = endpointConfig.AllowedColumns ?? new List<string>();
-            if (allowedColumns.Any() &&
-                !allowedColumns.Contains(webhookId, StringComparer.OrdinalIgnoreCase))
-            {
-                return PortwayResults.NotFound($"Webhook ID '{webhookId}' is not configured.");
-            }
-
-            await using var connection = _connectionPoolService.CreateConnection(connectionString);
-            await connection.OpenAsync();
-
-            var provider = _providerFactory.GetProvider(connectionString);
-            var schema = SqlSchemaResolver.Resolve(endpointConfig.DatabaseSchema ?? "dbo", provider, connection.Database);
-            var tableName = endpointConfig.DatabaseObjectName ?? "WebhookData";
-            var insert = SqlTableWriteBuilder.BuildInsertReturningId(provider, schema.Length > 0 ? $"{schema}.{tableName}" : tableName,
-                new Dictionary<string, object?>
-                {
-                    ["WebhookId"] = webhookId,
-                    ["Payload"] = payload.ToString(),
-                    ["ReceivedAt"] = DateTime.UtcNow
-                });
-            var insertedId = Convert.ToInt64(await connection.ExecuteScalarAsync(insert.Sql, insert.Parameters));
-
-            Log.Debug("Webhook processed successfully: {WebhookId} (ID: {InsertedId})",
-                webhookId, insertedId);
-
-            // Return 201 Created with location header for consistency
-            var locationUrl = $"/api/{env}/{EndpointVersion.RoutePath(webhookEndpointKey)}/{webhookId}/{insertedId}";
-            return PortwayResults.Create(locationUrl, "Webhook processed successfully.", id: insertedId);
+                WebhookOutcome.Stored => PortwayResults.Created("Webhook stored.", result.Id),
+                WebhookOutcome.UnknownId => PortwayResults.NotFound("Webhook not found."),
+                WebhookOutcome.Duplicate => PortwayResults.Mutation("Duplicate delivery ignored."),
+                WebhookOutcome.InvalidDeliveryId => PortwayResults.BadRequest($"Delivery id is missing or longer than {WebhookRequestHandler.MaxDeliveryIdLength} characters."),
+                _ => PortwayResults.BadRequest("Environment is not configured properly.")
+            };
+        }
+        catch (System.Data.Common.DbException ex) when (SqlErrorClassifier.IsConnectionFailure(ex))
+        {
+            Log.Warning("Database unreachable for webhook {WebhookId} ({Detail}): {Message}", route.Id, SqlErrorClassifier.DescribeForLog(ex), ex.Message);
+            return PortwayResults.ServiceUnavailable(HttpContext, "Database unavailable. Retry later.");
         }
         catch (Exception ex)
         {
-            return HandleUnexpectedError(ex, "webhook", webhookId, "Error processing webhook. Please check the logs for more details.");
+            return HandleUnexpectedError(ex, "webhook", route.Id, "Error processing webhook. Please check the logs for more details.");
         }
     }
-
 }

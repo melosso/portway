@@ -403,7 +403,7 @@ public sealed class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         var required = new List<string>();
 
         // Parse column mappings to understand aliases
-        var allowedColumns = endpoint.AllowedColumns ?? new List<string>();
+        var allowedColumns = endpoint.AllowedColumns;
         var (aliasToDatabase, databaseToAlias) =
             Helpers.ColumnMappingHelper.ParseColumnMappings(allowedColumns);
 
@@ -708,7 +708,7 @@ public sealed class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         var obj = new JsonObject();
 
         // Parse column mappings
-        var allowedColumns = definition.AllowedColumns ?? new List<string>();
+        var allowedColumns = definition.AllowedColumns;
         var (aliasToDatabase, databaseToAlias) =
             Helpers.ColumnMappingHelper.ParseColumnMappings(allowedColumns);
 

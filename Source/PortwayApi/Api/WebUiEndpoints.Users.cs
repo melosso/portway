@@ -161,6 +161,9 @@ public static partial class WebUiEndpointExtensions
             if (role is not null && !AdminUserRoles.IsKnown(role))
                 return Results.Json(new { error = "Unknown role", field = "role" }, statusCode: 400);
 
+            if (isActive == false && ctx.Items[SignedInUserKey] is int me && me == id)
+                return Results.Json(new { error = "Another administrator must deactivate this account", field = "is_active" }, statusCode: 409);
+
             // Never let the console lock itself out
             var losingAdmin = (role is not null && role != AdminUserRoles.Administrator) || isActive == false;
             if (losingAdmin && target.Role == AdminUserRoles.Administrator && await users.IsLastAdministratorAsync(id))

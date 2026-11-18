@@ -34,4 +34,6 @@ public sealed class AuthenticationMethod
     public string? ClientId { get; set; }
     public string? ClientSecret { get; set; } // Will be encrypted
     public string? IntrospectionEndpoint { get; set; }
+
+    public List<string>? AllowedEndpoints { get; set; }
 }

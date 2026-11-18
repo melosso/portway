@@ -4,28 +4,32 @@ using System.IO.Compression;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using PortwayApi.Helpers;
+using PortwayApi.Middleware;
 
 /// <summary>
-/// Kestrel hardening, HTTPS opt-in detection and response compression for the Portway web host
+/// Kestrel hardening, API and console listeners, HTTPS opt-in detection and response compression for the Portway web host
 /// </summary>
 public static class WebHostConfigurationExtensions
 {
+    /// <summary>
+    /// True when Kestrel serves HTTPS: opt-in in Docker, on by default elsewhere, never in Development
+    /// </summary>
+    internal static bool HttpsEnabled(IHostEnvironment environment)
+    {
+        if (environment.IsDevelopment())
+            return false;
+        var setting = EnvAliases.GetDirect("PORTWAY_HTTPS_ENABLED");
+        var runningInContainer = string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
+        return runningInContainer
+            ? string.Equals(setting, "true", StringComparison.OrdinalIgnoreCase)
+            : !string.Equals(setting, "false", StringComparison.OrdinalIgnoreCase);
+    }
+
     public static WebApplicationBuilder ConfigurePortwayWebHost(this WebApplicationBuilder builder)
     {
-        // In Docker HTTPS is opt-in (PORTWAY_USE_HTTPS=true); on Windows Server/IIS it is on by default unless =false
-        var useHttpsEnv = EnvAliases.GetDirect("PORTWAY_USE_HTTPS");
-        var runningInContainer = string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
-        bool useHttps;
-        if (runningInContainer)
-        {
-            // In Docker, only enable HTTPS if explicitly requested
-            useHttps = string.Equals(useHttpsEnv, "true", StringComparison.OrdinalIgnoreCase);
-        }
-        else
-        {
-            // On Windows Server/IIS, enable HTTPS unless explicitly disabled
-            useHttps = !string.Equals(useHttpsEnv, "false", StringComparison.OrdinalIgnoreCase);
-        }
+        var useHttps = HttpsEnabled(builder.Environment);
+        var ports = PortRouting.From(builder.Configuration);
+        builder.Services.AddSingleton(ports);
 
         builder.WebHost.ConfigureKestrel(serverOptions =>
         {
@@ -58,13 +62,17 @@ public static class WebHostConfigurationExtensions
             serverOptions.Limits.Http2.KeepAlivePingTimeout = TimeSpan.FromSeconds(60);
 
             // 7. Configure HTTPS only if Use_HTTPS is set to 'true' (opt-in)
-            if (!builder.Environment.IsDevelopment() && useHttps)
+            if (useHttps)
             {
                 serverOptions.ConfigureEndpointDefaults(listenOptions =>
                 {
                     listenOptions.UseHttps();
                 });
             }
+
+            serverOptions.ListenAnyIP(ports.ApiPort);
+            if (ports.IsSplit)
+                serverOptions.ListenAnyIP(ports.ConsolePort);
         });
 
         builder.Services.AddResponseCompression(options =>

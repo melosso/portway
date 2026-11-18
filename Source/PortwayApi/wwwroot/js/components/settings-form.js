@@ -101,12 +101,14 @@ function field(key, label, desc, { unit, scale = 1, multiline, placeholder = '' 
         control = `<input${attrs} data-kind="time" type="time" class="input" value="${esc(v ?? '')}">`;
     } else if (spec.kind === 'secret') {
         const clear =
-            v && !dis ? `<button class="btn btn-outline" type="button" onclick="clearSecret(this)">Clear</button>` : '';
+            v && !dis
+                ? `<button class="btn btn-outline" type="button" data-on="click:clearSecret" data-args='[{"ref": "this"}]'>Clear</button>`
+                : '';
         control = `<div class="card-footer-actions"><input${attrs} data-kind="secret" type="password" class="input" autocomplete="new-password" placeholder="${v ? 'Set' : 'Not set'}">${clear}</div>`;
     } else if (spec.kind === 'clear') {
         control =
             v && !dis
-                ? `<button class="btn btn-outline" type="button" onclick="clearSetting('${esc(key)}', '${esc(label)}')">Remove</button>`
+                ? `<button class="btn btn-outline" type="button" data-on="click:clearSetting" data-args="${actionArgs(key, label)}">Remove</button>`
                 : `<span class="setting-value">${v ? 'Set' : 'Not set'}</span>`;
     } else if (LIST_KINDS.includes(spec.kind)) {
         stacked = true;
@@ -135,7 +137,7 @@ function cardFooter(bodyId, actionsHtml = '') {
     <span class="restart-note" id="${bodyId}-note"></span>
     <div class="card-footer-actions">
       ${actionsHtml}
-      <button class="btn btn-primary card-save" disabled onclick="saveCard('${bodyId}', this)">Save</button>
+      <button class="btn btn-primary card-save" disabled data-on="click:saveCard" data-args="${actionArgs(bodyId, ARG.THIS)}">Save</button>
     </div>
   </div>`;
 }

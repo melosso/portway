@@ -241,9 +241,7 @@ public sealed partial class SettingsWriteService
     /// <summary>
     /// Locking env variable, or null.
     /// </summary>
-    public string? LockedBy(string key) =>
-        EnvAliases.EnvNameFor(key, _envNames) ??
-        (ConfigAliases.Deprecated(key) is { } deprecated ? EnvAliases.EnvNameFor(deprecated, _envNames) : null);
+    public string? LockedBy(string key) => EnvAliases.EnvNameFor(key, _envNames);
 
     public static IReadOnlyCollection<WritableSetting> Schema => Allowed.Values;
 
@@ -315,7 +313,6 @@ public sealed partial class SettingsWriteService
         try
         {
             var root = await ReadOverridesAsync(cancellationToken);
-            MigrateDeprecatedKeys(root);
             foreach (var (key, node) in parsed) SetPath(root, key, node);
             await WriteOverridesAsync(root);
             // file watchers miss in-place writes on a single-file bind mount
@@ -686,21 +683,6 @@ public sealed partial class SettingsWriteService
             a.StartsWith(b + "/", StringComparison.OrdinalIgnoreCase) || b.StartsWith(a + "/", StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>
-    /// Migrates deprecated and removed keys.
-    /// </summary>
-    internal static void MigrateDeprecatedKeys(JsonObject root)
-    {
-        foreach (var (current, deprecated) in ConfigAliases.RenamedKeys)
-        {
-            if (!TryTakePath(root, deprecated, out var value)) continue;
-            if (!TryGetPath(root, current, out _)) SetPath(root, current, value);
-        }
-
-        foreach (var removed in ConfigAliases.RemovedKeys)
-            TryTakePath(root, removed, out _);
-    }
-
     private static async Task<JsonObject> ReadOverridesAsync(CancellationToken cancellationToken)
     {
         if (!File.Exists(OverridesPath)) return new JsonObject();
@@ -741,19 +723,6 @@ public sealed partial class SettingsWriteService
     }
 
     private static string Leaf(string key) => key[(key.LastIndexOf(':') + 1)..];
-
-    private static bool TryGetPath(JsonObject root, string key, out JsonNode? value)
-    {
-        value = null;
-        return Parent(root, key, false) is { } parent && parent.TryGetPropertyValue(Leaf(key), out value);
-    }
-
-    private static bool TryTakePath(JsonObject root, string key, out JsonNode? value)
-    {
-        if (!TryGetPath(root, key, out value)) return false;
-        Parent(root, key, false)!.Remove(Leaf(key));
-        return true;
-    }
 
     /// <summary>
     /// Writes a colon-separated configuration key into the nested JSON document

@@ -1,12 +1,5 @@
-// runs before first paint to avoid a theme and sidebar flash
-(function () {
-    try {
-        var s = JSON.parse(localStorage.getItem('beacon_settings') || '{}');
-        var theme = s.theme || 'system';
-        if (theme !== 'system') document.documentElement.setAttribute('data-theme', theme);
-        if (s.sidebarCollapsed) document.documentElement.classList.add('sidebar-collapsed');
-    } catch (e) {}
-})();
+// runs before first paint to avoid a sidebar flash; js/theme-toggle.js applies the theme
+if (uiSettings().sidebarCollapsed) document.documentElement.classList.add('sidebar-collapsed');
 
 // Navigation from NAV_GROUPS; the active item follows location.pathname
 
@@ -33,6 +26,11 @@ const NAV_GROUPS = [
                 href: '/_/environments',
                 label: 'Environments',
                 icon: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>'
+            },
+            {
+                href: '/_/secrets',
+                label: 'Secrets',
+                icon: '<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/>'
             },
             {
                 href: '/_/tokens',
@@ -100,7 +98,7 @@ const BRAND_SVG = `
     <g filter="url(#sb-blur-2)" opacity="0.1"><circle cx="16" cy="16" r="6" fill="#FF64B4" fill-opacity="0.671"/></g>
     <g filter="url(#sb-blur-3)" opacity="0.4"><circle cx="17" cy="19" r="6" fill="#FF64B4" fill-opacity="0.671"/></g>
     <rect width="20" height="20" fill="#FF64B4" fill-opacity="0.15" rx="5.5"/>
-    <g style="mix-blend-mode:hard-light"><rect width="20" height="20" fill="#6A62FF" fill-opacity="0.1" rx="5.5"/></g>
+    <g class="blend-hard-light"><rect width="20" height="20" fill="#6A62FF" fill-opacity="0.1" rx="5.5"/></g>
   </g>
   <rect width="19" height="19" x="0.5" y="0.5" stroke="#FDFDFD" stroke-opacity="0.1" rx="5"/>
   <defs>
@@ -164,10 +162,10 @@ function renderSidebar(mcpEnabled) {
                     const kids = item.children
                         .map(
                             (c) =>
-                                `<a href="${href}#${c.hash}" class="nav-item nav-child${c.hash === current ? ' active' : ''}"${c.hash === current ? ' aria-current="location"' : ''} data-section="${c.hash}" onclick="closeNav()"><span>${c.label}</span></a>`
+                                `<a href="${href}#${c.hash}" class="nav-item nav-child${c.hash === current ? ' active' : ''}"${c.hash === current ? ' aria-current="location"' : ''} data-section="${c.hash}" data-on="click:closeNav"><span>${c.label}</span></a>`
                         )
                         .join('\n      ');
-                    return `<div class="nav-parent">${row}<button type="button" class="nav-expand" aria-expanded="${active}" aria-controls="${kidsId}" aria-label="${item.label} sections" onclick="toggleNavKids(this)">${NAV_CHEVRON}</button></div>\n    <div class="nav-kids" id="${kidsId}"${active ? '' : ' hidden'}>\n      ${kids}\n    </div>`;
+                    return `<div class="nav-parent">${row}<button type="button" class="nav-expand" aria-expanded="${active}" aria-controls="${kidsId}" aria-label="${item.label} sections" data-on="click:toggleNavKids" data-args='[{"ref": "this"}]'>${NAV_CHEVRON}</button></div>\n    <div class="nav-kids" id="${kidsId}"${active ? '' : ' hidden'}>\n      ${kids}\n    </div>`;
                 })
                 .join('\n    ');
             return `<div class="nav-group">
@@ -179,7 +177,7 @@ function renderSidebar(mcpEnabled) {
 
     aside.innerHTML = `
   <div class="sidebar-brand">
-  <button type="button" class="brand select-none" onclick="toggleSidebar()" title="Toggle sidebar" aria-expanded="${navExpanded()}">
+  <button type="button" class="brand select-none" data-on="click:toggleSidebar" title="Toggle sidebar" aria-expanded="${navExpanded()}">
     <div class="brand-avatar">${BRAND_SVG}</div>
     <span class="brand-name">Portway</span>
     <svg class="brand-collapse" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
@@ -191,7 +189,7 @@ function renderSidebar(mcpEnabled) {
   </nav>
 
   <div class="sidebar-footer">
-    <button type="button" class="account-trigger" onclick="toggleAccountMenu(event)" title="Account">
+    <button type="button" class="account-trigger" data-on="click:toggleAccountMenu" data-args='[{"ref": "event"}]' title="Account">
       <span class="avatar" id="sidebarAvatar"></span>
       <span class="account-meta">
         <span class="account-name" id="sidebarAccountName">Portway</span>
@@ -204,22 +202,22 @@ function renderSidebar(mcpEnabled) {
         <span id="accountMenuEmail"></span>
       </div>
       <div class="account-menu-sep" role="separator"></div>
-      <div class="account-menu-nest" onpointerenter="hoverAppearance(event, true)" onpointerleave="hoverAppearance(event, false)">
-        <button type="button" role="menuitem" id="appearanceTrigger" aria-haspopup="menu" aria-expanded="false" onclick="toggleAppearance(event)">
+      <div class="account-menu-nest" data-on="pointerenter:hoverAppearance pointerleave:hoverAppearance" data-args='[{"ref": "event"}]'>
+        <button type="button" role="menuitem" id="appearanceTrigger" aria-haspopup="menu" aria-expanded="false" data-on="click:toggleAppearance" data-args='[{"ref": "event"}]'>
           Appearance
           <svg class="account-menu-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
         </button>
         <div class="account-submenu hidden" id="appearanceMenu" role="menu" aria-label="Appearance">
-          <button type="button" role="menuitemradio" data-appearance="light" onclick="chooseAppearance('light', event)">Light</button>
-          <button type="button" role="menuitemradio" data-appearance="dark" onclick="chooseAppearance('dark', event)">Dark</button>
-          <button type="button" role="menuitemradio" data-appearance="system" onclick="chooseAppearance('system', event)">System</button>
+          <button type="button" role="menuitemradio" data-appearance="light" data-on="click:chooseAppearance" data-args='["light", {"ref": "event"}]'>Light</button>
+          <button type="button" role="menuitemradio" data-appearance="dark" data-on="click:chooseAppearance" data-args='["dark", {"ref": "event"}]'>Dark</button>
+          <button type="button" role="menuitemradio" data-appearance="system" data-on="click:chooseAppearance" data-args='["system", {"ref": "event"}]'>System</button>
         </div>
       </div>
       <div class="account-menu-sep" role="separator"></div>
       <div id="accountMenuDocs"></div>
       <a href="https://github.com/melosso/portway" target="_blank" rel="noopener" role="menuitem">View on GitHub</a>
       <div class="account-menu-sep" role="separator"></div>
-      <button type="button" role="menuitem" onclick="logout()">
+      <button type="button" role="menuitem" data-on="click:logout">
         Sign out
         <svg class="account-menu-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
       </button>
@@ -240,13 +238,37 @@ function markBodyCapture() {
     link.insertAdjacentHTML('beforeend', '<i class="nav-dot" aria-hidden="true"></i>');
 }
 
+function lastMcpEnabled() {
+    try {
+        return sessionStorage.getItem('portway_mcp_enabled') === 'true';
+    } catch (e) {
+        return false;
+    }
+}
+
+const domReady = new Promise((resolve) => {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSidebar(lastMcpEnabled());
+            resolve();
+        });
+    } else {
+        renderSidebar(lastMcpEnabled());
+        resolve();
+    }
+});
+
 Promise.all([
     api('/_/api/overview', { silent: true }),
     api('/_/api/settings', { silent: true }).catch(() => ({ mcp: { enabled: false } })),
-    api('/_/api/users/me', { silent: true }).catch(() => ({ signed_in: false }))
+    api('/_/api/users/me', { silent: true }).catch(() => ({ signed_in: false })),
+    domReady
 ])
     .then(([d, settings, me]) => {
         const mcpEnabled = settings?.mcp?.enabled ?? false;
+        try {
+            sessionStorage.setItem('portway_mcp_enabled', String(mcpEnabled));
+        } catch (e) {}
 
         if (!mcpEnabled && location.pathname.startsWith((window.PortwayBase || '') + '/_/mcp')) {
             location.href = (window.PortwayBase || '') + '/_/dashboard';
@@ -293,6 +315,11 @@ Promise.all([
     });
 
 function logout() {
+    if (!hasUnsavedChanges()) return signOut();
+    confirmDiscard('Discard and sign out', signOut);
+}
+
+function signOut() {
     api('/_/api/auth/logout', { method: 'POST', silent: true })
         .catch(() => {})
         .finally(() => {
@@ -332,7 +359,6 @@ function closeNav() {
 }
 
 const DOCS_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`;
-const THEME_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a4 4 0 1 0 8 0 4 4 0 1 0-8 0M3 12h1m8-9v1m8 8h1m-9 8v1M5.6 5.6l.7.7m12.1-.7-.7.7m0 11.4.7.7m-12.1-.7-.7.7"/></svg>`;
 
 function mountChrome(openapiEnabled) {
     if (!document.querySelector('.nav-scrim')) {
@@ -351,12 +377,12 @@ function mountChrome(openapiEnabled) {
     <button type="button" class="topbar-btn nav-trigger" aria-label="Toggle navigation" aria-expanded="${navExpanded()}">${MENU_SVG}</button>
     <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb"></nav>
     <div class="topbar-actions">
-      <button type="button" class="topbar-btn" id="topbarTheme" data-tooltip="Toggle theme">${THEME_SVG}</button>
+      <button type="button" class="topbar-btn" id="topbarTheme" data-theme-toggle data-icon-size="20"></button>
     </div>`;
     main.prepend(bar);
 
     bar.querySelector('.nav-trigger').addEventListener('click', toggleSidebar);
-    bar.querySelector('#topbarTheme').addEventListener('click', toggleTheme);
+    paintThemeToggles();
     if (openapiEnabled) mountDocsButton();
 
     renderBreadcrumb();
@@ -434,41 +460,7 @@ function toggleSidebar() {
     const collapsed = document.documentElement.classList.contains('sidebar-collapsed');
     document.documentElement.classList.toggle('sidebar-collapsed', !collapsed);
     setNavExpanded(collapsed);
-    try {
-        const s = JSON.parse(localStorage.getItem('beacon_settings') || '{}');
-        s.sidebarCollapsed = !collapsed;
-        localStorage.setItem('beacon_settings', JSON.stringify(s));
-    } catch {}
-}
-
-function _getTheme() {
-    try {
-        return JSON.parse(localStorage.getItem('beacon_settings') || '{}').theme || 'system';
-    } catch {
-        return 'system';
-    }
-}
-
-function _saveTheme(t) {
-    try {
-        var s = JSON.parse(localStorage.getItem('beacon_settings') || '{}');
-        s.theme = t;
-        localStorage.setItem('beacon_settings', JSON.stringify(s));
-    } catch {}
-}
-
-function toggleTheme() {
-    const current = _getTheme();
-    const isDark =
-        current === 'dark' || (current === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    setTheme(isDark ? 'light' : 'dark');
-    markAppearance();
-}
-
-function setTheme(choice) {
-    _saveTheme(choice);
-    if (choice === 'system') document.documentElement.removeAttribute('data-theme');
-    else document.documentElement.setAttribute('data-theme', choice);
+    saveUiSettings({ sidebarCollapsed: !collapsed });
 }
 
 function toggleAccountMenu(e) {
@@ -508,14 +500,14 @@ function toggleAppearance(e) {
 
 let _appearanceTimer;
 
-function hoverAppearance(e, open) {
+function hoverAppearance(e) {
     if (e.pointerType !== 'mouse') return;
-    if (open) setAppearanceOpen(true);
+    if (e.type === 'pointerenter') setAppearanceOpen(true);
     else _appearanceTimer = setTimeout(closeAppearance, 150);
 }
 
 function markAppearance() {
-    const chosen = _getTheme();
+    const chosen = themeChoice();
     document.querySelectorAll('#appearanceMenu [data-appearance]').forEach((btn) => {
         const on = btn.dataset.appearance === chosen;
         btn.classList.toggle('checked', on);
@@ -525,16 +517,9 @@ function markAppearance() {
 
 function chooseAppearance(next, e) {
     if (e) e.stopPropagation();
-    setTheme(next);
-    markAppearance();
+    applyTheme(next);
     closeAccountMenu();
 }
 
 document.addEventListener('click', () => closeAccountMenu());
-
-// Render immediately (script is in <head>, so wait for DOM)
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', renderSidebar);
-} else {
-    renderSidebar();
-}
+document.addEventListener('portway:theme', markAppearance);

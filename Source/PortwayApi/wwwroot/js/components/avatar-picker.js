@@ -25,7 +25,7 @@ class AvatarPicker {
         this._take();
     }
 
-    /** Fields for the request body; empty keeps the stored avatar, or lets the server pick one for a new user */
+    /** Fields for the request body; empty retains the stored avatar, or lets the server pick one for a new user */
     value() {
         if (this._selected === 'none') return { avatar_style: '' };
         const c = typeof this._selected === 'number' ? this._candidates?.[this._selected] : null;

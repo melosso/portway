@@ -15,7 +15,15 @@ public static partial class EndpointHandler
         var definition = ParseSqlEndpointDefinition(json);
         if (definition != null)
         {
+            if (definition.AllowedColumns.Count == 0)
+                throw new InvalidOperationException("Webhook endpoint requires AllowedColumns, the list of accepted webhook ids");
+
             definition.Type = EndpointType.Webhook;
+
+            var entity = JsonSerializer.Deserialize<EndpointEntity>(json, SharedJsonOptions.CaseInsensitive);
+            definition.Verification = BuildVerification(entity?.Verification, definition.AllowedColumns);
+            if (definition.Hidden && definition.Verification?.Values.Any(r => r.AcceptForm) == true)
+                throw new InvalidOperationException("AcceptForm is not allowed on a Hidden webhook endpoint");
         }
         return definition;
     }
@@ -120,9 +128,14 @@ public static partial class EndpointHandler
         if (entity == null || string.IsNullOrWhiteSpace(entity.Url))
             return null;
 
+        var errors = ValidateProxyEndpointConfiguration(entity);
+        if (errors.Count > 0)
+            throw new InvalidOperationException($"Endpoint configuration is invalid: {string.Join(", ", errors)}");
+
         var definition = new EndpointDefinition
         {
             Url = entity.Url,
+            Headers = entity.Headers,
             Methods = entity.Methods ?? new List<string>(),
             Type = ParseEndpointType(entity.Type),
             CompositeConfig = entity.CompositeConfig,
@@ -137,6 +150,44 @@ public static partial class EndpointHandler
 
         entity.ApplyTo(definition);
         return definition;
+    }
+
+    internal static IReadOnlyDictionary<string, Services.WebhookRule>? BuildVerification(Dictionary<string, WebhookVerification>? verification, List<string> allowedColumns)
+    {
+        if (verification is null || verification.Count == 0)
+            return null;
+
+        var rules = new Dictionary<string, Services.WebhookRule>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (id, config) in verification)
+        {
+            var canonical = allowedColumns.FirstOrDefault(c => c.Equals(id, StringComparison.OrdinalIgnoreCase));
+            var rule = Services.WebhookVerifier.Build(config);
+            rules[canonical ?? id] = canonical is null ? rule with { Error = "id is not in AllowedColumns" } : rule;
+        }
+
+        foreach (var shared in rules.Where(r => r.Value.SecretName.Length > 0).GroupBy(r => r.Value.SecretName, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
+        {
+            foreach (var (id, rule) in shared.ToList())
+                rules[id] = rule with { Warning = $"secret {shared.Key} is shared by ids {string.Join(", ", shared.Select(s => s.Key))}; use one secret per sender" };
+        }
+        return rules;
+    }
+
+    internal static List<string> ValidateProxyEndpointConfiguration(EndpointEntity entity)
+    {
+        var errors = new List<string>();
+        foreach (var name in entity.Headers?.Keys ?? Enumerable.Empty<string>())
+        {
+            if (!HeaderPolicy.IsValidName(name) || HeaderPolicy.StrippedFromClient.Contains(name) || name.StartsWith("Content-", StringComparison.OrdinalIgnoreCase))
+                errors.Add($"Header '{name}' is not allowed");
+        }
+
+        foreach (var url in (IEnumerable<string?>)[entity.Url, .. entity.FallbackUrls ?? []])
+        {
+            if (url is not null && !SecretReference.IsQueryValueOnly(url))
+                errors.Add("A secret reference in a URL is allowed in a query value only");
+        }
+        return errors;
     }
 
     /// <summary>
@@ -167,7 +218,7 @@ public static partial class EndpointHandler
             Type = EndpointType.SQL,
             DatabaseObjectName = entity.DatabaseObjectName,
             DatabaseSchema = schema,
-            AllowedColumns = entity.AllowedColumns ?? new List<string>(),
+            AllowedColumns = entity.AllowedColumns ?? [],
             Procedure = entity.Procedure,
             PrimaryKey = entity.PrimaryKey,
             WriteMode = entity.WriteMode,
@@ -241,6 +292,7 @@ public static partial class EndpointHandler
 
         // Validate $expand relationship shape (identifiers, to-one only, not on a TVF)
         errors.AddRange(Helpers.OdataExpandRelationshipValidator.ValidateShape(entity));
+        errors.AddRange(Services.Caching.CacheGenerationKeys.Validate(entity.Properties));
 
         // Validate allowed methods
         if (entity.AllowedMethods != null)

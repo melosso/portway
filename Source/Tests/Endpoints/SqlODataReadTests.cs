@@ -225,13 +225,16 @@ public sealed class SqlODataReadTests : ApiTestBase, IDisposable
         Assert.DoesNotContain("Columns not allowed", raw);
     }
 
-    [Fact]
-    public async Task NavigationPathFilterNamesThePath()
+    [Theory]
+    [InlineData("$filter=CountryInfo/CountryName eq 'x'")]
+    [InlineData("$orderby=CountryInfo/CountryName")]
+    public async Task NavigationPathIsRefusedAsNavigation(string option)
     {
-        var (status, _, raw) = await Send($"{Warehouses}?$filter=CountryInfo/CountryName eq 'x'");
+        var (status, _, raw) = await Send($"{Warehouses}?{option}");
 
         Assert.Equal(HttpStatusCode.BadRequest, status);
-        Assert.Contains("CountryInfo/CountryName", raw);
+        Assert.Contains("Navigation paths are not supported in $filter or $orderby: CountryInfo/CountryName", raw);
+        Assert.DoesNotContain("Columns not allowed", raw);
     }
 
     [Fact]

@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry.Metrics;
 using PortwayApi.Services.Telemetry;
+using PortwayApi.Helpers;
 using Xunit;
 
 namespace PortwayApi.Tests.Services;
@@ -157,7 +158,7 @@ public class PrometheusScrapeEndpointTests : IDisposable
     public async Task SettingsApi_ReportsActivePrometheusProvider()
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, "/_/api/settings");
-        request.Headers.Add("Cookie", $"portway_auth={MintSessionCookie()}");
+        request.Headers.Add("Cookie", $"{SessionKeyProvider.SessionCookieName}={MintSessionCookie()}");
         var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);

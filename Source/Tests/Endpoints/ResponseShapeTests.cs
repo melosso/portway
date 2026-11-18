@@ -314,16 +314,16 @@ public class ResponseShapeTests : ApiTestBase
         return JsonDocument.Parse(content);
     }
 
-    // A masked 500 uses the same envelope as every other error, plus a trace id to quote in a bug report
+    // A masked backend failure uses the same envelope as every other error, plus a trace id to quote in a bug report
     [Fact]
-    public async Task ServerError_Returns500_WithSharedEnvelopeAndTraceId()
+    public async Task BackendUnavailable_Returns503_WithSharedEnvelopeAndTraceId()
     {
         SetAllowedEnvironments("500", "700");
 
         // No SQL server is reachable from the test host, so this endpoint fails on connect
         var response = await _client.GetAsync("/api/500/Inventory/Products", TestContext.Current.CancellationToken);
 
-        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
 
         var body = await ParseBody(response);
         Assert.Equal(JsonValueKind.False, body.RootElement.GetProperty("success").ValueKind);

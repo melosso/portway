@@ -30,6 +30,10 @@ public sealed class EndpointEntity : EndpointEntityBase
     public List<DeletePattern>? DeletePatterns { get; set; }
     public List<string>? FallbackUrls { get; set; }
 
+    public Dictionary<string, string>? Headers { get; set; }
+
+    public Dictionary<string, WebhookVerification>? Verification { get; set; }
+
     /// <summary>
     /// Sends the client Authorization header upstream when it also authenticated the request
     /// </summary>

@@ -9,7 +9,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Moq;
+using PortwayApi.Classes;
 using PortwayApi.Tests.Base;
+using PortwayApi.Helpers;
 using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
@@ -47,9 +50,9 @@ public class WebUiSecurityTests : IDisposable
                         ["Mcp:Enabled"] = "false",
                         ["Proxy:Username"] = "svc-proxy-account",
                         ["Telemetry:Otlp:Endpoint"] = "https://otel.example/?token=otlp-secret",
-                        ["WebUi:AdminApiKey"] = AdminKey,
+                        ["Console:AdminApiKey"] = AdminKey,
                         // TestServer connections have no remote IP, so allow via PublicOrigins instead of the local-network check
-                        ["WebUi:PublicOrigins:0"] = "http://localhost"
+                        ["Console:PublicOrigins:0"] = "http://localhost"
                     });
                 });
 
@@ -132,8 +135,8 @@ public class WebUiSecurityTests : IDisposable
         foreach (var setCookie in login.Headers.GetValues("Set-Cookie"))
         {
             var pair = setCookie.Split(';')[0];
-            if (pair.StartsWith("portway_auth=")) authCookie = pair["portway_auth=".Length..];
-            if (pair.StartsWith("portway_csrf=")) csrfCookie = pair["portway_csrf=".Length..];
+            if (pair.StartsWith(SessionKeyProvider.SessionCookieName + "=")) authCookie = pair[(SessionKeyProvider.SessionCookieName + "=").Length..];
+            if (pair.StartsWith(SessionKeyProvider.CsrfCookieName + "=")) csrfCookie = pair[(SessionKeyProvider.CsrfCookieName + "=").Length..];
         }
         Assert.NotNull(authCookie);
         Assert.NotNull(csrfCookie);
@@ -143,10 +146,10 @@ public class WebUiSecurityTests : IDisposable
     private static HttpRequestMessage AuthedRequest(HttpMethod method, string url, string authCookie, string? csrfHeader = null, object? body = null)
     {
         var req = new HttpRequestMessage(method, url);
-        var cookies = $"portway_auth={authCookie}";
+        var cookies = $"{SessionKeyProvider.SessionCookieName}={authCookie}";
         if (csrfHeader != null)
         {
-            cookies += $"; portway_csrf={csrfHeader}";
+            cookies += $"; {SessionKeyProvider.CsrfCookieName}={csrfHeader}";
             req.Headers.Add("X-CSRF-Token", Uri.UnescapeDataString(csrfHeader));
         }
         req.Headers.Add("Cookie", cookies);
@@ -196,11 +199,54 @@ public class WebUiSecurityTests : IDisposable
         var login = await client.PostAsJsonAsync("/_/api/auth", new { username = "admin", password = SeededPassword, csrf, remember }, ct);
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
 
-        var setCookie = login.Headers.GetValues("Set-Cookie").First(c => c.StartsWith("portway_auth="));
-        var signedExpiry = DateTimeOffset.FromUnixTimeSeconds(long.Parse(Uri.UnescapeDataString(setCookie.Split(';')[0]["portway_auth=".Length..]).Split('.')[1]));
+        var setCookie = login.Headers.GetValues("Set-Cookie").First(c => c.StartsWith(SessionKeyProvider.SessionCookieName + "="));
+        var signedExpiry = DateTimeOffset.FromUnixTimeSeconds(long.Parse(Uri.UnescapeDataString(setCookie.Split(';')[0][(SessionKeyProvider.SessionCookieName + "=").Length..]).Split('.')[1]));
         var lifetime = TimeSpan.FromHours(hours);
         Assert.InRange(signedExpiry - DateTimeOffset.UtcNow, lifetime - TimeSpan.FromMinutes(1), lifetime);
         Assert.Contains("httponly", setCookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task SignIn_CsrfTokenIsSpentByTheFirstAttempt()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var client = CreateClient();
+        await LoginAsync(client);
+
+        var csrf = (await client.GetFromJsonAsync<JsonElement>("/_/api/auth/csrf", ct)).GetProperty("csrf").GetString();
+        var wrong = await client.PostAsJsonAsync("/_/api/auth", new { username = "admin", password = "not-the-password", csrf }, ct);
+        var replay = await client.PostAsJsonAsync("/_/api/auth", new { username = "admin", password = SeededPassword, csrf }, ct);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, wrong.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, replay.StatusCode);
+    }
+
+    [Fact]
+    public async Task SignIn_MustChangePassword_ReturnsFreshCsrfForTheChange()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var client = CreateClient();
+        await LoginAsync(client);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<PortwayApi.Auth.AuthDbContext>();
+            (await db.AdminUsers.FirstAsync(u => u.Username == "admin", ct)).MustChangePassword = true;
+            await db.SaveChangesAsync(ct);
+        }
+
+        var csrf = (await client.GetFromJsonAsync<JsonElement>("/_/api/auth/csrf", ct)).GetProperty("csrf").GetString();
+        var first = await (await client.PostAsJsonAsync("/_/api/auth", new { username = "admin", password = SeededPassword, csrf }, ct))
+            .Content.ReadFromJsonAsync<JsonElement>(ct);
+        var change = await client.PostAsJsonAsync("/_/api/auth/password", new
+        {
+            username = "admin",
+            password = SeededPassword,
+            newPassword = "N3w-console-pw-4c1d",
+            csrf = first.GetProperty("csrf").GetString()
+        }, ct);
+
+        Assert.True(first.GetProperty("must_change_password").GetBoolean());
+        Assert.Equal(HttpStatusCode.OK, change.StatusCode);
     }
 
     [Fact]
@@ -240,7 +286,7 @@ public class WebUiSecurityTests : IDisposable
         // Middleware must deny ui api routes itself now that it always runs
         using var offFactory = _factory.WithWebHostBuilder(b =>
             b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(
-                new Dictionary<string, string?> { ["WebUi:AdminApiKey"] = "", ["WebUi:Enabled"] = "false" })));
+                new Dictionary<string, string?> { ["Console:AdminApiKey"] = "", ["Console:Enabled"] = "false" })));
         var client = offFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var resp = await client.GetAsync("/_/api/environments/500", TestContext.Current.CancellationToken);
@@ -253,7 +299,7 @@ public class WebUiSecurityTests : IDisposable
         // The settings page clears WebUi:AdminApiKey once real accounts exist; WebUi:Enabled must keep the console open
         using var onFactory = _factory.WithWebHostBuilder(b =>
             b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(
-                new Dictionary<string, string?> { ["WebUi:AdminApiKey"] = "", ["WebUi:Enabled"] = "true" })));
+                new Dictionary<string, string?> { ["Console:AdminApiKey"] = "", ["Console:Enabled"] = "true" })));
         var client = onFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var resp = await client.GetAsync("/_/api/environments/500", TestContext.Current.CancellationToken);
@@ -274,8 +320,8 @@ public class WebUiSecurityTests : IDisposable
                 b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["Mcp:Enabled"] = "false",
-                    ["WebUi:AdminApiKey"] = AdminKey,
-                    ["WebUi:PublicOrigins:0"] = "http://localhost"
+                    ["Console:AdminApiKey"] = AdminKey,
+                    ["Console:PublicOrigins:0"] = "http://localhost"
                 }));
                 b.ConfigureTestServices(services =>
                 {
@@ -524,7 +570,7 @@ public class WebUiSecurityTests : IDisposable
         var start = html.IndexOf("id=\"editDrawer\"", StringComparison.Ordinal);
         var end = html.IndexOf("id=\"editFooter\"", start, StringComparison.Ordinal);
         Assert.Contains("id=\"rotateRow\"", html[start..end]);
-        Assert.Contains("onclick=\"confirmRotate()\"", html[start..end]);
+        Assert.Contains("data-on=\"click:confirmRotate\"", html[start..end]);
         Assert.DoesNotContain("data-tooltip=\"Rotate token\"", html);
     }
 
@@ -574,6 +620,40 @@ public class WebUiSecurityTests : IDisposable
 
         var again = await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/_/api/tokens/{id}/rotate", authCookie, csrfCookie), ct);
         Assert.Equal(HttpStatusCode.BadRequest, again.StatusCode);
+    }
+
+    [Fact]
+    public async Task TokenAudit_ContainsRotatedHistoryAndConsoleActions()
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+        var ct = TestContext.Current.CancellationToken;
+
+        await client.SendAsync(AuthedRequest(HttpMethod.Post, "/_/api/tokens", authCookie, csrfCookie,
+            new { username = "audit-me", allowed_scopes = "CRM/Accounts", allowed_environments = "dev" }), ct);
+        async Task<int> ActiveId() => (await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/tokens", authCookie), ct))
+            .Content.ReadFromJsonAsync<JsonElement>(ct)).EnumerateArray()
+            .Single(t => t.GetProperty("username").GetString() == "audit-me").GetProperty("id").GetInt32();
+        var original = await ActiveId();
+
+        await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/tokens/{original}", authCookie, csrfCookie, new { description = "billing" }), ct);
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/_/api/tokens/{original}/rotate", authCookie, csrfCookie), ct)).StatusCode);
+        var replacement = await ActiveId();
+
+        var history = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, $"/_/api/tokens/{replacement}/audit", authCookie), ct))
+            .Content.ReadFromJsonAsync<JsonElement>(ct);
+        var operations = history.EnumerateArray().Select(e => e.GetProperty("operation").GetString()).ToList();
+        Assert.Contains("DescriptionUpdated", operations);
+        Assert.Contains("Revoked", operations);
+
+        var audit = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/audit?limit=20", authCookie), ct))
+            .Content.ReadFromJsonAsync<JsonElement>(ct);
+        var tokenEntries = audit.GetProperty("entries").EnumerateArray()
+            .Where(e => e.GetProperty("target_type").GetString() == "token" && e.GetProperty("target").GetString() == "audit-me")
+            .Select(e => e.GetProperty("action").GetString()).ToList();
+        Assert.Contains("create", tokenEntries);
+        Assert.Contains("update", tokenEntries);
+        Assert.Contains("rotate", tokenEntries);
     }
 
     [Fact]
@@ -684,6 +764,374 @@ public class WebUiSecurityTests : IDisposable
         }
     }
 
+    private async Task<(HttpClient Client, string Name, string Folder, string AdminCookie, string AdminCsrf)> SecretEnvironmentAsync(string settings)
+    {
+        var name = $"secretenv{Guid.NewGuid():N}";
+        var folder = Path.Combine("environments", name);
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "settings.json"), settings);
+        var client = CreateClient();
+        var (cookie, csrf) = await LoginAsync(client);
+        return (client, name, folder, cookie, csrf);
+    }
+
+    private const string PlainSecrets = """{"Encrypt":false,"ServerName":"srv","Headers":{},"Secrets":{"ERP-KEY":"plain-secret-value"},"FutureKey":{"x":1}}""";
+
+    [Fact]
+    public async Task Secrets_ValuesNeverReturned()
+    {
+        var (client, name, folder, adminCookie, adminCsrf) = await SecretEnvironmentAsync(PlainSecrets);
+        try
+        {
+            var create = AuthedRequest(HttpMethod.Post, "/_/api/users", adminCookie, adminCsrf,
+                new { username = "secret-viewer", password = "V13wer-secret-pw-99", role = "viewer", current_password = SeededPassword });
+            Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, TestContext.Current.CancellationToken)).StatusCode);
+            var (viewerCookie, _) = await SignInAsync(client, "secret-viewer", "V13wer-secret-pw-99");
+
+            foreach (var cookie in new[] { viewerCookie, adminCookie })
+            {
+                foreach (var url in new[] { "/_/api/environments", $"/_/api/environments/{name}" })
+                {
+                    var response = await client.SendAsync(AuthedRequest(HttpMethod.Get, url, cookie), TestContext.Current.CancellationToken);
+                    var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+                    Assert.DoesNotContain("plain-secret-value", body);
+                }
+            }
+
+            var named = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, $"/_/api/environments/{name}", viewerCookie), TestContext.Current.CancellationToken)).Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            Assert.Contains("ERP-KEY", named);
+
+            var raw = await client.SendAsync(AuthedRequest(HttpMethod.Get, $"/_/api/environments/{name}/raw", viewerCookie), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.Forbidden, raw.StatusCode);
+            Assert.DoesNotContain("plain-secret-value", await raw.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Secrets_ViewerCannotWrite()
+    {
+        var (client, name, folder, adminCookie, adminCsrf) = await SecretEnvironmentAsync(PlainSecrets);
+        try
+        {
+            var create = AuthedRequest(HttpMethod.Post, "/_/api/users", adminCookie, adminCsrf,
+                new { username = "secret-writer", password = "V13wer-writer-pw-99", role = "viewer", current_password = SeededPassword });
+            Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, TestContext.Current.CancellationToken)).StatusCode);
+            var (viewerCookie, viewerCsrf) = await SignInAsync(client, "secret-writer", "V13wer-writer-pw-99");
+
+            var put = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/environments/{name}/secrets/NEW-KEY", viewerCookie, viewerCsrf, new { value = "v" }), TestContext.Current.CancellationToken);
+            var delete = await client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/_/api/environments/{name}/secrets/ERP-KEY", viewerCookie, viewerCsrf), TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.Forbidden, put.StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, delete.StatusCode);
+            Assert.Contains("plain-secret-value", File.ReadAllText(Path.Combine(folder, "settings.json")));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Secrets_EmptyValue_Refused(string value)
+    {
+        var (client, name, folder, adminCookie, adminCsrf) = await SecretEnvironmentAsync(PlainSecrets);
+        try
+        {
+            var put = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/environments/{name}/secrets/NEW-KEY", adminCookie, adminCsrf, new { value }), TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("bad name")]
+    [InlineData("under_score")]
+    public async Task Secrets_InvalidName_Refused(string secret)
+    {
+        var (client, name, folder, adminCookie, adminCsrf) = await SecretEnvironmentAsync(PlainSecrets);
+        try
+        {
+            var put = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/environments/{name}/secrets/{Uri.EscapeDataString(secret)}", adminCookie, adminCsrf, new { value = "v" }), TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Secrets_PutReplacesCaseInsensitivelyAndDeleteRemoves()
+    {
+        var (client, name, folder, adminCookie, adminCsrf) = await SecretEnvironmentAsync("""{"ServerName":"srv","Headers":{},"Secrets":{"ERP-KEY":"old-value-000"}}""");
+        try
+        {
+            var put = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/environments/{name}/secrets/erp-key", adminCookie, adminCsrf, new { value = "new-secret-value" }), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+            Assert.DoesNotContain("new-secret-value", await put.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+
+            var saved = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(folder, "settings.json")))!["Secrets"]!.AsObject();
+            var only = Assert.Single(saved);
+            Assert.Equal("erp-key", only.Key);
+            Assert.StartsWith("PWENC:", only.Value!.GetValue<string>());
+
+            var delete = await client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/_/api/environments/{name}/secrets/ERP-KEY", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, delete.StatusCode);
+            Assert.Null(System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(folder, "settings.json")))!["Secrets"]);
+
+            var again = await client.SendAsync(AuthedRequest(HttpMethod.Delete, $"/_/api/environments/{name}/secrets/ERP-KEY", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.NotFound, again.StatusCode);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task FormSave_KeepsSecrets()
+    {
+        var (client, name, folder, adminCookie, adminCsrf) = await SecretEnvironmentAsync(PlainSecrets);
+        try
+        {
+            var save = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/environments/{name}", adminCookie, adminCsrf,
+                new { server_name = "srv2", headers = new Dictionary<string, string> { ["X-A"] = "1" } }), TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.OK, save.StatusCode);
+            var saved = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(folder, "settings.json")))!;
+            Assert.Equal("plain-secret-value", saved["Secrets"]!["ERP-KEY"]!.GetValue<string>());
+            Assert.Equal(1, saved["FutureKey"]!["x"]!.GetValue<int>());
+            Assert.Equal("srv2", saved["ServerName"]!.GetValue<string>());
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task EnvironmentSave_EndsWithNewline()
+    {
+        var (client, name, folder, adminCookie, adminCsrf) = await SecretEnvironmentAsync(PlainSecrets + "\n");
+        try
+        {
+            var put = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/environments/{name}/secrets/NEW-KEY", adminCookie, adminCsrf, new { value = "v" }), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+            Assert.EndsWith("}\n", File.ReadAllText(Path.Combine(folder, "settings.json")));
+
+            var raw = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/environments/{name}/raw", adminCookie, adminCsrf,
+                new { content = """{"ServerName":"srv"}""" }), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, raw.StatusCode);
+            Assert.EndsWith("}\n", File.ReadAllText(Path.Combine(folder, "settings.json")));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task RawSave_EncryptsSecrets()
+    {
+        var (client, name, folder, adminCookie, adminCsrf) = await SecretEnvironmentAsync("""{"ServerName":"srv"}""");
+        try
+        {
+            var save = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/environments/{name}/raw", adminCookie, adminCsrf,
+                new { content = """{"ServerName":"srv","Secrets":{"ERP-KEY":"raw-secret-value"}}""" }), TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.OK, save.StatusCode);
+            var file = File.ReadAllText(Path.Combine(folder, "settings.json"));
+            Assert.DoesNotContain("raw-secret-value", file);
+            Assert.StartsWith("PWENC:", System.Text.Json.Nodes.JsonNode.Parse(file)!["Secrets"]!["ERP-KEY"]!.GetValue<string>());
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task EndpointSave_WarnsOnMissingSecret()
+    {
+        var (_, name, folder, _, _) = await SecretEnvironmentAsync(PlainSecrets);
+        try
+        {
+            var warnings = await PortwayApi.Endpoints.WebUiEndpointExtensions.MissingSecretWarningsAsync(_factory.Services,
+                $$"""{"AllowedEnvironments":["{{name}}"],"Url":"https://api.example/x?a=${secret:ERP-KEY}&b=${secret:NOPE}"}""");
+
+            var warning = Assert.Single(warnings);
+            Assert.Contains("NOPE", warning);
+            Assert.Contains(name, warning);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task SecretsOverview_ListsReferencesAndMissing()
+    {
+        var (_, name, folder, _, _) = await SecretEnvironmentAsync("""{"Encrypt":false,"ConnectionString":"Password=${secret:DB-PW}","Secrets":{"ERP-KEY":"plain-secret-value","IDLE-KEY":"idle-secret-value"}}""");
+        var endpointDir = Path.Combine("endpoints", "Proxy", "SecretsOverview", "Items");
+        Directory.CreateDirectory(endpointDir);
+        File.WriteAllText(Path.Combine(endpointDir, "entity.json"), $$"""{"Url":"https://api.example/x?a=${secret:ERP-KEY}&b=${secret:NOPE}","AllowedEnvironments":["{{name}}"]}""");
+        try
+        {
+            var rows = await PortwayApi.Endpoints.WebUiEndpointExtensions.SecretsOverviewAsync(_factory.Services, [name], TestContext.Current.CancellationToken);
+            var json = System.Text.Json.JsonSerializer.Serialize(rows);
+
+            Assert.DoesNotContain("plain-secret-value", json);
+            Assert.DoesNotContain("idle-secret-value", json);
+            var erp = rows.Single(r => r.Name == "ERP-KEY");
+            Assert.True(erp.HasValue);
+            Assert.Contains("Proxy/SecretsOverview/Items", erp.UsedBy);
+            var nope = rows.Single(r => r.Name == "NOPE");
+            Assert.False(nope.HasValue);
+            Assert.Contains("environment settings", rows.Single(r => r.Name == "DB-PW").UsedBy);
+            Assert.Empty(rows.Single(r => r.Name == "IDLE-KEY").UsedBy);
+            Assert.All(rows, r => Assert.Equal(name, r.Environment));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+            Directory.Delete(Path.Combine("endpoints", "Proxy", "SecretsOverview"), recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task SecretsOverview_OnlyAllowedEnvironments()
+    {
+        var (client, name, folder, adminCookie, _) = await SecretEnvironmentAsync(PlainSecrets);
+        try
+        {
+            var response = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/secrets", adminCookie), TestContext.Current.CancellationToken);
+            var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.DoesNotContain(name, body);
+            Assert.DoesNotContain("plain-secret-value", body);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    private async Task<(HttpClient Client, string Cookie, string Csrf, WebApplicationFactory<Program> Factory, string DbPath, string Dir)> DeliveriesAsync()
+    {
+        var dbPath = Path.Combine(Path.GetTempPath(), $"portway_deliveries_{Guid.NewGuid():N}.db");
+        using (var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "CREATE TABLE WebhookData (Id INTEGER PRIMARY KEY, WebhookId TEXT, Payload TEXT, ReceivedAt TEXT);"
+                + string.Concat(Enumerable.Range(1, 60).Select(i => $"INSERT INTO WebhookData VALUES ({i}, 'evt', '{{\"n\":{i},\"html\":\"<b>x</b>\"}}', '2026-11-11T10:00:00Z');"));
+            command.ExecuteNonQuery();
+        }
+
+        var dir = Path.Combine("endpoints", "Webhooks", "ConsoleView");
+        Directory.CreateDirectory(Path.Combine(dir, "Hooks"));
+        File.WriteAllText(Path.Combine(dir, "Hooks", "entity.json"), """{"DatabaseObjectName":"WebhookData","AllowedColumns":["evt"],"AllowedEnvironments":["HOOKENV"]}""");
+        EndpointHandler.ReloadAllEndpoints();
+
+        var settings = new PortwayApi.Tests.Base.TestEnvironmentSettings();
+        settings.SetAllowedEnvironments(["HOOKENV"]);
+        var provider = new Moq.Mock<PortwayApi.Interfaces.IEnvironmentSettingsProvider>();
+        provider.Setup(p => p.LoadEnvironmentOrThrowAsync("HOOKENV")).ReturnsAsync(($"Data Source={dbPath}", "localhost", new Dictionary<string, string>()));
+        var factory = _factory.WithWebHostBuilder(b => b.ConfigureTestServices(services =>
+        {
+            services.AddSingleton<EnvironmentSettings>(settings);
+            services.AddSingleton(provider.Object);
+        }));
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var (cookie, csrf) = await LoginAsync(client);
+        return (client, cookie, csrf, factory, dbPath, dir);
+    }
+
+    [Fact]
+    public async Task Deliveries_ReturnsLatestFiftyNewestFirst()
+    {
+        var (client, cookie, _, factory, dbPath, dir) = await DeliveriesAsync();
+        try
+        {
+            var response = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/webhooks/ConsoleView/Hooks/deliveries?env=HOOKENV", cookie), TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+            var deliveries = json.RootElement.GetProperty("deliveries");
+            Assert.Equal(50, deliveries.GetArrayLength());
+            Assert.Equal(60, deliveries[0].GetProperty("id").GetInt64());
+            Assert.Contains("<b>x</b>", deliveries[0].GetProperty("payload").GetString());
+        }
+        finally
+        {
+            factory.Dispose();
+            Directory.Delete(dir, recursive: true);
+            EndpointHandler.ReloadAllEndpoints();
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            File.Delete(dbPath);
+        }
+    }
+
+    [Fact]
+    public async Task Deliveries_ViewerDenied()
+    {
+        var (client, cookie, csrf, factory, dbPath, dir) = await DeliveriesAsync();
+        try
+        {
+            var create = AuthedRequest(HttpMethod.Post, "/_/api/users", cookie, csrf,
+                new { username = "hook-viewer", password = "V13wer-hook-pw-99", role = "viewer", current_password = SeededPassword });
+            Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, TestContext.Current.CancellationToken)).StatusCode);
+            var (viewerCookie, _) = await SignInAsync(client, "hook-viewer", "V13wer-hook-pw-99");
+
+            var response = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/webhooks/ConsoleView/Hooks/deliveries?env=HOOKENV", viewerCookie), TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+            Assert.DoesNotContain("<b>x</b>", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            factory.Dispose();
+            Directory.Delete(dir, recursive: true);
+            EndpointHandler.ReloadAllEndpoints();
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            File.Delete(dbPath);
+        }
+    }
+
+    [Theory]
+    [InlineData("/_/api/webhooks/ConsoleView/Hooks/deliveries?env=OTHER", HttpStatusCode.BadRequest)]
+    [InlineData("/_/api/webhooks/ConsoleView/Hooks/deliveries", HttpStatusCode.BadRequest)]
+    [InlineData("/_/api/webhooks/Nope/deliveries?env=HOOKENV", HttpStatusCode.NotFound)]
+    public async Task Deliveries_RefusesUnknownEndpointOrEnvironment(string url, HttpStatusCode expected)
+    {
+        var (client, cookie, _, factory, dbPath, dir) = await DeliveriesAsync();
+        try
+        {
+            Assert.Equal(expected, (await client.SendAsync(AuthedRequest(HttpMethod.Get, url, cookie), TestContext.Current.CancellationToken)).StatusCode);
+        }
+        finally
+        {
+            factory.Dispose();
+            Directory.Delete(dir, recursive: true);
+            EndpointHandler.ReloadAllEndpoints();
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            File.Delete(dbPath);
+        }
+    }
+
     [Fact]
     public void RedactEndpointUrls_MasksUrlAndFallbackQueries()
     {
@@ -693,6 +1141,49 @@ public class WebUiSecurityTests : IDisposable
         Assert.DoesNotContain("url-secret", redacted);
         Assert.DoesNotContain("fallback-secret", redacted);
         Assert.Contains("Methods", redacted);
+    }
+
+    [Fact]
+    public void RedactEndpointUrls_MasksLiteralHeaderValues()
+    {
+        var redacted = PortwayApi.Endpoints.WebUiEndpointExtensions.RedactEndpointUrls(
+            """{"Url":"http://x/a","Headers":{"Authorization":"Bearer literal-header-secret","X-Api-Key":"${secret:ERP-KEY}"}}""");
+
+        Assert.DoesNotContain("literal-header-secret", redacted);
+        Assert.Contains("Authorization", redacted);
+        Assert.Contains("${secret:ERP-KEY}", redacted);
+    }
+
+    [Fact]
+    public async Task Viewer_EndpointGet_OmitsLiteralHeaderValues()
+    {
+        var dir = Path.Combine("endpoints", "Proxy", "ViewerHeaders", "Upstream");
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "entity.json"),
+            """{"Url":"http://localhost:9/x","Methods":["GET"],"Headers":{"Authorization":"Bearer literal-header-secret"}}""");
+        try
+        {
+            var client = CreateClient();
+            var (adminCookie, adminCsrf) = await LoginAsync(client);
+            var create = AuthedRequest(HttpMethod.Post, "/_/api/users", adminCookie, adminCsrf,
+                new { username = "header-viewer", password = "V13wer-header-pw-99", role = "viewer", current_password = SeededPassword });
+            Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, TestContext.Current.CancellationToken)).StatusCode);
+            var (viewerCookie, _) = await SignInAsync(client, "header-viewer", "V13wer-header-pw-99");
+
+            foreach (var url in new[] { "/_/api/endpoints/proxy/ViewerHeaders/Upstream", "/_/api/endpoints/proxy/ViewerHeaders/Upstream?raw=true" })
+            {
+                var response = await client.SendAsync(AuthedRequest(HttpMethod.Get, url, viewerCookie), TestContext.Current.CancellationToken);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Assert.DoesNotContain("literal-header-secret", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+            }
+
+            var admin = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/endpoints/proxy/ViewerHeaders/Upstream", adminCookie), TestContext.Current.CancellationToken);
+            Assert.Contains("literal-header-secret", await admin.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            Directory.Delete(Path.Combine("endpoints", "Proxy", "ViewerHeaders"), recursive: true);
+        }
     }
 
     [Fact]
@@ -758,6 +1249,24 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task UserUpdate_RefusesDeactivatingTheSignedInAccount()
+    {
+        var client = CreateClient();
+        var (cookie, csrf) = await LoginAsync(client);
+        using var list = AuthedRequest(HttpMethod.Get, "/_/api/users", cookie);
+        var users = await (await client.SendAsync(list, TestContext.Current.CancellationToken)).Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        var me = users.GetProperty("signed_in_user_id").GetInt32();
+
+        using var deactivate = AuthedRequest(HttpMethod.Put, $"/_/api/users/{me}", cookie, csrf,
+            new Dictionary<string, object> { ["is_active"] = false, ["current_password"] = SeededPassword });
+        var resp = await client.SendAsync(deactivate, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Conflict, resp.StatusCode);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        Assert.Equal("is_active", body.GetProperty("field").GetString());
+    }
+
+    [Fact]
     public async Task DeactivatedAccount_LosesAccessImmediately_EvenOnAPlainReadRequest()
     {
         // One client per account, the factory client tracks Set-Cookie
@@ -793,23 +1302,22 @@ public class WebUiSecurityTests : IDisposable
         var (authCookie, csrfCookie) = await LoginAsync(client);
 
         var secret = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["WebUi:AdminApiKey"] = "stolen" });
+            new Dictionary<string, object> { ["Console:AdminApiKey"] = "stolen" });
         Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(secret, TestContext.Current.CancellationToken)).StatusCode);
 
+        var former = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
+            new Dictionary<string, object> { ["WebUi:Customization:PromoText"] = "former" });
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(former, TestContext.Current.CancellationToken)).StatusCode);
+
         var tooLong = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["WebUi:Customization:PromoText"] = new string('x', 2_001) });
+            new Dictionary<string, object> { ["Console:Customization:PromoText"] = new string('x', 2_001) });
         Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(tooLong, TestContext.Current.CancellationToken)).StatusCode);
 
         var ok = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["WebUi:Customization:PromoText"] = "Hello **there**" });
+            new Dictionary<string, object> { ["Console:Customization:PromoText"] = "Hello **there**" });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(ok, TestContext.Current.CancellationToken)).StatusCode);
-
-        // Console is the current section name; WebUi keys above still write to it
-        var current = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["Console:Customization:PromoText"] = "Current name" });
-        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(current, TestContext.Current.CancellationToken)).StatusCode);
         var written = JsonNode.Parse(await File.ReadAllTextAsync(_overridesPath, TestContext.Current.CancellationToken))!;
-        Assert.Equal("Current name", written["Console"]!["Customization"]!["PromoText"]!.GetValue<string>());
+        Assert.Equal("Hello **there**", written["Console"]!["Customization"]!["PromoText"]!.GetValue<string>());
         Assert.Null(written["WebUi"]);
     }
 
@@ -827,7 +1335,7 @@ public class WebUiSecurityTests : IDisposable
             ("OpenApi:SecurityDefinition:In", "Query"),
             ("OpenApi:SecurityDefinition:Type", "OAuth2"),
             ("OpenApi:DefaultGroup", "A/B"),
-            ("OpenApi:ScalarTheme", "evil"),
+            ("OpenApi:Scalar:Theme", "evil"),
             ("OpenApi:ExternalDocs:Url", "javascript:alert(1)"),
             ("OpenApi:ExternalDocs:Url", "mailto:a@example.com"),
             ("OpenApi:Contact:Email", "not an address"),
@@ -839,7 +1347,7 @@ public class WebUiSecurityTests : IDisposable
         }
 
         var ok = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["OpenApi:ShowNamespaces"] = true, ["OpenApi:Footer:Url"] = "https://example.com", ["OpenApi:ScalarTheme"] = "portway", ["OpenApi:ShowBadges"] = false, ["OpenApi:ServeMarkdown"] = true, ["OpenApi:ExternalDocs:Url"] = "", ["OpenApi:ExternalDocs:Description"] = "Guide" });
+            new Dictionary<string, object> { ["OpenApi:ShowNamespaces"] = true, ["OpenApi:Footer:Url"] = "https://example.com", ["OpenApi:Scalar:Theme"] = "portway", ["OpenApi:ShowBadges"] = false, ["OpenApi:ServeMarkdown"] = true, ["OpenApi:ExternalDocs:Url"] = "", ["OpenApi:ExternalDocs:Description"] = "Guide" });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(ok, TestContext.Current.CancellationToken)).StatusCode);
     }
 
@@ -897,6 +1405,144 @@ public class WebUiSecurityTests : IDisposable
         {
             var root = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", "UiVer");
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+            PortwayApi.Classes.EndpointHandler.ReloadAllEndpoints();
+        }
+    }
+
+    [Fact]
+    public async Task StampDeprecatedSince_KeepsExistingDeprecation()
+    {
+        var dir = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", "UiStamp", "Items");
+        Directory.CreateDirectory(dir);
+        await File.WriteAllTextAsync(Path.Combine(dir, "content.json"), "[]", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(dir, "entity.json"), "{ \n    \"ContentType\": \"application/json\",\n    \"ContentFile\": \"content.json\",\n    \"Deprecated\": true\n}\n", TestContext.Current.CancellationToken);
+        try
+        {
+            var client = CreateClient();
+            var (authCookie, csrfCookie) = await LoginAsync(client);
+            var saved = await client.SendAsync(AuthedRequest(HttpMethod.Put, "/_/api/endpoints/static/UiStamp/Items", authCookie, csrfCookie,
+                new { content = new { ContentType = "application/json", ContentFile = "content.json", Deprecated = true } }), TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+            var file = await File.ReadAllTextAsync(Path.Combine(dir, "entity.json"), TestContext.Current.CancellationToken);
+            Assert.DoesNotContain("DeprecatedSince", file);
+            Assert.Matches("\n {4}\"contentType\"", file);
+            Assert.EndsWith("}\n", file);
+        }
+        finally
+        {
+            Directory.Delete(Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", "UiStamp"), recursive: true);
+            PortwayApi.Classes.EndpointHandler.ReloadAllEndpoints();
+        }
+    }
+
+    [Theory]
+    [InlineData("proxy", "UiRefuse/NoUrl", """{"Methods":["GET"]}""", "Url and at least one method are required")]
+    [InlineData("sql", "UiRefuse/NoObject", """{"DatabaseSchema":"dbo"}""", "DatabaseObjectName is required")]
+    [InlineData("static", "UiRefuse/BadNamespace", """{"ContentType":"text/plain","ContentFile":"a.txt","Namespace":"1bad"}""", "Namespace")]
+    [InlineData("webhook", "UiRefuseFlat", """{"DatabaseObjectName":"WebhookData","AllowedColumns":["hook"],"Verification":{"hook":{"Scheme":"GitHub","Secret":"${secret:GH}"}}}""", "Verification requires a namespace")]
+    [InlineData("webhook", "UiRefuse/Hooks", """{"DatabaseObjectName":"WebhookData","AllowedColumns":["hook"],"Verification":{"hook":{"Scheme":"Bogus","Secret":"${secret:GH}"}}}""", "Verification.hook:")]
+    [InlineData("webhook", "UiRefuse/Hooks", """{"DatabaseObjectName":"WebhookData","AllowedColumns":["hook"],"Verification":{"hook":{"Scheme":"Hmac","Secret":"plain-text","Header":"X-Sig","SignedContent":"{body}"}}}""", "Secret must be a ${secret:NAME} reference")]
+    [InlineData("webhook", "UiRefuse/Hooks", """{"DatabaseObjectName":"WebhookData","AllowedColumns":["bad id/x"]}""", "cannot be used in a URL")]
+    public async Task EndpointSave_RefusesWhatTheLoaderRefuses(string type, string name, string content, string expected)
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+        var folder = type switch { "proxy" => "Proxy", "sql" => "SQL", "static" => "Static", _ => "Webhooks" };
+        var root = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", folder, name.Split('/')[0]);
+        try
+        {
+            var put = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/endpoints/{type}/{name}?raw=true", authCookie, csrfCookie, new { content }), TestContext.Current.CancellationToken);
+            var body = await put.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
+            Assert.Contains(body.GetProperty("errors").EnumerateArray(), e => e.GetString()!.Contains(expected));
+            Assert.False(File.Exists(Path.Combine(Directory.GetCurrentDirectory(), "endpoints", folder, name, "entity.json")));
+
+            var post = await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/_/api/endpoints/{type}", authCookie, csrfCookie, new { name, content }), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task WebhookPresets_ListSenderHeaders()
+    {
+        var client = CreateClient();
+        var (authCookie, _) = await LoginAsync(client);
+
+        var presets = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/webhook-presets", authCookie), TestContext.Current.CancellationToken))
+            .Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+
+        Assert.Equal("X-Hub-Signature-256", presets.GetProperty("GitHub").GetProperty("header").GetString());
+        Assert.Equal("X-GitHub-Delivery", presets.GetProperty("GitHub").GetProperty("delivery_id_header").GetString());
+        Assert.Equal("webhook-id", presets.GetProperty("StandardWebhooks").GetProperty("delivery_id_header").GetString());
+        Assert.DoesNotContain("PRESET", presets.GetRawText());
+    }
+
+    [Fact]
+    public async Task EndpointSave_ReturnsEveryError()
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+        const string content = """{"DatabaseObjectName":"WebhookData","AllowedColumns":["a","b"],"Verification":{"a":{"Scheme":"Bogus"},"b":{"Scheme":"Hmac","Secret":"${secret:B}"}}}""";
+
+        var put = await client.SendAsync(AuthedRequest(HttpMethod.Put, "/_/api/endpoints/webhook/UiEvery/Hooks?raw=true", authCookie, csrfCookie, new { content }), TestContext.Current.CancellationToken);
+        var errors = (await put.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken)).GetProperty("errors").EnumerateArray().Select(e => e.GetString()!).ToList();
+
+        Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
+        Assert.Contains(errors, e => e.StartsWith("Verification.a:"));
+        Assert.Contains(errors, e => e.StartsWith("Verification.b:"));
+        Assert.False(Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Webhooks", "UiEvery")));
+    }
+
+    [Theory]
+    [InlineData("webhook", "UiMatch", """{"DatabaseObjectName":"WebhookData","AllowedColumns":["hook"],"Verification":{"hook":{"Scheme":"GitHub","Secret":"${secret:GH}"}}}""")]
+    [InlineData("webhook", "UiMatch/Hooks", """{"DatabaseObjectName":"WebhookData","AllowedColumns":["hook"],"Verification":{"hook":{"Scheme":"Bogus"}}}""")]
+    [InlineData("proxy", "UiMatch/NoUrl", """{"Methods":["GET"]}""")]
+    public async Task ValidateRoute_MatchesSave(string type, string name, string content)
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+
+        var check = await (await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/_/api/endpoints/{type}/validate", authCookie, csrfCookie, new { name, content }), TestContext.Current.CancellationToken))
+            .Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        var save = await (await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/endpoints/{type}/{name}?raw=true", authCookie, csrfCookie, new { content }), TestContext.Current.CancellationToken))
+            .Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+
+        Assert.False(check.GetProperty("valid").GetBoolean());
+        Assert.Equal(
+            save.GetProperty("errors").EnumerateArray().Select(e => e.GetString()),
+            check.GetProperty("errors").EnumerateArray().Select(e => e.GetString()));
+    }
+
+    [Fact]
+    public async Task EndpointSave_KeepsInlineArrays()
+    {
+        var dir = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", "UiInline", "Items");
+        Directory.CreateDirectory(dir);
+        await File.WriteAllTextAsync(Path.Combine(dir, "content.json"), "[]", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(dir, "entity.json"), "{\n    \"ContentType\": \"application/json\",\n    \"ContentFile\": \"content.json\",\n    \"AllowedEnvironments\": [\"500\",\"700\"],\n    \"Notes\": [\"a\", \"b\"]\n}\n", TestContext.Current.CancellationToken);
+        try
+        {
+            var client = CreateClient();
+            var (authCookie, csrfCookie) = await LoginAsync(client);
+            var content = """{"ContentType":"application/json","ContentFile":"content.json","AllowedEnvironments":["500","700"],"Notes":["a","c"]}""";
+            var saved = await client.SendAsync(AuthedRequest(HttpMethod.Put, "/_/api/endpoints/static/UiInline/Items?raw=true", authCookie, csrfCookie,
+                new { content }), TestContext.Current.CancellationToken);
+
+            Assert.True(saved.StatusCode == HttpStatusCode.OK, await saved.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+            var file = await File.ReadAllTextAsync(Path.Combine(dir, "entity.json"), TestContext.Current.CancellationToken);
+            Assert.Contains("\n    \"AllowedEnvironments\": [\"500\",\"700\"],\n", file);
+            Assert.Contains("\n    \"Notes\": [\n        \"a\",\n        \"c\"\n    ]", file);
+            Assert.Equal(System.Text.Json.Nodes.JsonNode.Parse(content)!.ToJsonString(), System.Text.Json.Nodes.JsonNode.Parse(file)!.ToJsonString());
+        }
+        finally
+        {
+            Directory.Delete(Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", "UiInline"), recursive: true);
             PortwayApi.Classes.EndpointHandler.ReloadAllEndpoints();
         }
     }
@@ -982,8 +1628,8 @@ public class WebUiSecurityTests : IDisposable
     [InlineData("ForwardedHeaders:KnownNetworks", new[] { "172.18.0.0/16" }, true)]
     [InlineData("ForwardedHeaders:KnownProxies", new[] { "not-an-ip" }, false)]
     [InlineData("ForwardedHeaders:KnownProxies", new[] { "10.0.0.8", "10.0.0.9" }, true)]
-    [InlineData("WebUi:PublicOrigins", new[] { "portway.example.com" }, false)]
-    [InlineData("WebUi:PublicOrigins", new[] { "https://*" }, false)]
+    [InlineData("Console:PublicOrigins", new[] { "portway.example.com" }, false)]
+    [InlineData("Console:PublicOrigins", new[] { "https://*" }, false)]
     public async Task DeploymentLists_AreValidatedEntryByEntry(string key, string[] values, bool expectOk)
     {
         var client = CreateClient();
@@ -1004,7 +1650,7 @@ public class WebUiSecurityTests : IDisposable
 
         // This session reaches /_ via PublicOrigins only, so replacing it is refused
         var evict = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["WebUi:PublicOrigins"] = new[] { "https://elsewhere.example.com" } });
+            new Dictionary<string, object> { ["Console:PublicOrigins"] = new[] { "https://elsewhere.example.com" } });
         var evictResp = await client.SendAsync(evict, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, evictResp.StatusCode);
@@ -1013,7 +1659,7 @@ public class WebUiSecurityTests : IDisposable
 
         // Keeping an entry that still covers the caller is allowed
         var keep = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["WebUi:PublicOrigins"] = new[] { "http://localhost", "https://elsewhere.example.com" } });
+            new Dictionary<string, object> { ["Console:PublicOrigins"] = new[] { "http://localhost", "https://elsewhere.example.com" } });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(keep, TestContext.Current.CancellationToken)).StatusCode);
     }
 
@@ -1082,7 +1728,7 @@ public class WebUiSecurityTests : IDisposable
                 b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["Mcp:Enabled"] = "false",
-                    ["WebUi:PublicOrigins:0"] = "http://localhost"
+                    ["Console:PublicOrigins:0"] = "http://localhost"
                 }));
                 b.ConfigureTestServices(services => services.AddDbContext<PortwayApi.Auth.AuthDbContext>(opts =>
                     opts.UseSqlite($"Data Source={authDb}"), ServiceLifetime.Scoped, ServiceLifetime.Scoped));
@@ -1194,11 +1840,11 @@ public class WebUiSecurityTests : IDisposable
         var (authCookie, csrfCookie) = await LoginAsync(client);
 
         var set = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["WebUi:AdminApiKey"] = "a-brand-new-secret-value" });
+            new Dictionary<string, object> { ["Console:AdminApiKey"] = "a-brand-new-secret-value" });
         Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(set, TestContext.Current.CancellationToken)).StatusCode);
 
         var clear = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["WebUi:AdminApiKey"] = "" });
+            new Dictionary<string, object> { ["Console:AdminApiKey"] = "" });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(clear, TestContext.Current.CancellationToken)).StatusCode);
     }
 
@@ -1256,6 +1902,88 @@ public class WebUiSecurityTests : IDisposable
         Assert.True(behindProxy);   // the header was sent, so the deployment looks proxied
         // Asserted as a relationship, tests share appsettings.overrides.json
         Assert.Equal(behindProxy && !trusted, ignored);
+    }
+
+    private static string ScriptNonce(HttpResponseMessage resp)
+    {
+        var csp = resp.Headers.GetValues("Content-Security-Policy").Single();
+        var scriptSrc = csp.Split(';').Single(d => d.Trim().StartsWith("script-src"));
+        Assert.DoesNotContain("'unsafe-inline'", scriptSrc);
+        return System.Text.RegularExpressions.Regex.Match(scriptSrc, "'nonce-([^']+)'").Groups[1].Value;
+    }
+
+    private static void AssertInlineScriptsCarry(string html, string nonce)
+    {
+        var inline = System.Text.RegularExpressions.Regex.Matches(html, @"<script(?![^>]*\ssrc=)[^>]*>");
+        Assert.NotEmpty(inline);
+        Assert.All(inline, m => Assert.Contains($"nonce=\"{nonce}\"", m.Value));
+        Assert.DoesNotMatch(@"\son[a-z]+=""", html);
+    }
+
+    [Theory]
+    [InlineData("/_/login")]
+    [InlineData("/docs")]
+    [InlineData("/index.html")]
+    public async Task PublicPages_InlineScriptsCarryTheRequestNonce(string path)
+    {
+        var client = CreateClient();
+        var resp = await client.GetAsync(path, TestContext.Current.CancellationToken);
+        var nonce = ScriptNonce(resp);
+
+        Assert.False(string.IsNullOrEmpty(nonce));
+        AssertInlineScriptsCarry(await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), nonce);
+    }
+
+    [Theory]
+    [InlineData("/_/dashboard")]
+    [InlineData("/_/endpoints")]
+    [InlineData("/_/environments")]
+    [InlineData("/_/tokens")]
+    [InlineData("/_/settings")]
+    [InlineData("/_/mcp/chat")]
+    public async Task ConsolePages_InlineScriptsCarryTheRequestNonce(string path)
+    {
+        var client = CreateClient();
+        var (authCookie, _) = await LoginAsync(client);
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, path, authCookie), TestContext.Current.CancellationToken);
+        var nonce = ScriptNonce(resp);
+
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        AssertInlineScriptsCarry(await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), nonce);
+    }
+
+    [Fact]
+    public async Task ConsolePages_ContainTheInstanceCsrfCookieName()
+    {
+        var client = CreateClient();
+        var (authCookie, _) = await LoginAsync(client);
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/tokens", authCookie), TestContext.Current.CancellationToken);
+        var html = await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        Assert.Contains($"window.PortwayCsrfCookie=\"{SessionKeyProvider.CsrfCookieName}\"", html);
+        Assert.DoesNotContain("portway_auth=", html);
+    }
+
+    [Fact]
+    public async Task ConsolePages_VersionScriptsByFileTimestamp()
+    {
+        var client = CreateClient();
+        var (authCookie, _) = await LoginAsync(client);
+        var html = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/tokens", authCookie), TestContext.Current.CancellationToken))
+            .Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var stamp = File.GetLastWriteTimeUtc(Path.Combine(AppContext.BaseDirectory, "wwwroot", "js", "shared.js")).Ticks.ToString("x");
+
+        Assert.Contains($"js/shared.js?v={stamp}", html);
+    }
+
+    [Fact]
+    public async Task ScriptNonce_ChangesPerRequest()
+    {
+        var client = CreateClient();
+        var first = ScriptNonce(await client.GetAsync("/_/login", TestContext.Current.CancellationToken));
+        var second = ScriptNonce(await client.GetAsync("/_/login", TestContext.Current.CancellationToken));
+
+        Assert.NotEqual(first, second);
     }
 
     [Fact]

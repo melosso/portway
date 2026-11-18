@@ -20,7 +20,7 @@ public sealed class SettingsWriteLockTests
         var writer = new SettingsWriteService(["PORTWAY_MCP_ENABLED"]);
         var before = File.Exists(SettingsWriteService.OverridesPath) ? File.ReadAllText(SettingsWriteService.OverridesPath) : null;
 
-        var result = await writer.ApplyAsync(Changes("""{ "Caching:Enabled": true, "Mcp:Enabled": true }"""));
+        var result = await writer.ApplyAsync(Changes("""{ "Caching:Enabled": true, "Mcp:Enabled": true }"""), TestContext.Current.CancellationToken);
 
         Assert.False(result.Ok);
         Assert.Equal("Mcp:Enabled", result.Field);
@@ -50,7 +50,7 @@ public sealed class SettingsWriteLockTests
                 .Build();
             var writer = new SettingsWriteService([], root);
 
-            var result = await writer.ApplyAsync(Changes("""{ "OpenApi:Footer:Text": "reloaded" }"""));
+            var result = await writer.ApplyAsync(Changes("""{ "OpenApi:Footer:Text": "reloaded" }"""), TestContext.Current.CancellationToken);
 
             Assert.True(result.Ok);
             Assert.Equal("reloaded", root["OpenApi:Footer:Text"]);

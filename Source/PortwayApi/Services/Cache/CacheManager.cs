@@ -93,6 +93,21 @@ public sealed class CacheManager : ICacheProvider
         return _provider.SetAsync(key, value, expiration);
     }
 
+    public async Task<string> GetGenerationAsync(string key)
+    {
+        var generation = await GetUncountedAsync<string>(key);
+        if (generation is not null)
+            return generation;
+
+        generation = Guid.NewGuid().ToString("N");
+        await SetAsync(key, generation, GenerationLifetime);
+        return generation;
+    }
+
+    public Task BumpGenerationAsync(string key) => SetAsync(key, Guid.NewGuid().ToString("N"), GenerationLifetime);
+
+    private static readonly TimeSpan GenerationLifetime = TimeSpan.FromDays(7);
+
     /// <summary>
     /// Removes an item from the cache
     /// </summary>

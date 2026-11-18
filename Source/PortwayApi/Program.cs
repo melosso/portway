@@ -38,7 +38,6 @@ try
 
     PortwayApi.Services.Configuration.SettingsWriteService.EnsureExists();
     builder.Configuration.AddConsoleOverrides();
-    builder.Configuration.AddConfigAliases();
 
     Log.Logger = new LoggerConfiguration()
         .ReadFrom.Configuration(builder.Configuration)
@@ -55,7 +54,7 @@ try
         Log.Warning("Restored backup {Backup}; the replaced files are in .backups/pre-restore-*", restored);
 
     EnvAliases.WarnOnLegacyUsage();
-    ConfigAliases.WarnOnDeprecatedNames(builder.Configuration);
+    ConfigAliases.ReportFormerNames(builder.Configuration);
     builder.Configuration.ValidateConsoleSettings();
 
     builder.Services.Configure<HostOptions>(opts =>
@@ -116,7 +115,9 @@ try
         new CompositeEndpointHandler(
             provider.GetRequiredService<IHttpClientFactory>(),
             serverName,
-            provider.GetRequiredService<UrlValidator>()
+            provider.GetRequiredService<UrlValidator>(),
+            provider.GetRequiredService<CacheManager>(),
+            provider.GetRequiredService<IEnvironmentSettingsProvider>()
         )
     );
 
@@ -125,6 +126,7 @@ try
     builder.Services.AddSingleton<CompositeRequestHandler>();
     builder.Services.AddSingleton<StaticRequestHandler>();
     builder.Services.AddSingleton<SqlRequestHandler>();
+    builder.Services.AddSingleton<WebhookRequestHandler>();
     builder.Services.AddSingleton<ProxyRequestHandler>();
 
     // Configure Rate Limiting
@@ -142,7 +144,8 @@ try
     var app = builder.Build();
 
     // Pre-flight: fail on a taken port before database, cache and endpoint initialisation
-    if (!StartupLogHelper.TryReservePorts(app, builder.Configuration))
+    var ports = app.Services.GetRequiredService<PortRouting>();
+    if (!StartupLogHelper.TryReservePorts(app, ports))
         return 1;
 
     // legacy seed key, Console:Enabled takes precedence
@@ -171,6 +174,8 @@ try
     // Forwarded headers for reverse proxies plus Cloudflare client IP and scheme restoration
     app.UseProxyForwardedHeaders();
 
+    app.UsePortRouting();
+
     // Configure unified documentation
     var openApiMonitor = app.Services.GetRequiredService<IOptionsMonitor<OpenApiSettings>>();
     OpenApiConfiguration.ConfigureDocs(app, openApiMonitor);
@@ -181,15 +186,15 @@ try
     // Record request metrics for all non-health paths (UI and API tracked separately)
     app.UsePortwayRequestMetrics();
 
+    // Root path, legacy /swagger and docs redirects; before default files, which serve index.html at /
+    app.UsePortwayRootRedirects(webUiEnabled, publicOrigins, enableLandingPage);
+
     app.UseDefaultFilesWithOptions();
 
     // Inject PathBase into index.html before static files can serve it
     app.UseIndexHtmlPathBaseInjection();
 
     app.UseStaticFilesWithCaching();
-
-    // Root path, legacy /swagger and docs redirects
-    app.UsePortwayRootRedirects(webUiEnabled, publicOrigins, enableLandingPage);
 
     app.UsePortwayCors();
 
@@ -259,7 +264,7 @@ try
     Log.Information("Console: {Status}", webUiEnabled ? "Enabled" : "Disabled");
     OpenApiConfiguration.LogDocsStatus(app, openApiMonitor.CurrentValue);
     app.LogRateLimitStatus();
-    StartupLogHelper.LogHostingSummary(app, builder.Configuration);
+    StartupLogHelper.LogHostingSummary(app, builder.Configuration, ports);
 
     app.Lifetime.ApplicationStopping.Register(() =>
     {

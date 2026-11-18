@@ -19,6 +19,8 @@ public sealed class HealthCheckService
     private DateTime _lastCheckTime = DateTime.MinValue;
     private HealthReport? _cachedReport;
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
+    private string _lastUnhealthyProxies = "";
+    private string _lastUnhealthySql = "";
     private readonly IHttpClientFactory? _httpClientFactory;
     private readonly IEnvironmentSettingsProvider? _environmentSettingsProvider;
     private readonly EnvironmentSettings? _environmentSettings;
@@ -174,6 +176,22 @@ public sealed class HealthCheckService
         }
     }
 
+    internal static string ProbeUrl(string url)
+    {
+        var query = url.IndexOf('?');
+        if (query < 0 || !SecretReference.ContainsReference(url))
+            return url;
+
+        var kept = string.Join('&', url[(query + 1)..].Split('&').Where(p => !SecretReference.ContainsReference(p)));
+        return kept.Length == 0 ? url[..query] : $"{url[..query]}?{kept}";
+    }
+
+    internal static bool StateChanged(ref string last, IEnumerable<string> names, out string current)
+    {
+        current = string.Join(", ", names.Order(StringComparer.OrdinalIgnoreCase));
+        return Interlocked.Exchange(ref last, current) != current;
+    }
+
     private async Task<HealthReportEntry> CheckProxyEndpointsAsync(IHttpClientFactory httpClientFactory, CancellationToken cancellationToken)
     {
         var startTime = DateTime.UtcNow;
@@ -181,7 +199,7 @@ public sealed class HealthCheckService
         var status = HealthStatus.Healthy;
 
         // ProxyClient applies the network access policy at connect time
-        using var client = httpClientFactory.CreateClient("ProxyClient");
+        using var client = httpClientFactory.CreateClient(Middleware.ProxyHttpClientExtensions.Client);
         var unhealthyEndpoints = new ConcurrentBag<string>();
 
         try
@@ -192,7 +210,7 @@ public sealed class HealthCheckService
                 .Where(e => !e.Value.Hidden && e.Value.Methods.Contains("GET"))
                 .Select(e => new KeyValuePair<string, (string Url, HashSet<string> Methods, bool Hidden, string Type)>(
                     e.Key,
-                    (e.Value.Url, new HashSet<string>(e.Value.Methods), e.Value.Hidden, e.Value.Type.ToString())))
+                    (ProbeUrl(e.Value.Url), new HashSet<string>(e.Value.Methods), e.Value.Hidden, e.Value.Type.ToString())))
                 .ToList();
 
             Log.Debug("Checking proxy endpoints: {Endpoints}",
@@ -216,10 +234,12 @@ public sealed class HealthCheckService
                 ? "Health check status: All proxy services are responding"
                 : "Health check status: One or more proxy services are not responding properly";
 
-            if (unhealthyEndpoints.Any())
+            if (StateChanged(ref _lastUnhealthyProxies, unhealthyEndpoints, out var unhealthyProxies))
             {
-                Log.Warning("Health check status: Unhealthy proxy endpoints detected ({UnhealthyEndpoints})",
-                    string.Join(", ", unhealthyEndpoints));
+                if (unhealthyProxies.Length > 0)
+                    Log.Warning("Health check status: Unhealthy proxy endpoints detected ({UnhealthyEndpoints})", unhealthyProxies);
+                else
+                    Log.Information("Health check status: All proxy endpoints are responding");
             }
 
             return CreateHealthReportEntry(status, description, startTime, results);
@@ -417,8 +437,13 @@ public sealed class HealthCheckService
             ? "All SQL environments are reachable"
             : $"SQL connectivity failed for: {string.Join(", ", unhealthyEnvironments)}";
 
-        if (unhealthyEnvironments.Any())
-            Log.Warning("Health check status: Unhealthy SQL environments detected ({Environments})", string.Join(", ", unhealthyEnvironments));
+        if (StateChanged(ref _lastUnhealthySql, unhealthyEnvironments, out var unhealthySql))
+        {
+            if (unhealthySql.Length > 0)
+                Log.Warning("Health check status: Unhealthy SQL environments detected ({Environments})", unhealthySql);
+            else
+                Log.Information("Health check status: All SQL environments are reachable");
+        }
 
         return new HealthReportEntry(
             status,

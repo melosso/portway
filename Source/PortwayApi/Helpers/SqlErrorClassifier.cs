@@ -55,6 +55,16 @@ public static class SqlErrorClassifier
         _ => ex.Message
     };
 
+    public static bool IsConnectionFailure(DbException ex)
+    {
+        for (Exception? inner = ex; inner is not null; inner = inner.InnerException)
+        {
+            if (inner is System.Net.Sockets.SocketException or TimeoutException)
+                return true;
+        }
+        return ex is MySqlException { ErrorCode: MySqlErrorCode.UnableToConnectToHost };
+    }
+
     /// <summary>
     /// Compact provider detail for internal logs, never sent to clients
     /// </summary>

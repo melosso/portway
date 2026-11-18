@@ -4,6 +4,7 @@ using Moq;
 using PortwayApi.Middleware;
 using PortwayApi.Tests.Support;
 using System.Net;
+using PortwayApi.Helpers;
 using Xunit;
 
 namespace PortwayApi.Tests.Middleware;
@@ -169,7 +170,7 @@ public class RateLimiterTests
         for (var i = 0; i < 5; i++)
         {
             var ctx = BuildContext(path: "/_/api/settings");
-            ctx.Request.Headers.Cookie = $"portway_auth={cookie}";
+            ctx.Request.Headers.Cookie = $"{SessionKeyProvider.SessionCookieName}={cookie}";
             await limiter.InvokeAsync(ctx);
         }
 
@@ -186,7 +187,7 @@ public class RateLimiterTests
         for (var i = 0; i < 6; i++)
         {
             var ctx = BuildContext(path: "/_/api/settings");
-            ctx.Request.Headers.Cookie = "portway_auth=forged-value";
+            ctx.Request.Headers.Cookie = $"{SessionKeyProvider.SessionCookieName}=forged-value";
             await limiter.InvokeAsync(ctx);
         }
 
@@ -204,7 +205,7 @@ public class RateLimiterTests
         for (var i = 0; i < 6; i++)
         {
             var ctx = BuildContext(path: "/_/api/auth/csrf");
-            ctx.Request.Headers.Cookie = $"portway_auth={cookie}";
+            ctx.Request.Headers.Cookie = $"{SessionKeyProvider.SessionCookieName}={cookie}";
             await limiter.InvokeAsync(ctx);
         }
 
@@ -246,5 +247,51 @@ public class RateLimiterTests
         Assert.Equal("token", ctx.Response.Headers["X-RateLimit-Resource"].ToString());
         Assert.False(string.IsNullOrEmpty(ctx.Response.Headers.RetryAfter.ToString()));
         Assert.False(string.IsNullOrEmpty(ctx.Response.Headers["X-RateLimit-Reset"].ToString()));
+    }
+
+    private static async Task<DefaultHttpContext> ViolateOnceAsync(RateLimiter limiter, string token)
+    {
+        await limiter.InvokeAsync(BuildContext(bearerToken: token));
+        var ctx = BuildContext(bearerToken: token);
+        await limiter.InvokeAsync(ctx);
+        return ctx;
+    }
+
+    [Fact]
+    public async Task InvokeAsync_RepeatedTokenViolations_DoubleTheBlock()
+    {
+        var clock = new FakeTimeProvider();
+        var limiter = CreateRateLimiter(_ => Task.CompletedTask, ipLimit: 10000, tokenLimit: 1, timeProvider: clock);
+
+        var retryAfter = new List<string>();
+        for (var i = 0; i < 5; i++)
+        {
+            var ctx = await ViolateOnceAsync(limiter, "repeat-offender");
+            Assert.Equal(429, ctx.Response.StatusCode);
+            retryAfter.Add(ctx.Response.Headers.RetryAfter.ToString());
+            clock.Advance(TimeSpan.FromSeconds(int.Parse(retryAfter[^1]) + 1));
+        }
+
+        Assert.Equal(["60", "60", "60", "120", "240"], retryAfter);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_TokenQuietAfterBlock_StartsOverAtOneWindow()
+    {
+        var clock = new FakeTimeProvider();
+        var limiter = CreateRateLimiter(_ => Task.CompletedTask, ipLimit: 10000, tokenLimit: 1, timeProvider: clock);
+
+        DefaultHttpContext ctx = new();
+        for (var i = 0; i < 4; i++)
+        {
+            ctx = await ViolateOnceAsync(limiter, "reformed-token");
+            clock.Advance(TimeSpan.FromSeconds(int.Parse(ctx.Response.Headers.RetryAfter.ToString()) + 1));
+        }
+        Assert.Equal("120", ctx.Response.Headers.RetryAfter.ToString());
+
+        clock.Advance(TimeSpan.FromHours(1));
+        ctx = await ViolateOnceAsync(limiter, "reformed-token");
+
+        Assert.Equal("60", ctx.Response.Headers.RetryAfter.ToString());
     }
 }

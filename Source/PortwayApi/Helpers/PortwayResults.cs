@@ -22,6 +22,9 @@ public static class PortwayResults
     public static IActionResult BadRequest(string error)
         => new BadRequestObjectResult(ErrorResponse.Of(error));
 
+    public static IActionResult Unauthorized(string error)
+        => new ObjectResult(ErrorResponse.Of(error)) { StatusCode = StatusCodes.Status401Unauthorized };
+
     public static IActionResult Forbidden(string error)
         => new ObjectResult(ErrorResponse.Of(error)) { StatusCode = 403 };
 
@@ -63,6 +66,9 @@ public static class PortwayResults
     public static string TraceIdOf(HttpContext? context)
         => System.Diagnostics.Activity.Current?.Id ?? context?.TraceIdentifier ?? string.Empty;
 
+    public static IActionResult Created(string message, object? id)
+        => new ObjectResult(CreatedResponse.Of(message, id: id)) { StatusCode = StatusCodes.Status201Created };
+
     public static IActionResult Create(string location, string message, object? result = null, object? id = null)
         => new CreatedResult(location, CreatedResponse.Of(message, result, id));
 
@@ -78,6 +84,10 @@ public static class PortwayResults
     /// </summary>
     public static IActionResult ServiceUnavailable(string error)
         => new ObjectResult(ErrorResponse.Of(error)) { StatusCode = StatusCodes.Status503ServiceUnavailable };
+
+    public static IActionResult ServiceUnavailable(HttpContext context, string error)
+        => new ObjectResult(ErrorResponse.Traced(error, TraceIdOf(context)))
+        { StatusCode = StatusCodes.Status503ServiceUnavailable };
 
     /// <summary>
     /// Tells clients and caches how long to back off before retrying a deliberate outage

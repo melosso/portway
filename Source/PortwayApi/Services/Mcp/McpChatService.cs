@@ -399,7 +399,9 @@ public sealed partial class McpChatService
         var tool = _registry.FindByName(toolName);
 
         // scope failure reads as missing
-        if (tool is null || !await CallerHasAccessAsync(authToken, tool))
+        var caller = tool is null ? null : await ResolveCallerAsync(authToken);
+        var callerEnvironments = tool is null || caller is null ? [] : PortwayMcpTools.CallerEnvironments(tool, _environments.GetAllowedEnvironments(), caller);
+        if (tool is null || caller is null || !caller.HasAccessToEndpoint(tool.Identity) || callerEnvironments.Count == 0)
             return McpToolResult.Failure($"Unknown tool: {toolName}");
 
         JsonObject? input = null;
@@ -411,7 +413,7 @@ public sealed partial class McpChatService
         if (tool.AllowedEnvironments is { Count: > 0 } toolEnvironments &&
             !toolEnvironments.Contains(environment, StringComparer.OrdinalIgnoreCase))
         {
-            return McpToolResult.Failure($"Environment '{environment}' is not allowed for {toolName}. Allowed environments: {string.Join(", ", toolEnvironments)}.");
+            return McpToolResult.Failure($"Environment '{environment}' is not allowed for {toolName}. Allowed environments: {string.Join(", ", callerEnvironments)}.");
         }
 
         if (!_environments.IsEnvironmentAllowed(environment))
@@ -589,11 +591,10 @@ public sealed partial class McpChatService
         var node => node.ToJsonString()
     };
 
-    private async Task<bool> CallerHasAccessAsync(string authToken, McpToolDescriptor tool)
+    private async Task<AuthToken?> ResolveCallerAsync(string authToken)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
-        var caller = await scope.ServiceProvider.GetRequiredService<TokenService>().GetTokenDetailsByTokenAsync(authToken);
-        return caller is not null && caller.HasAccessToEndpoint(tool.Identity);
+        return await scope.ServiceProvider.GetRequiredService<TokenService>().GetTokenDetailsByTokenAsync(authToken);
     }
 
     /// <summary>

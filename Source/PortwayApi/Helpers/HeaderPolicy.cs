@@ -33,6 +33,12 @@ public static class HeaderPolicy
         "Authorization", "Cookie", "Expect", "Origin", "Accept", "Accept-Encoding", "If-None-Match", "If-Match",
     }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
+    private static readonly string[] SensitivePatterns =
+        ["password", "secret", "token", "key", "auth", "credential", "signature", "hmac", "bearer", "value", "clientsecret"];
+
+    public static bool IsSensitiveName(string name) =>
+        SensitivePatterns.Any(p => name.Contains(p, StringComparison.OrdinalIgnoreCase));
+
     /// <summary>
     /// RFC 9110 token characters, ASCII only
     /// </summary>

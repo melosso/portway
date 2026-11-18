@@ -298,10 +298,6 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { error = "Too many settings in one request" }, statusCode: 400);
 
             // refuse a change that would lock the caller out of the console
-            // older clients send WebUi keys
-            changes = changes.GroupBy(c => PortwayApi.Services.Configuration.ConfigAliases.Canonical(c.Key), StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.Last().Value, StringComparer.OrdinalIgnoreCase);
-
             if (WouldLockCallerOut(ctx, config, urlValidator, changes) is { } lockout)
                 return Results.Json(new { error = lockout.Message, field = lockout.Field }, statusCode: 400);
 

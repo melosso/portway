@@ -27,8 +27,10 @@ public sealed partial class SqlRequestHandler
         IEnvironmentSettingsProvider environmentSettingsProvider,
         SqlConnectionPoolService connectionPoolService,
         Services.Caching.CacheManager cacheManager,
-        ISqlProviderFactory providerFactory)
+        ISqlProviderFactory providerFactory,
+        SqlMetadataService? metadataService = null)
     {
+        _metadataService = metadataService;
         _oDataToSqlConverter = oDataToSqlConverter;
         _environmentSettingsProvider = environmentSettingsProvider;
         _connectionPoolService = connectionPoolService;
@@ -37,6 +39,7 @@ public sealed partial class SqlRequestHandler
     }
 
     private readonly ISqlProviderFactory _providerFactory;
+    private readonly SqlMetadataService? _metadataService;
 
     /// <summary>
     /// Runs a write procedure with the dialect-correct invocation for the environment's provider
@@ -100,6 +103,8 @@ public sealed partial class SqlRequestHandler
                     .ToList();
                 if (refused.Contains(ColumnMappingHelper.InvalidExpression))
                     return PortwayResults.BadRequest(InvalidODataMessage);
+                if (refused.Where(c => c.Contains('/')).ToList() is { Count: > 0 } navigations)
+                    return PortwayResults.BadRequest($"Navigation paths are not supported in $filter or $orderby: {string.Join(", ", navigations)}");
                 if (refused.Count > 0)
                     return PortwayResults.BadRequest($"Columns not allowed: {string.Join(", ", refused)}");
             }
@@ -184,13 +189,6 @@ public sealed partial class SqlRequestHandler
                 // Return collection response with pagination headers
                 HttpResponseHeaderHelper.SetPaginationHeaders(context, null, tvfResultList.Count, !tvfIsLastPage);
 
-                // Only set Cache-Control header if caching is enabled for this endpoint
-                if (IsCacheEnabled(endpoint))
-                {
-                    var tvfCacheDurationSeconds = GetCacheDurationMinutes(endpoint) * 60;
-                    HttpResponseHeaderHelper.SetCacheControlHeader(context, tvfCacheDurationSeconds);
-                }
-
                 Log.Debug("Successfully processed TVF query for {FunctionName}", endpoint.DatabaseObjectName);
                 return PortwayResults.Collection(tvfResultList,
                     tvfIsLastPage ? null : BuildNextLink(env, endpointName, options, top, skip, pathSegments));
@@ -199,7 +197,7 @@ public sealed partial class SqlRequestHandler
             // Step 3: Extract endpoint details
             var schema = endpoint.DatabaseSchema ?? "dbo";
             var objectName = endpoint.DatabaseObjectName;
-            var allowedColumns = endpoint.AllowedColumns ?? new List<string>();
+            var allowedColumns = endpoint.AllowedColumns;
             var allowedMethods = endpoint.Methods ?? new List<string> { "GET" };
 
             // Check if the incoming read method (GET or QUERY) is allowed
@@ -336,7 +334,7 @@ public sealed partial class SqlRequestHandler
 
             if (cacheEnabled)
             {
-                var generation = await GetReadGenerationAsync(endpoint, env);
+                var generation = await ReadGenerationAsync(endpoint, env);
                 cacheKey = BuildCacheKey(env, $"{endpointName}:{generation}", query, parameters, countRequested);
                 cachedResponse = await _cacheManager.GetAsync<object>(cacheKey);
 
@@ -416,13 +414,6 @@ public sealed partial class SqlRequestHandler
 
             // Step 10: Prepare response for collection requests with pagination headers
             HttpResponseHeaderHelper.SetPaginationHeaders(context, null, transformedResults.Count, !isLastPage);
-
-            // Only set Cache-Control header if caching is enabled for this endpoint
-            if (cacheEnabled)
-            {
-                var cacheDurationSeconds = GetCacheDurationMinutes(endpoint) * 60;
-                HttpResponseHeaderHelper.SetCacheControlHeader(context, cacheDurationSeconds);
-            }
 
             // Run the COUNT query only when the caller asked for it
             long? totalCount = null;
@@ -504,29 +495,19 @@ public sealed partial class SqlRequestHandler
         return null;
     }
 
-    private static string ReadGenerationKey(EndpointDefinition endpoint, string env) =>
-        $"sql:generation:{env}:{endpoint.DatabaseSchema}.{endpoint.DatabaseObjectName}".ToLowerInvariant();
-
-    // new generation hides older entries
-    private async Task<string> GetReadGenerationAsync(EndpointDefinition endpoint, string env)
+    private async Task<string> ReadGenerationAsync(EndpointDefinition endpoint, string env)
     {
-        var key = ReadGenerationKey(endpoint, env);
-        var generation = await _cacheManager.GetUncountedAsync<string>(key);
-        if (generation is not null)
-            return generation;
-
-        generation = Guid.NewGuid().ToString("N");
-        await _cacheManager.SetAsync(key, generation, ReadGenerationLifetime);
-        return generation;
+        var generations = new List<string>();
+        foreach (var key in Services.Caching.CacheGenerationKeys.SqlEndpoint(env, endpoint))
+            generations.Add(await _cacheManager.GetGenerationAsync(key));
+        return string.Join('.', generations);
     }
 
     private async Task InvalidateReadsAsync(EndpointDefinition endpoint, string env)
     {
-        if (IsCacheEnabled(endpoint))
-            await _cacheManager.SetAsync(ReadGenerationKey(endpoint, env), Guid.NewGuid().ToString("N"), ReadGenerationLifetime);
+        foreach (var key in Services.Caching.CacheGenerationKeys.SqlEndpoint(env, endpoint))
+            await _cacheManager.BumpGenerationAsync(key);
     }
-
-    private static readonly TimeSpan ReadGenerationLifetime = TimeSpan.FromDays(7);
 
     internal static string BuildCacheKey(string env, string endpointName, string query, IReadOnlyDictionary<string, object>? parameters, bool countRequested)
     {
@@ -564,6 +545,12 @@ public sealed partial class SqlRequestHandler
     private static IActionResult MaskedDataError(HttpContext context, DbException dbEx, string endpointName)
     {
         var errorId = Guid.NewGuid().ToString("N")[..8];
+        if (SqlErrorClassifier.IsConnectionFailure(dbEx))
+        {
+            Log.Warning("Database unreachable [{ErrorId}] for endpoint {EndpointName} ({Detail}): {Message}",
+                errorId, endpointName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
+            return PortwayResults.ServiceUnavailable(context, $"Database unavailable. Retry later. Reference: T{errorId}");
+        }
         Log.Error(dbEx, "Database error [{ErrorId}] for endpoint {EndpointName} ({Detail}): {Message}",
             errorId, endpointName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
         return PortwayResults.ServerError(context,

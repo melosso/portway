@@ -34,7 +34,7 @@ public class SqlTableWriteBuilderTests
         var endpoint = ValidEndpoint();
         switch (mutation)
         {
-            case "no-allowlist": endpoint.AllowedColumns = null; break;
+            case "no-allowlist": endpoint.AllowedColumns = []; break;
             case "no-pk": endpoint.PrimaryKey = null; break;
             case "with-procedure": endpoint.Procedure = "dbo.ManageBins"; break;
             case "bad-table-name": endpoint.DatabaseObjectName = "Bins; DROP TABLE x"; break;

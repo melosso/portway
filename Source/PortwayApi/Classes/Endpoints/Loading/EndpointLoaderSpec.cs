@@ -11,4 +11,5 @@ internal sealed record EndpointLoaderSpec(
     bool NamespaceAware,
     Func<string, EndpointDefinition?> Parse,
     Func<EndpointDefinition, bool> IsValid,
+    string Required,
     Action<string, EndpointDefinition> LogLoaded);

@@ -89,6 +89,8 @@ public static class DatabaseStartupExtensions
         {
             var cacheManager = scope.ServiceProvider.GetRequiredService<CacheManager>();
             Log.Information("Cache configured with provider: {ProviderType}", cacheManager.ProviderType);
+            if (cacheManager.ProviderType == "Memory")
+                Log.Information("The Memory cache is per process. Set Caching:Provider to Redis when more than one instance serves this API.");
             if (cacheManager.IsConnected)
             {
                 Log.Debug("Cache connection successful");

@@ -37,6 +37,26 @@ public sealed class ProxyRequestHandler
     // Endpoint Urls are config-static, so the path/query split and reserved param names are computed once per Url
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Path, string Query, HashSet<string> Reserved)> _splitUrlCache = new();
 
+    internal static bool IsUpstreamUnavailable(Exception ex, CancellationToken aborted) => ex switch
+    {
+        HttpRequestException { HttpRequestError: HttpRequestError.ConnectionError or HttpRequestError.NameResolutionError } => true,
+        HttpRequestException { InnerException: System.Net.Sockets.SocketException } => true,
+        TaskCanceledException => !aborted.IsCancellationRequested,
+        _ => false
+    };
+
+    internal static string DropReservedParams(string query, IReadOnlySet<string> reserved, IReadOnlySet<string> credentials)
+    {
+        if (reserved.Count == 0 && credentials.Count == 0)
+            return query;
+
+        return string.Join('&', query.Split('&', StringSplitOptions.RemoveEmptyEntries).Where(p =>
+        {
+            var name = System.Net.WebUtility.UrlDecode(p.Split('=', 2)[0]);
+            return !reserved.Contains(name) && !credentials.Contains(name);
+        }));
+    }
+
     private static (string Path, string Query, HashSet<string> Reserved) SplitEndpointUrl(string url) =>
         _splitUrlCache.GetOrAdd(url, static u =>
         {
@@ -46,7 +66,7 @@ public sealed class ProxyRequestHandler
 
             var query = u[(queryIndex + 1)..];
             var reserved = query.Split('&', StringSplitOptions.RemoveEmptyEntries)
-                .Select(p => p.Split('=', 2)[0])
+                .Select(p => System.Net.WebUtility.UrlDecode(p.Split('=', 2)[0]))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             return (u[..queryIndex], query, reserved);
@@ -172,17 +192,10 @@ public sealed class ProxyRequestHandler
             {
                 // context.Request.QueryString.Value begins with '?' when non-empty
                 var qs = queryString.StartsWith("?") ? queryString.Substring(1) : queryString;
+                qs = qs.Replace("${", "%24{", StringComparison.Ordinal);
 
                 // Drop client params that collide with baked ones; upstreams resolving duplicates last-wins would let clients override injected credentials
-                if (reservedParams.Count > 0 || queryCredentials.Count > 0)
-                {
-                    qs = string.Join('&', qs.Split('&', StringSplitOptions.RemoveEmptyEntries)
-                        .Where(p =>
-                        {
-                            var name = p.Split('=', 2)[0];
-                            return !reservedParams.Contains(name) && !queryCredentials.Contains(System.Net.WebUtility.UrlDecode(name));
-                        }));
-                }
+                qs = DropReservedParams(qs, reservedParams, queryCredentials);
 
                 if (!string.IsNullOrEmpty(qs))
                     fullUrl += fullUrl.Contains('?') ? "&" + qs : "?" + qs;
@@ -210,17 +223,25 @@ public sealed class ProxyRequestHandler
             {
                 Log.Debug("Detected SOAP request for endpoint: {Endpoint}", endpointName);
                 // SOAP requests generally shouldn't be cached, so bypass cache and execute directly
-                await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, isSoapRequest: true, originalMethod: originalMethod, endpointDefinition: endpointDefinition, tenants: tenants);
+                try
+                {
+                    await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, isSoapRequest: true, originalMethod: originalMethod, endpointDefinition: endpointDefinition, tenants: tenants);
+                }
+                finally
+                {
+                    if (!IsReadMethod(originalMethod))
+                        await _cacheManager.BumpGenerationAsync(Services.Caching.CacheGenerationKeys.ProxyEndpoint(env, endpointName));
+                }
                 return new EmptyResult(); // Response already written
             }
 
             // GET and QUERY are both safe and cacheable (RFC 10008 for QUERY)
-            if (originalMethod.Equals("GET", StringComparison.OrdinalIgnoreCase) ||
-                originalMethod.Equals("QUERY", StringComparison.OrdinalIgnoreCase))
+            if (IsReadMethod(originalMethod))
             {
                 // Create a cache key based on the request details
                 var headers = context.Request.Headers ?? new Microsoft.AspNetCore.Http.HeaderDictionary();
-                string cacheKey = CreateCacheKey(env, endpointName, fullUrl, headers, tenants);
+                var generation = await _cacheManager.GetGenerationAsync(Services.Caching.CacheGenerationKeys.ProxyEndpoint(env, endpointName));
+                string cacheKey = CreateCacheKey(env, $"{endpointName}:{generation}", fullUrl, headers, tenants);
 
                 // RFC 10008: the cache key for a QUERY request MUST incorporate the request content
                 if (originalMethod.Equals("QUERY", StringComparison.OrdinalIgnoreCase))
@@ -324,8 +345,14 @@ public sealed class ProxyRequestHandler
             }
             else
             {
-                // For non-GET requests, just execute the proxy request without caching
-                await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, originalMethod: originalMethod, endpointDefinition: endpointDefinition, tenants: tenants);
+                try
+                {
+                    await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, originalMethod: originalMethod, endpointDefinition: endpointDefinition, tenants: tenants);
+                }
+                finally
+                {
+                    await _cacheManager.BumpGenerationAsync(Services.Caching.CacheGenerationKeys.ProxyEndpoint(env, endpointName));
+                }
                 return new EmptyResult(); // Response already written
             }
         }
@@ -333,6 +360,11 @@ public sealed class ProxyRequestHandler
         {
             Log.Warning("Blocked proxy connection for {EndpointName}: {Reason}", endpointName, blocked.Message);
             return new ObjectResult(ErrorResponse.Of("Request blocked due to security restrictions")) { StatusCode = 403 };
+        }
+        catch (Exception ex) when (!context.Response.HasStarted && IsUpstreamUnavailable(ex, context.RequestAborted))
+        {
+            Log.Warning("Upstream unavailable for {EndpointName}: {Message}", endpointName, ex.Message);
+            return PortwayResults.ServiceUnavailable(context, "Upstream unavailable. Retry later.");
         }
         catch (Exception ex)
         {
@@ -477,6 +509,9 @@ public sealed class ProxyRequestHandler
     /// <summary>
     /// Creates a cache key based on request details
     /// </summary>
+    private static bool IsReadMethod(string method) =>
+        method.Equals("GET", StringComparison.OrdinalIgnoreCase) || method.Equals("QUERY", StringComparison.OrdinalIgnoreCase);
+
     private string CreateCacheKey(string env, string endpointName, string upstreamUrl, IHeaderDictionary headers, IReadOnlyDictionary<string, string> tenants)
     {
         var keyBuilder = new StringBuilder();
@@ -525,9 +560,6 @@ public sealed class ProxyRequestHandler
         EndpointDefinition? endpointDefinition = null,
         IReadOnlyDictionary<string, string>? tenants = null)
     {
-        // Create HttpClient
-        var client = _httpClientFactory.CreateClient("ProxyClient");
-
         // Log the actual HTTP method being sent to backend
         Log.Debug("Sending {Method} request to backend: {Url}", method, UrlRedaction.Redact(fullUrl));
 
@@ -552,11 +584,16 @@ public sealed class ProxyRequestHandler
         // Load environment settings
         var (_, _, envHeaders) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
         var credentials = await CredentialNamesAsync(env);
+        var entityHeaders = endpointConfig.Headers ?? FrozenDictionary<string, string>.Empty;
+        var urlSecrets = await _environmentSettingsProvider.FetchSecretsAsync(env, (endpointConfig.FallbackUrls ?? []).Prepend(endpointConfig.Url), context.RequestAborted);
+        var sameHostRedirectsOnly = (endpointConfig.FallbackUrls ?? []).Prepend(endpointConfig.Url).Any(SecretReference.ContainsReference)
+            || envHeaders.Concat(entityHeaders).Any(h => SecretReference.ContainsReference(h.Value) || HeaderPolicy.IsSensitiveName(h.Key));
+        var client = _httpClientFactory.CreateClient(ProxyFailoverHelper.ClientName(sameHostRedirectsOnly));
 
         // environment and endpoint headers replace client headers of the same name
         var configuredHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var header in envHeaders)
-            configuredHeaders[header.Key] = header.Value;
+            configuredHeaders[header.Key] = await _environmentSettingsProvider.ResolveOrThrowAsync(env, header.Value, SecretReference.ResolveHeader, context.RequestAborted);
         if (endpointDefinition != null && !string.IsNullOrEmpty(originalMethod))
         {
             var appendHeaders = HttpMethodHeaderAppender.GetAppendHeaders(
@@ -570,6 +607,8 @@ public sealed class ProxyRequestHandler
                     Log.Warning("Invalid custom header name: {HeaderKey}", header.Key);
             }
         }
+        foreach (var header in entityHeaders)
+            configuredHeaders[header.Key] = await _environmentSettingsProvider.ResolveOrThrowAsync(env, header.Value, SecretReference.ResolveHeader, context.RequestAborted);
 
         // tenant headers are configured headers and the inbound selector is not forwarded
         var tenantSelectors = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -586,7 +625,7 @@ public sealed class ProxyRequestHandler
 
         HttpRequestMessage BuildRequest(string targetUrl)
         {
-            var requestMessage = new HttpRequestMessage(new HttpMethod(method), targetUrl);
+            var requestMessage = new HttpRequestMessage(new HttpMethod(method), SecretResolver.ResolveOrThrow(env, targetUrl, urlSecrets, SecretReference.ResolveQueryValue));
 
             if (bodyBytes != null)
             {
@@ -669,7 +708,7 @@ public sealed class ProxyRequestHandler
 
         var response = await ProxyFailoverHelper.SendWithRetryAsync(
             client, BuildRequest, fullUrl, endpointConfig.Url, endpointDefinition?.FallbackUrls,
-            endpointDefinition?.Retry, $"endpoint '{endpointName}'", _urlValidator.IsUrlSafe, context.RequestAborted);
+            endpointDefinition?.Retry, $"endpoint '{endpointName}'", _urlValidator.IsUrlSafe, context.RequestAborted, sameHostRedirectsOnly);
 
         // Store response headers for cache and apply to current response
         var responseHeaders = new Dictionary<string, string>();
@@ -697,14 +736,6 @@ public sealed class ProxyRequestHandler
                     responseHeaders[header.Key] = string.Join(",", header.Value);
                 }
             }
-        }
-
-        // For GET requests, ensure Cache-Control header is set (except for SOAP)
-        if (method.Equals("GET", StringComparison.OrdinalIgnoreCase) && !isSoapRequest && !responseHeaders.ContainsKey("Cache-Control"))
-        {
-            // Add a default cache control header
-            context.Response.Headers["Cache-Control"] = "private, max-age=300";
-            responseHeaders["Cache-Control"] = "private, max-age=300";
         }
 
         // Set status code

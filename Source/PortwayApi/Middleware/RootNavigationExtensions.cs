@@ -1,5 +1,7 @@
 namespace PortwayApi.Middleware;
 
+using Microsoft.Extensions.Options;
+using PortwayApi.Classes.OpenApi;
 using PortwayApi.Endpoints;
 using PortwayApi.Helpers;
 using Serilog;
@@ -12,10 +14,12 @@ public static class RootNavigationExtensions
     /// <summary>
     /// Applies ASPNETCORE_PATHBASE or PathBase config when set; no-op otherwise
     /// </summary>
+    internal static string? ConfiguredPathBase(IConfiguration configuration) =>
+        Environment.GetEnvironmentVariable("ASPNETCORE_PATHBASE") ?? configuration["PathBase"];
+
     public static WebApplication UsePortwayPathBase(this WebApplication app)
     {
-        var pathBase = Environment.GetEnvironmentVariable("ASPNETCORE_PATHBASE")
-            ?? app.Configuration["PathBase"];
+        var pathBase = ConfiguredPathBase(app.Configuration);
 
         if (string.IsNullOrEmpty(pathBase))
             return app;
@@ -60,7 +64,7 @@ public static class RootNavigationExtensions
                     var html = await File.ReadAllTextAsync(filePath);
                     html = html.Replace("<head>", $"<head>\n  <base href=\"{pb}/\">\n  <script>window.PortwayBase=\"{pb}\";</script>");
                     context.Response.ContentType = "text/html; charset=utf-8";
-                    await context.Response.WriteAsync(html);
+                    await context.Response.WriteAsync(CspNonce.Apply(html, context));
                     return;
                 }
             }
@@ -79,6 +83,7 @@ public static class RootNavigationExtensions
         string[] publicOrigins,
         bool enableLandingPage)
     {
+        var docsEnabled = app.Services.GetRequiredService<IOptionsMonitor<OpenApiSettings>>().CurrentValue.Enabled;
         app.Use(async (context, next) =>
         {
             var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
@@ -94,6 +99,11 @@ public static class RootNavigationExtensions
 
                 if (!isHtmlRequest)
                 {
+                    if (!docsEnabled)
+                    {
+                        await FallbackEndpointExtensions.WriteNotFoundAsync(context);
+                        return;
+                    }
                     // Non-browser requests always get the OpenAPI JSON
                     var redirectPath = $"{pathBase}/docs/openapi.json";
                     Log.Debug("API root request, redirecting to {Path}", redirectPath);
@@ -121,17 +131,20 @@ public static class RootNavigationExtensions
                     }
                 }
 
-                // External client or no landing page; redirect to docs
+                if (docsEnabled)
                 {
                     var redirectPath = $"{pathBase}/docs";
                     Log.Debug("Redirecting root to {Path}", redirectPath);
                     context.Response.Redirect(redirectPath, permanent: false);
                     return;
                 }
+
+                await FallbackEndpointExtensions.WriteNotFoundAsync(context);
+                return;
             }
 
             // Handle now removed /swagger redirect (backward compatibility)
-            if (path == "/swagger" && !context.Request.Path.Value!.Contains("/swagger.json"))
+            if (docsEnabled && path == "/swagger" && !context.Request.Path.Value!.Contains("/swagger.json"))
             {
                 var redirectPath = $"{pathBase}/docs";
                 Log.Debug("Legacy /swagger redirect to {Path}", redirectPath);

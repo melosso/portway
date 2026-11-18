@@ -39,6 +39,7 @@ public class McpToolExecutionTests
     private static (McpChatService Service, CapturingHandler Handler) Build(
         EndpointMcpInfo endpoint,
         string scopes = "*",
+        string environments = "*",
         HttpStatusCode status = HttpStatusCode.OK,
         string response = "{\"Value\":[]}",
         string contentType = "application/json",
@@ -53,7 +54,8 @@ public class McpToolExecutionTests
             Username = "caller",
             TokenHash = "h",
             TokenSalt = "s",
-            AllowedScopes = scopes
+            AllowedScopes = scopes,
+            AllowedEnvironments = environments
         });
 
         var services = new ServiceCollection().AddSingleton(tokens.Object).BuildServiceProvider();
@@ -98,6 +100,31 @@ public class McpToolExecutionTests
 
         Assert.True(result.IsError);
         Assert.Contains("500", result.Text);
+        Assert.Empty(handler.Calls);
+    }
+
+    [Fact]
+    public async Task RefusedEnvironment_ListsOnlyCallerEnvironments()
+    {
+        var (service, handler) = Build(Endpoint("GET") with { AllowedEnvironments = ["500", "prod"] }, environments: "500");
+
+        var result = await Call(service, new { environment = "700" });
+
+        Assert.True(result.IsError);
+        Assert.Contains("500", result.Text);
+        Assert.DoesNotContain("prod", result.Text);
+        Assert.Empty(handler.Calls);
+    }
+
+    [Fact]
+    public async Task ToolWithoutCallerEnvironment_AnswersLikeUnknownTool()
+    {
+        var (service, handler) = Build(Endpoint("GET") with { AllowedEnvironments = ["prod"] }, environments: "500");
+
+        var refused = await Call(service, new { environment = "prod" });
+
+        Assert.True(refused.IsError);
+        Assert.Equal("Unknown tool: items", refused.Text);
         Assert.Empty(handler.Calls);
     }
 

@@ -319,22 +319,12 @@ public static class ColumnMappingHelper
             return filterExpression;
         }
 
-        var convertedFilter = filterExpression;
+        var lookup = new Dictionary<string, string>(aliasToDatabase, StringComparer.OrdinalIgnoreCase);
+        var aliases = string.Join('|', lookup.Keys.OrderByDescending(alias => alias.Length).Select(Regex.Escape));
 
-        // Sort aliases by length (descending) to avoid partial replacements
-        var sortedAliases = aliasToDatabase.Keys.OrderByDescending(alias => alias.Length);
-
-        foreach (var alias in sortedAliases)
-        {
-            if (aliasToDatabase.TryGetValue(alias, out var databaseColumn))
-            {
-                // Word boundaries avoid partial matches
-                var pattern = $@"\b{Regex.Escape(alias)}\b";
-                convertedFilter = Regex.Replace(convertedFilter, pattern, databaseColumn, RegexOptions.IgnoreCase);
-            }
-        }
-
-        return convertedFilter;
+        return Regex.Replace(filterExpression, $@"'(?:[^']|'')*'|\b(?:{aliases})\b",
+            match => match.Value[0] == '\'' ? match.Value : lookup[match.Value],
+            RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
     }
 
     /// <summary>

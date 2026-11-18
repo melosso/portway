@@ -66,18 +66,6 @@ public class SettingValuesTests
         Assert.DoesNotContain(values.Values, v => v?.ToString()?.Contains("secret-") == true);
     }
 
-    [Fact]
-    public void DeprecatedNames_AreReadThroughTheAliases()
-    {
-        var config = new ConfigurationManager();
-        config.AddInMemoryCollection(new Dictionary<string, string?> { ["RateLimiting:IpWindow"] = "15" });
-        config.AddConfigAliases();
-
-        var values = WebUiEndpointExtensions.SettingValues(config, new OpenApiSettings(), "None");
-
-        Assert.Equal(15, values["RateLimiting:IpWindowSeconds"]);
-    }
-
     private static System.Text.Json.JsonElement TrafficStatus(PortwayApi.Middleware.RequestTrafficLoggingOptions running, Dictionary<string, string?> saved) =>
         System.Text.Json.JsonSerializer.SerializeToElement(WebUiEndpointExtensions.TrafficLoggingStatus(running,
             new ConfigurationBuilder().AddInMemoryCollection(saved).Build()));

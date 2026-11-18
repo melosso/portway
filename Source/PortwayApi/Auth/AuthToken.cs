@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Linq.Expressions;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace PortwayApi.Auth;
@@ -78,9 +79,17 @@ public sealed class AuthToken
     public int? RateLimitWindowSeconds { get; set; }
 
     /// <summary>
+    /// Not revoked and not expired; the one definition for database queries and in-memory checks
+    /// </summary>
+    public static readonly Expression<Func<AuthToken, bool>> Active =
+        t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow);
+
+    private static readonly Func<AuthToken, bool> IsActiveCheck = Active.Compile();
+
+    /// <summary>
     /// Indicates if token is currently active
     /// </summary>
-    public bool IsActive => RevokedAt == null && (ExpiresAt == null || ExpiresAt > DateTime.UtcNow);
+    public bool IsActive => IsActiveCheck(this);
 
     /// <summary>
     /// Parses allowed scopes into a list
@@ -108,16 +117,7 @@ public sealed class AuthToken
         if (AllowedScopes == "*")
             return true;
 
-        var scopes = GetScopesList();
-
-        // Check for direct matches (case-insensitive)
-        if (scopes.Any(s => s.Equals("*") || s.Equals(endpointName, StringComparison.OrdinalIgnoreCase)))
-            return true;
-
-        // Check for wildcard matches (e.g., "Products*" should match "ProductsDetails")
-        return scopes.Any(s =>
-            s.EndsWith('*') &&
-            endpointName.StartsWith(s[..^1], StringComparison.OrdinalIgnoreCase));
+        return ScopeMatcher.Matches(GetScopesList(), endpointName);
     }
     public bool HasAccessToEnvironment(string environment)
     {

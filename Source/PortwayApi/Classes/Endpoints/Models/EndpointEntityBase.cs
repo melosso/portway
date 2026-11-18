@@ -35,7 +35,7 @@ public abstract class EndpointEntityBase
     public DateTimeOffset? DeprecatedSince { get; set; }
 
     /// <summary>
-    /// Date the endpoint stops serving, sent as the Sunset header
+    /// Announced retirement date, sent as the Sunset header; the endpoint keeps serving after it until disabled
     /// </summary>
     public DateTimeOffset? Sunset { get; set; }
 

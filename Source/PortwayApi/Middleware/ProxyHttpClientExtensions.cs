@@ -6,6 +6,9 @@ namespace PortwayApi.Middleware;
 
 public static class ProxyHttpClientExtensions
 {
+    public const string Client = "ProxyClient";
+    public const string NoRedirectClient = "ProxyClientNoRedirect";
+
     public static IServiceCollection AddPortwayProxyHttpClient(
         this IServiceCollection services,
         IConfiguration configuration)
@@ -22,27 +25,19 @@ public static class ProxyHttpClientExtensions
             !string.IsNullOrEmpty(proxyPassword),
             !string.IsNullOrEmpty(proxyDomain));
 
-        if (!string.IsNullOrEmpty(proxyUsername) && !string.IsNullOrEmpty(proxyPassword))
+        var useCredentials = !string.IsNullOrEmpty(proxyUsername) && !string.IsNullOrEmpty(proxyPassword);
+        if (useCredentials)
+            Log.Information("Configuring proxy with explicit credentials for user: {Username}@{Domain}", proxyUsername, proxyDomain);
+
+        foreach (var (name, allowRedirect) in new[] { (Client, true), (NoRedirectClient, false) })
         {
-            Log.Information("Configuring proxy with explicit credentials for user: {Username}@{Domain}",
-                proxyUsername, proxyDomain);
-            services.AddHttpClient("ProxyClient")
+            services.AddHttpClient(name)
                 .ConfigurePrimaryHttpMessageHandler(sp => new SocketsHttpHandler
                 {
-                    Credentials = new NetworkCredential(proxyUsername, proxyPassword, proxyDomain),
+                    UseProxy = useCredentials,
+                    Credentials = useCredentials ? new NetworkCredential(proxyUsername, proxyPassword, proxyDomain) : CredentialCache.DefaultNetworkCredentials,
                     PreAuthenticate = true,
-                    PooledConnectionLifetime = TimeSpan.FromMinutes(10),
-                    ConnectCallback = sp.GetRequiredService<UrlValidator>().ConnectAsync
-                });
-        }
-        else
-        {
-            services.AddHttpClient("ProxyClient")
-                .ConfigurePrimaryHttpMessageHandler(sp => new SocketsHttpHandler
-                {
-                    UseProxy = false,
-                    Credentials = CredentialCache.DefaultNetworkCredentials,
-                    PreAuthenticate = true,
+                    AllowAutoRedirect = allowRedirect,
                     PooledConnectionLifetime = TimeSpan.FromMinutes(10),
                     ConnectCallback = sp.GetRequiredService<UrlValidator>().ConnectAsync
                 });

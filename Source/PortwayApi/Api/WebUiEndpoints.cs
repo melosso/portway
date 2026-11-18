@@ -12,12 +12,13 @@ using Microsoft.Extensions.Options;
 using PortwayApi.Auth;
 using PortwayApi.Classes;
 using PortwayApi.Helpers;
+using PortwayApi.Middleware;
 using PortwayApi.Services;
 
 public static partial class WebUiEndpointExtensions
 {
-    private const string CookieName = "portway_auth";
-    private const string CsrfCookieName = "portway_csrf";
+    private static string CookieName => SessionKeyProvider.SessionCookieName;
+    private static string CsrfCookieName => SessionKeyProvider.CsrfCookieName;
     private static readonly TimeSpan SessionLifetime = TimeSpan.FromHours(12);
     private static readonly TimeSpan RememberedSessionLifetime = TimeSpan.FromDays(30);
     private static readonly DateTime ProcessStartTime = DateTime.UtcNow;
@@ -188,11 +189,13 @@ public static partial class WebUiEndpointExtensions
         MapPageAndAuthRoutes(app, wwwroot, appVersion, secureCookies);
         MapInfoRoutes(app, appVersion);
         MapEnvironmentRoutes(app, configAudit);
+        MapWebhookRoutes(app);
+        MapSecretRoutes(app);
         MapSettingsRoutes(app, configAudit);
         MapUserRoutes(app, configAudit);
         MapOidcRoutes(app, configAudit, secureCookies);
         MapAuditRoutes(app, configAudit);
-        MapTokenRoutes(app);
+        MapTokenRoutes(app, configAudit);
         MapRateLimitRoutes(app);
         MapEventRoutes(app);
         MapEndpointCrudRoutes(app, configAudit);
@@ -230,6 +233,19 @@ public static partial class WebUiEndpointExtensions
         });
     }
 
+    private static string? TypeFolder(string type) => type.ToLowerInvariant() switch
+    {
+        "sql" => "endpoints/SQL",
+        "proxy" or "composite" => "endpoints/Proxy",
+        "file" => "endpoints/Files",
+        "static" => "endpoints/Static",
+        "webhook" => "endpoints/Webhooks",
+        _ => null
+    };
+
+    private static string? EndpointsDirectoryOf(string type) =>
+        TypeFolder(type) is { } folder ? Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), folder)) : null;
+
     private static (string? filePath, string? error) ResolveEndpointPath(string type, string name)
     {
         // allow namespaced paths
@@ -237,22 +253,11 @@ public static partial class WebUiEndpointExtensions
             return (null, "Invalid endpoint name");
 
         var baseDir = Directory.GetCurrentDirectory();
-        var (typeDir, isFixed) = type.ToLowerInvariant() switch
-        {
-            "sql" => ("endpoints/SQL", false),
-            "proxy" => ("endpoints/Proxy", false),
-            "composite" => ("endpoints/Proxy", false),
-            "file" => ("endpoints/Files", false),
-            "static" => ("endpoints/Static", false),
-            "webhook" => ("endpoints/Webhooks", false),
-            _ => ((string?)null, false)
-        };
+        var typeDir = TypeFolder(type);
 
         if (typeDir == null) return (null, $"Unknown endpoint type: {type}");
 
-        var filePath = isFixed
-            ? Path.GetFullPath(Path.Combine(baseDir, typeDir, "entity.json"))
-            : Path.GetFullPath(Path.Combine(baseDir, typeDir, name, "entity.json"));
+        var filePath = Path.GetFullPath(Path.Combine(baseDir, typeDir, name, "entity.json"));
 
         var allowedBase = Path.GetFullPath(Path.Combine(baseDir, typeDir));
         if (!filePath.StartsWith(allowedBase + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
@@ -260,7 +265,7 @@ public static partial class WebUiEndpointExtensions
             return (null, "Invalid path");
 
         // fall back to the leaf folder for namespaced names
-        if (!isFixed && !File.Exists(filePath) && name.Contains('/') && !EndpointVersion.TryParse(name.Split('/')[^1], out _))
+        if (!File.Exists(filePath) && name.Contains('/') && !EndpointVersion.TryParse(name.Split('/')[^1], out _))
         {
             var leafName = name.Split('/')[^1];
             var fallbackPath = Path.GetFullPath(Path.Combine(baseDir, typeDir, leafName, "entity.json"));
@@ -307,7 +312,7 @@ public static partial class WebUiEndpointExtensions
     /// <summary>
     /// Composes a page from the shared shell, its view fragment and the footer, then applies the standard post-processing
     /// </summary>
-    private static IResult ServeComposedPage(string wwwroot, string page, string title, PathString pathBase, string version)
+    private static IResult ServeComposedPage(string wwwroot, string page, string title, HttpContext context, string version)
     {
         var shellPath = Path.Combine(wwwroot, "_shell.html");
         var viewPath = Path.Combine(wwwroot, "views", $"{page}.html");
@@ -319,10 +324,10 @@ public static partial class WebUiEndpointExtensions
             + File.ReadAllText(viewPath)
             + (File.Exists(footerPath) ? File.ReadAllText(footerPath) : "\n</body>\n</html>\n");
 
-        return FinishHtml(html, pathBase, version);
+        return FinishHtml(html, context, version);
     }
 
-    private static IResult ServeHtml(string filePath, PathString pathBase, string version, IConfiguration? config = null)
+    private static IResult ServeHtml(string filePath, HttpContext context, string version, IConfiguration? config = null)
     {
         if (!File.Exists(filePath)) return Results.NotFound();
         var html = File.ReadAllText(filePath);
@@ -337,22 +342,28 @@ public static partial class WebUiEndpointExtensions
             }
         }
 
-        return FinishHtml(html, pathBase, version);
+        return FinishHtml(html, context, version);
     }
 
     /// <summary>
-    /// Shared post-processing: base href + PortwayBase injection and cache-busting of local assets
+    /// Shared post-processing: base href + PortwayBase injection, script nonces and cache-busting of local assets
     /// </summary>
-    private static IResult FinishHtml(string html, PathString pathBase, string version)
+    private static IResult FinishHtml(string html, HttpContext context, string version)
     {
-        var pb = pathBase.Value ?? "";
-        var v = Uri.EscapeDataString(version);
-        html = html.Replace("<head>", $"<head>\n  <base href=\"{pb}/\">\n  <script>window.PortwayBase=\"{pb}\";</script>");
+        var pb = context.Request.PathBase.Value ?? "";
+        html = html.Replace("<head>", $"<head>\n  <base href=\"{pb}/\">\n  <script>window.PortwayBase=\"{pb}\";window.PortwayCsrfCookie=\"{CsrfCookieName}\";</script>");
         html = Regex.Replace(
             html,
             @"(href|src)=""(?!https?://)([^""]+\.(css|js))""",
-            m => $"{m.Groups[1]}=\"{m.Groups[2]}?v={v}\"");
-        return Results.Content(html, "text/html; charset=utf-8");
+            m => $"{m.Groups[1]}=\"{m.Groups[2]}?v={Uri.EscapeDataString(AssetVersion(m.Groups[2].Value, version))}\"");
+        return Results.Content(CspNonce.Apply(html, context), "text/html; charset=utf-8");
+    }
+
+    // the file timestamp changes on every build, the app version only on a new commit
+    private static string AssetVersion(string relativePath, string fallback)
+    {
+        var file = Path.Combine(AppContext.BaseDirectory, "wwwroot", relativePath.TrimStart('/'));
+        return File.Exists(file) ? File.GetLastWriteTimeUtc(file).Ticks.ToString("x") : fallback;
     }
 
     private static string ParseMarkdownToHtml(string md) =>

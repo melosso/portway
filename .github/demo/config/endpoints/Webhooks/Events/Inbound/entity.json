@@ -1,0 +1,16 @@
+{
+    "DatabaseObjectName": "WebhookData",
+    "AllowedColumns": ["github", "partner"],
+    "AllowedMethods": ["POST"],
+    "AllowedEnvironments": ["WMS"],
+    "Verification": {
+        "github": {
+            "Scheme": "GitHub",
+            "Secret": "${secret:GITHUB-WEBHOOK}",
+            "Deduplicate": true
+        }
+    },
+    "Documentation": {
+        "TagDescription": "Receive webhook deliveries. `github` accepts GitHub deliveries signed with the demo secret and stores each delivery once. `partner` accepts deliveries with a Portway token."
+    }
+}

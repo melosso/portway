@@ -15,33 +15,26 @@ public sealed class CompositeStepException : Exception
     public int StatusCode { get; }
 
     /// <summary>
-    /// A detailed error message extracted from the response
+    /// The gateway's description of the failure, sent to the client
     /// </summary>
     public string ErrorDetail { get; }
 
     /// <summary>
-    /// The full response body from the failed request
+    /// The masked upstream response body, logged at Debug and never sent to the client
     /// </summary>
     public string ResponseContent { get; }
-
-    /// <summary>
-    /// The structured error data, if the response was JSON
-    /// </summary>
-    public object? StructuredError { get; }
 
     public CompositeStepException(
         string message,
         string stepName,
         int statusCode,
         string errorDetail,
-        string responseContent,
-        object? structuredError = null)
+        string responseContent)
         : base(message)
     {
         StepName = stepName;
         StatusCode = statusCode;
         ErrorDetail = errorDetail;
         ResponseContent = responseContent;
-        StructuredError = structuredError;
     }
 }

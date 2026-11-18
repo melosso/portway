@@ -1,10 +1,11 @@
 // Shared utilities for every console page
 
-// CSRF: echo the portway_csrf cookie on every mutating /_/api request (double-submit pattern)
+// CSRF: echo this instance's csrf cookie on every mutating /_/api request (double-submit pattern)
 (function () {
     function csrfToken() {
-        var m = document.cookie.match(/(?:^|;\s*)portway_csrf=([^;]+)/);
-        return m ? decodeURIComponent(m[1]) : null;
+        var prefix = (window.PortwayCsrfCookie || 'portway_csrf') + '=';
+        var pair = document.cookie.split(/;\s*/).find((c) => c.startsWith(prefix));
+        return pair ? decodeURIComponent(pair.slice(prefix.length)) : null;
     }
     var origFetch = window.fetch;
     window.fetch = function (input, init) {
@@ -38,6 +39,120 @@ function esc(s) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 }
+
+// CSP forbids inline handlers: markup binds with data-on="click:fn input:other" and optional data-args (JSON array, shared by every binding on the element)
+// {"ref": "this" | "event" | "value" | "checked"} in data-args resolves per call; a click inside data-stop runs no ancestor binding
+const ARG = { THIS: { ref: 'this' }, EVENT: { ref: 'event' }, VALUE: { ref: 'value' }, CHECKED: { ref: 'checked' } };
+
+// Shared targets for former one-line inline handlers
+function removeClosest(el, selector) {
+    el.closest(selector)?.remove();
+}
+
+let hasUnsavedChanges = () => false;
+
+function confirmDiscard(actionLabel, onConfirm) {
+    AlertDialog.show({
+        title: 'Discard unsaved changes?',
+        description: 'Changes on this page are not saved.',
+        actionLabel,
+        cancelLabel: 'Stay here',
+        onConfirm: () => {
+            hasUnsavedChanges = () => false;
+            onConfirm();
+        }
+    });
+}
+
+function trackUnsavedChanges(check) {
+    hasUnsavedChanges = check;
+    // browsers allow only their own prompt for reload, close and typed urls
+    window.addEventListener('beforeunload', (e) => {
+        if (hasUnsavedChanges()) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+    document.addEventListener('click', (e) => {
+        const link = e.target.closest('a[href]');
+        if (!link || link.target || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey)
+            return;
+        const url = new URL(link.href, location.href);
+        if (url.origin !== location.origin || url.pathname === location.pathname || !hasUnsavedChanges()) return;
+        e.preventDefault();
+        confirmDiscard('Leave page', () => {
+            location.href = url.href;
+        });
+    });
+}
+
+const RECENT_DAYS = 7;
+
+function isRecent(iso) {
+    return !!iso && Date.now() - Date.parse(iso) < RECENT_DAYS * 86400000;
+}
+
+function toggleClosestClass(el, selector, className) {
+    const on = el.closest(selector)?.classList.toggle(className);
+    if (el.hasAttribute('aria-expanded')) el.setAttribute('aria-expanded', String(!!on));
+}
+
+function clickElement(id) {
+    document.getElementById(id)?.click();
+}
+
+// Enter runs enterFn with the remaining arguments; Escape runs escapeFn
+function keyAction(e, enterFn, escapeFn, ...enterArgs) {
+    if (e.key === 'Enter') window[enterFn](...enterArgs);
+    else if (e.key === 'Escape') window[escapeFn]();
+}
+
+// Attribute-safe data-args value for markup built in template strings
+function actionArgs(...args) {
+    return esc(JSON.stringify(args));
+}
+
+function _resolveActionArg(a, el, e) {
+    if (a === null || typeof a !== 'object' || !('ref' in a)) return a;
+    if (a.ref === 'this') return el;
+    if (a.ref === 'event') return e;
+    if (a.ref === 'value') return el.value;
+    if (a.ref === 'checked') return el.checked;
+    return a;
+}
+
+// Enter and leave events reach document only in the capture phase and match their own target, never an ancestor
+const _TARGET_ONLY_EVENTS = new Set(['mouseenter', 'mouseleave', 'pointerenter', 'pointerleave']);
+
+function _dispatchAction(e) {
+    const targetOnly = _TARGET_ONLY_EVENTS.has(e.type);
+    for (
+        let el = e.target instanceof Element ? e.target : e.target?.parentElement;
+        el;
+        el = targetOnly ? null : el.parentElement
+    ) {
+        if (e.type === 'click' && el.hasAttribute('data-stop')) return;
+        const bindings = (el.getAttribute('data-on') || '').split(/\s+/).filter((b) => b.startsWith(e.type + ':'));
+        if (!bindings.length) continue;
+        if (e.type === 'submit') e.preventDefault();
+        const args = el.dataset.args ? JSON.parse(el.dataset.args).map((a) => _resolveActionArg(a, el, e)) : [];
+        // Bindings run in attribute order with the same arguments, like statements in a former inline handler
+        for (const binding of bindings) {
+            const path = binding.slice(e.type.length + 1).split('.');
+            const owner = path.slice(0, -1).reduce((o, k) => o?.[k], window);
+            const fn = owner?.[path[path.length - 1]];
+            if (typeof fn !== 'function') {
+                console.error('data-on target is not a function: ' + binding);
+                return;
+            }
+            fn.apply(owner, args);
+        }
+        if (e.cancelBubble) return;
+    }
+}
+
+for (const type of ['click', 'input', 'change', 'keydown', 'submit', ..._TARGET_ONLY_EVENTS])
+    document.addEventListener(type, _dispatchAction, true);
 
 const STATUS_ICON_PATHS = {
     ok: '<path d="M20 6 9 17l-5-5"/>',
@@ -75,6 +190,7 @@ async function api(url, options = {}) {
         const err = new Error(message);
         err.status = res.status;
         err.field = data && data.field;
+        err.errors = data && Array.isArray(data.errors) ? data.errors : null;
         throw err;
     }
     if (success) toast(success, 'success');
@@ -82,7 +198,14 @@ async function api(url, options = {}) {
 }
 
 function togglePasswordVis(inputId, btn) {
-    const el = document.getElementById(inputId);
+    _togglePasswordInput(document.getElementById(inputId), btn);
+}
+
+function toggleSiblingPasswordVis(btn) {
+    _togglePasswordInput(btn.previousElementSibling, btn);
+}
+
+function _togglePasswordInput(el, btn) {
     if (!el) return;
     const showing = el.type === 'text';
     el.type = showing ? 'password' : 'text';
@@ -139,18 +262,16 @@ function animateCounter(el, target, duration) {
         if (_reported >= _maxReports) return;
         _reported++;
         try {
-            navigator.sendBeacon(
-                '/_/api/client-error',
-                JSON.stringify({
-                    message: String(msg).slice(0, 500),
-                    source: String(source || '').slice(0, 200),
-                    line: lineno,
-                    col: colno,
-                    stack: err && err.stack ? String(err.stack).slice(0, 1000) : null,
-                    url: location.pathname,
-                    ts: Date.now()
-                })
-            );
+            var report = JSON.stringify({
+                message: String(msg).slice(0, 500),
+                source: String(source || '').slice(0, 200),
+                line: lineno,
+                col: colno,
+                stack: err && err.stack ? String(err.stack).slice(0, 1000) : null,
+                url: location.pathname,
+                ts: Date.now()
+            });
+            navigator.sendBeacon('/_/api/client-error', new Blob([report], { type: 'application/json' }));
         } catch (_) {}
     }
     window.onerror = function (msg, source, lineno, colno, err) {

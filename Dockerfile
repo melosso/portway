@@ -2,9 +2,8 @@
 # Enable BuildKit features for better performance
 
 # Stage 1: Build the application
-# pinned to .NET 11 RC1; switch to 11.0 / 11.0-noble at GA
 # Build on the runner arch; the publish output is RID-agnostic
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0.100-rc.3 AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0.100 AS build
 WORKDIR /src
 
 # Copy only project files first to leverage Docker layer caching for dependencies
@@ -29,8 +28,7 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     dotnet publish "Source/PortwayApi/PortwayApi.csproj" -c Release -o /app/publish /p:UseAppHost=false 
 
 # Stage 2: Runtime image
-# pinned to .NET 11 RC1; switch to 11.0 / 11.0-noble at GA
-FROM mcr.microsoft.com/dotnet/aspnet:11.0.0-rc.3 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:11.0.0 AS final
 WORKDIR /app
 
 # Install SQLite and curl for healthchecks
@@ -46,8 +44,9 @@ RUN mkdir -p /app/endpoints && \
     mkdir -p /app/environments/prod
 
 # Set environment variables
-# For future reference, ASPNETCORE_HTTP_PORTS=8080 is already set by the base image (dotnet/aspnet:8.0+). Can be removed when deemed stable.
+# Ports are set by PORTWAY_PORT_API and PORTWAY_PORT_CONSOLE, the base image binding is cleared
 ENV ASPNETCORE_ENVIRONMENT=Production
+ENV ASPNETCORE_HTTP_PORTS=
 
 # Copy published output and tools
 COPY --from=build /app/publish /opt/portway
@@ -73,8 +72,8 @@ RUN chmod -R 755 /app /opt/portway /usr/local/bin/portway-start
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8080/health/live || exit 1
 
-# Expose application port
-EXPOSE 8080
+# Expose API and console ports
+EXPOSE 8080 8081
 
 # Define entrypoint
 ENTRYPOINT ["/usr/local/bin/portway-start"]

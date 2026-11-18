@@ -25,6 +25,19 @@ public static class SessionKeyProvider
         }
     }
 
+    /// <summary>
+    /// Console session cookie name, unique per signing key so instances on one host keep separate sessions
+    /// </summary>
+    public static string SessionCookieName => $"portway_auth_{CookieSuffix(Key)}";
+
+    /// <summary>
+    /// Console CSRF cookie name, unique per signing key
+    /// </summary>
+    public static string CsrfCookieName => $"portway_csrf_{CookieSuffix(Key)}";
+
+    internal static string CookieSuffix(byte[] key) =>
+        Convert.ToHexStringLower(HMACSHA256.HashData(key, "cookie-name"u8))[..8];
+
     private static byte[] LoadOrCreate()
     {
         var path = Path.Combine(Directory.GetCurrentDirectory(), KeyFileName);

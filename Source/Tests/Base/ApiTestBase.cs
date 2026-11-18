@@ -200,7 +200,7 @@ public class ApiTestBase : IDisposable
     /// </summary>
     protected static bool WmsDemoDbAvailable => File.Exists(WmsDemoDbPath);
 
-    private static string ConnectionStringFor(string environment) =>
+    protected virtual string ConnectionStringFor(string environment) =>
         string.Equals(environment, "WMS", StringComparison.OrdinalIgnoreCase)
             ? $"Data Source={WmsDemoDbPath}"
             : "Server=localhost;Database=test;Trusted_Connection=True";

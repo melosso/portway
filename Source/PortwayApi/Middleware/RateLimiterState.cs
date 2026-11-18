@@ -21,4 +21,10 @@ public sealed class RateLimiterState
 /// <summary>
 /// Block window for a rate limited token, duration grows with consecutive violations
 /// </summary>
-public sealed record TokenBlockInfo(DateTimeOffset BlockedUntil, int ConsecutiveBlocks, int BlockDuration);
+public sealed record TokenBlockInfo(DateTimeOffset BlockedUntil, int ConsecutiveBlocks, int BlockDuration)
+{
+    /// <summary>
+    /// True once the token stays quiet for one block duration after the block ends; the next violation counts as the first
+    /// </summary>
+    public bool IsForgotten(DateTimeOffset now) => now >= BlockedUntil.AddSeconds(BlockDuration);
+}

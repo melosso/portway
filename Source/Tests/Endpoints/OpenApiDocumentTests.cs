@@ -1,4 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using System.Net;
 using System.Text.Json;
@@ -327,7 +330,7 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.NotEmpty(classes);
 
         var bundle = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "wwwroot", "js", "vendor", "scalar-api-reference.js"), TestContext.Current.CancellationToken);
-        Assert.Empty(classes.Where(c => !bundle.Contains(c, StringComparison.Ordinal)));
+        Assert.All(classes, c => Assert.Contains(c, bundle, StringComparison.Ordinal));
     }
 
     // footer and title come from settings the console can write, so the docs page must encode them
@@ -381,7 +384,7 @@ public class OpenApiDocumentTests : ApiTestBase
 
         using var factory = _factory.WithWebHostBuilder(b => b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["OpenApi:ScalarTheme"] = "portway"
+            ["OpenApi:Scalar:Theme"] = "portway"
         })));
         using var config = ScalarConfig(await factory.CreateClient().GetStringAsync("/docs", TestContext.Current.CancellationToken));
         Assert.Equal("none", config.RootElement.GetProperty("theme").GetString());
@@ -610,6 +613,19 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.NotNull(GetQueryParameter(paths, "/api/{env}/Inventory/ProductStock", "$select"));
     }
 
+    [Fact]
+    public async Task WebhookCreated_HasNoLocationHeader()
+    {
+        SetAllowedEnvironments("500", "700", "Synergy", "WMS");
+
+        using var doc = JsonDocument.Parse(await _client.GetStringAsync("/docs/openapi.json", TestContext.Current.CancellationToken));
+        var created = doc.RootElement.GetProperty("paths").GetProperty("/api/{env}/Webhooks/Incoming/{webhookId}")
+            .GetProperty("post").GetProperty("responses").GetProperty("201");
+
+        Assert.False(created.TryGetProperty("headers", out var headers) && headers.TryGetProperty("Location", out _));
+        Assert.Contains("Webhook stored.", created.GetRawText());
+    }
+
     // Ids derive from the route, so adding an endpoint never renames the operations of another
     [Fact]
     public async Task OperationIds_AreStable_UniqueAndDerivedFromTheRoute()
@@ -798,5 +814,64 @@ public class OpenApiDocumentTests : ApiTestBase
         var parameters = json.RootElement.GetProperty("paths").GetProperty("/api/{env}/Company/Departments").GetProperty("get").GetProperty("parameters").EnumerateArray().ToList();
 
         Assert.Single(parameters, p => p.GetProperty("name").GetString() == "BaseDate" && p.GetProperty("in").GetString() == "query");
+    }
+
+    [Theory]
+    [InlineData("false", 404)]
+    [InlineData("true", 302)]
+    public async Task ApiPortRoot_ReturnsNotFoundWithDocsDisabled(string docsEnabled, int status)
+    {
+        var response = await GetRootAsync(new() { ["OpenApi:Enabled"] = docsEnabled }, PortwayApi.Middleware.PortRouting.DefaultApiPort, null, "text/html");
+
+        Assert.Equal(status, (int)response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("true", "true", "127.0.0.1", "text/html", "/index.html")]
+    [InlineData("true", "false", "127.0.0.1", "text/html", "/docs")]
+    [InlineData("true", "true", "203.0.113.7", "text/html", "/docs")]
+    [InlineData("true", "true", "127.0.0.1", "application/json", "/docs/openapi.json")]
+    [InlineData("false", "true", "203.0.113.7", "text/html", null)]
+    [InlineData("false", "true", "127.0.0.1", "application/json", null)]
+    public async Task SharedPortRoot_FollowsLandingAndDocsSettings(string docsEnabled, string landingEnabled, string clientIp, string accept, string? location)
+    {
+        var response = await GetRootAsync(new()
+        {
+            ["OpenApi:Enabled"] = docsEnabled,
+            ["Console:Customization:LandingPageEnabled"] = landingEnabled
+        }, null, IPAddress.Parse(clientIp), accept);
+
+        if (location is null)
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        else
+            Assert.Equal(location, response.Headers.Location?.OriginalString);
+    }
+
+    private async Task<HttpResponseMessage> GetRootAsync(Dictionary<string, string?> settings, int? localPort, IPAddress? clientIp, string accept)
+    {
+        _mockUrlValidator.Setup(v => v.IsClientIpAllowed(Moq.It.IsAny<IPAddress>())).Returns<IPAddress>(IPAddress.IsLoopback);
+        var factory = _factory.WithWebHostBuilder(b =>
+        {
+            b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(settings));
+            b.ConfigureTestServices(s => s.AddSingleton<IStartupFilter>(new ConnectionFilter(localPort, clientIp)));
+        });
+        var client = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/");
+        request.Headers.Accept.ParseAdd(accept);
+        return await client.SendAsync(request, TestContext.Current.CancellationToken);
+    }
+
+    private sealed class ConnectionFilter(int? localPort, IPAddress? clientIp) : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use(async (context, nextMiddleware) =>
+            {
+                if (localPort is { } port) context.Connection.LocalPort = port;
+                if (clientIp is not null) context.Connection.RemoteIpAddress = clientIp;
+                await nextMiddleware();
+            });
+            next(app);
+        };
     }
 }

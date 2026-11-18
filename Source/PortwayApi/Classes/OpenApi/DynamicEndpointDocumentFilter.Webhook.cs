@@ -40,7 +40,7 @@ public sealed partial class DynamicEndpointDocumentFilter
             {
                 Tags = new HashSet<OpenApiTagReference> { new(webhookTag) },
                 Summary = webhookDocumentation?.MethodDescriptions?.GetValueOrDefault("POST") ?? "Process incoming request",
-                Description = webhookDocumentation?.MethodDocumentation?.GetValueOrDefault("POST") ?? "Receives and processes a request payload",
+                Description = (webhookDocumentation?.MethodDocumentation?.GetValueOrDefault("POST") ?? "Receives and processes a request payload") + VerificationNote(definition),
                 OperationId = OpenApiEndpointCatalog.OperationId("POST", definition),
                 Parameters = new List<IOpenApiParameter>
             {
@@ -84,15 +84,7 @@ public sealed partial class DynamicEndpointDocumentFilter
                 {
                     ["201"] = new OpenApiResponse
                     {
-                        Description = "Created - Resource successfully created",
-                        Headers = new Dictionary<string, IOpenApiHeader>
-                        {
-                            ["Location"] = new OpenApiHeader
-                            {
-                                Description = "URL of the newly created resource",
-                                Schema = new OpenApiSchema { Type = JsonSchemaType.String }
-                            }
-                        },
+                        Description = "Created - Webhook stored",
                         Content = new Dictionary<string, IOpenApiMediaType>
                         {
                             ["application/json"] = new OpenApiMediaType
@@ -103,7 +95,7 @@ public sealed partial class DynamicEndpointDocumentFilter
                                     Properties = new Dictionary<string, IOpenApiSchema>
                                     {
                                         ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
-                                        ["message"] = new OpenApiSchema { Type = JsonSchemaType.String, Examples = [JsonValue.Create("Request processed successfully.")] },
+                                        ["message"] = new OpenApiSchema { Type = JsonSchemaType.String, Examples = [JsonValue.Create("Webhook stored.")] },
                                         ["result"] = new OpenApiSchema { Type = JsonSchemaType.Object | JsonSchemaType.Null },
                                         ["id"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Examples = [JsonValue.Create(12345)] }
                                     }
@@ -111,7 +103,7 @@ public sealed partial class DynamicEndpointDocumentFilter
                                 Example = new JsonObject
                                 {
                                     ["success"] = JsonValue.Create(true),
-                                    ["message"] = JsonValue.Create("Webhook processed successfully."),
+                                    ["message"] = JsonValue.Create("Webhook stored."),
                                     ["result"] = null,
                                     ["id"] = JsonValue.Create(12345)
                                 }
@@ -136,7 +128,7 @@ public sealed partial class DynamicEndpointDocumentFilter
                                 },
                                 Example = new JsonObject
                                 {
-                                    ["error"] = JsonValue.Create("Environment is not configured properly."),
+                                    ["error"] = JsonValue.Create(Helpers.JsonBody.InvalidMessage),
                                     ["success"] = JsonValue.Create(false)
                                 }
                             }
@@ -206,7 +198,7 @@ public sealed partial class DynamicEndpointDocumentFilter
                                 },
                                 Example = new JsonObject
                                 {
-                                    ["error"] = JsonValue.Create("Webhook ID 'unknown_webhook' is not configured."),
+                                    ["error"] = JsonValue.Create("Webhook not found."),
                                     ["success"] = JsonValue.Create(false)
                                 }
                             }
@@ -245,8 +237,43 @@ public sealed partial class DynamicEndpointDocumentFilter
 
             StandardResponses.AddErrors(webhookOperation, ApiOperationKind.Webhook);
 
+            if (definition.Verification?.Values.Any(r => r.Deduplicate) == true)
+            {
+                webhookOperation.Responses["200"] = new OpenApiResponse
+                {
+                    Description = "OK - Duplicate delivery ignored",
+                    Content = new Dictionary<string, IOpenApiMediaType>
+                    {
+                        ["application/json"] = new OpenApiMediaType
+                        {
+                            Schema = new OpenApiSchema
+                            {
+                                Type = JsonSchemaType.Object,
+                                Properties = new Dictionary<string, IOpenApiSchema>
+                                {
+                                    ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
+                                    ["message"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                    ["result"] = new OpenApiSchema { Type = JsonSchemaType.Object | JsonSchemaType.Null }
+                                }
+                            },
+                            Example = new JsonObject
+                            {
+                                ["success"] = JsonValue.Create(true),
+                                ["message"] = JsonValue.Create("Duplicate delivery ignored."),
+                                ["result"] = null
+                            }
+                        }
+                    }
+                };
+            }
+
             document.Paths[path].Operations![HttpMethod.Post] = webhookOperation;
         }
     }
 
+    private static string VerificationNote(EndpointDefinition definition) =>
+        definition.Verification is not { Count: > 0 } rules
+            ? string.Empty
+            : "\n\nVerified ids: " + string.Join("; ", rules.Select(r => $"`{r.Key}` ({r.Value.Scheme}, header `{r.Value.RequiredHeader}`)"))
+              + ". A verified id accepts its signature or credential only. Other ids require a Bearer token.";
 }

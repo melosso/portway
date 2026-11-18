@@ -20,7 +20,8 @@ public static class ProxyFailoverHelper
         ProxyRetryOptions? retry,
         string logContext,
         Func<string, bool> isUrlSafe,
-        CancellationToken ct)
+        CancellationToken ct,
+        bool sameHostRedirectsOnly = false)
     {
         int attemptsPerUrl = Math.Max(1, retry?.Attempts ?? 1);
         int retryDelayMs = Math.Max(0, retry?.DelayMs ?? 200);
@@ -46,6 +47,8 @@ public static class ProxyFailoverHelper
                 try
                 {
                     var response = await client.SendAsync(buildRequest(targetUrl), ct);
+                    if (sameHostRedirectsOnly)
+                        response = await FollowSameHostRedirectsAsync(client, buildRequest, targetUrl, response, isUrlSafe, ct);
 
                     if (!failoverEnabled || lastTry || !IsTransientStatus((int)response.StatusCode))
                         return response;
@@ -69,6 +72,57 @@ public static class ProxyFailoverHelper
 
         throw new HttpRequestException($"All proxy attempts failed for {logContext}");
     }
+
+    public const int MaxRedirects = 5;
+
+    public static string ClientName(bool sameHostRedirectsOnly) =>
+        sameHostRedirectsOnly ? Middleware.ProxyHttpClientExtensions.NoRedirectClient : Middleware.ProxyHttpClientExtensions.Client;
+
+    internal static async Task<HttpResponseMessage> FollowSameHostRedirectsAsync(
+        HttpClient client,
+        Func<string, HttpRequestMessage> buildRequest,
+        string templateUrl,
+        HttpResponseMessage response,
+        Func<string, bool> isUrlSafe,
+        CancellationToken ct)
+    {
+        var current = response.RequestMessage?.RequestUri ?? new Uri(templateUrl);
+        var method = response.RequestMessage?.Method ?? HttpMethod.Get;
+        var bodyDropped = false;
+        for (var hop = 0; hop < MaxRedirects && IsRedirect((int)response.StatusCode) && response.Headers.Location is { } location; hop++)
+        {
+            var next = location.IsAbsoluteUri ? location : new Uri(current, location);
+            if (!IsSameHostOrUpgrade(current, next) || !isUrlSafe(next.AbsoluteUri))
+            {
+                Log.Debug("Redirect to another host is returned to the client");
+                return response;
+            }
+
+            if ((int)response.StatusCode == 303 || ((int)response.StatusCode is 301 or 302 && method == HttpMethod.Post))
+            {
+                method = method == HttpMethod.Head ? HttpMethod.Head : HttpMethod.Get;
+                bodyDropped = true;
+            }
+
+            var request = buildRequest(templateUrl);
+            request.RequestUri = next;
+            request.Method = method;
+            if (bodyDropped)
+                request.Content = null;
+
+            current = next;
+            response.Dispose();
+            response = await client.SendAsync(request, ct);
+        }
+        return response;
+    }
+
+    internal static bool IsRedirect(int status) => status is 301 or 302 or 303 or 307 or 308;
+
+    internal static bool IsSameHostOrUpgrade(Uri from, Uri to) =>
+        from.Host.Equals(to.Host, StringComparison.OrdinalIgnoreCase)
+        && ((from.Scheme == to.Scheme && from.Port == to.Port)
+            || (from.Scheme == Uri.UriSchemeHttp && to.Scheme == Uri.UriSchemeHttps && (to.IsDefaultPort || to.Port == from.Port)));
 
     public static List<string> BuildCandidateUrls(string fullUrl, string baseUrl, List<string>? fallbackUrls)
     {
