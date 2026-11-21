@@ -749,6 +749,7 @@ public sealed class ProxyRequestHandler
         }
 
         // Read and potentially rewrite response content
+        // To-do: stream large text bodies once url rewriting and etags work on a stream, before proxy endpoints serve multi-megabyte exports
         var originalContent = response.Content != null
             ? await response.Content.ReadAsStringAsync(context.RequestAborted)
             : string.Empty;

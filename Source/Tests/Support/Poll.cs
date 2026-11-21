@@ -2,9 +2,6 @@ using System.Diagnostics;
 
 namespace PortwayApi.Tests.Support;
 
-/// <summary>
-/// Waits for state written by background work: file watchers, hosted services, reconnecting clients
-/// </summary>
 public static class Poll
 {
     private static readonly TimeSpan Interval = TimeSpan.FromMilliseconds(50);
