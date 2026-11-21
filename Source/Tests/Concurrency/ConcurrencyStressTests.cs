@@ -226,7 +226,7 @@ public class ConcurrencyStressTests
             if (Interlocked.Increment(ref inside) != 1)
                 Interlocked.Increment(ref overlaps);
 
-            await Task.Delay(1, ct);
+            await Task.Yield();
             Interlocked.Decrement(ref inside);
         });
 

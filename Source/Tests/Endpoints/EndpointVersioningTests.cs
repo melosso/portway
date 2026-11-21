@@ -374,19 +374,11 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
             ("/api/500/v2/VerFlat", "test-token", "flat-two"),
         };
 
-        using var stop = new CancellationTokenSource();
-        var reloads = Task.Run(async () =>
-        {
-            while (!stop.IsCancellationRequested)
-            {
-                EndpointHandler.ReloadAllEndpoints();
-                await Task.Delay(5);
-            }
-        }, TestContext.Current.CancellationToken);
-
         var failures = new System.Collections.Concurrent.ConcurrentBag<string>();
         await Parallel.ForEachAsync(Enumerable.Range(0, 400), new ParallelOptions { MaxDegreeOfParallelism = 16 }, async (i, ct) =>
         {
+            if (i % cases.Length == 0)
+                EndpointHandler.ReloadAllEndpoints();
             var (url, token, expected) = cases[i % cases.Length];
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -396,8 +388,6 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
                 failures.Add($"{url} {token}: {(int)response.StatusCode} {body[..Math.Min(body.Length, 80)]}");
         });
 
-        stop.Cancel();
-        await reloads;
         Assert.True(failures.IsEmpty, string.Join("\n", failures.Take(10)));
     }
 

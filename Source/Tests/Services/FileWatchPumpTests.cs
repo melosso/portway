@@ -32,10 +32,12 @@ public sealed class FileWatchPumpTests
         var pump = new RecordingPump(temp.Path);
         await pump.StartAsync(TestContext.Current.CancellationToken);
 
-        File.WriteAllText(file, "");
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        File.WriteAllText(file, "{\"v\":2}");
-        await Task.Delay(1500, TestContext.Current.CancellationToken);
+        using (var editor = new FileStream(file, FileMode.Truncate, FileAccess.Write))
+        {
+            editor.Flush(flushToDisk: true);
+            editor.Write("{\"v\":2}"u8);
+        }
+        await Poll.UntilAsync(() => !pump.Seen.IsEmpty, TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         await pump.StopAsync(TestContext.Current.CancellationToken);
         pump.Dispose();

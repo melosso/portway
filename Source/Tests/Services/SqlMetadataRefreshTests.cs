@@ -107,12 +107,15 @@ public sealed class SqlMetadataRefreshTests : IDisposable
             var factory = new SqlProviderFactory([new SqliteProvider()]);
             var service = new SqlMetadataService(new SqlConnectionPoolService(new SqlPoolingOptions(0, 10, 15, true, "test"), factory), factory);
             var lookups = 0;
-            await Task.WhenAll(Enumerable.Range(0, callers).Select(_ => service.InitializeAsync(endpoints, new EnvironmentSettings(), async _ =>
+            var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var calls = Enumerable.Range(0, callers).Select(_ => service.InitializeAsync(endpoints, new EnvironmentSettings(), async _ =>
             {
                 Interlocked.Increment(ref lookups);
-                await Task.Delay(50, TestContext.Current.CancellationToken);
+                await gate.Task;
                 return $"Data Source={_dbPath}";
-            }, TestContext.Current.CancellationToken)));
+            }, TestContext.Current.CancellationToken)).ToList();
+            gate.SetResult();
+            await Task.WhenAll(calls);
             return lookups;
         }
 

@@ -1,3 +1,4 @@
+using PortwayApi.Tests.Support;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -185,14 +186,8 @@ public sealed class CacheConsistencyTests : ApiTestBase, IDisposable
         Assert.Contains("\"version\":1", await Read());
 
         File.WriteAllText(Path.Combine(StaticDir, "Doc", "doc.json"), """{"version":2}""");
-        var deadline = DateTime.UtcNow.AddSeconds(5);
-        string body;
-        do
-        {
-            body = await Read();
-            if (body.Contains("\"version\":2")) break;
-            await Task.Delay(250, TestContext.Current.CancellationToken);
-        } while (DateTime.UtcNow < deadline);
+        var body = "";
+        await Poll.UntilAsync(async () => (body = await Read()).Contains("\"version\":2"), TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         Assert.Contains("\"version\":2", body);
     }

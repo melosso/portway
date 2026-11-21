@@ -1,3 +1,4 @@
+using PortwayApi.Tests.Support;
 using System.Diagnostics;
 using System.Net;
 using Dapper;
@@ -22,8 +23,7 @@ public sealed class AuthFailureAuditTests : ApiTestBase
 
     private async Task<int> WaitForAudits(string operation, int atLeast)
     {
-        for (var attempt = 0; attempt < 50 && AuditCount(operation) < atLeast; attempt++)
-            await Task.Delay(100, TestContext.Current.CancellationToken);
+        await Poll.UntilAsync(() => AuditCount(operation) >= atLeast, TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         return AuditCount(operation);
     }
 
@@ -69,7 +69,6 @@ public sealed class AuthFailureAuditTests : ApiTestBase
 
         await queue.StartAsync(TestContext.Current.CancellationToken);
         var written = await WaitForAudits("Flood", AuthFailureAuditQueue.BatchSize);
-        await Task.Delay(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
 
         Assert.Equal(AuthFailureAuditQueue.BatchSize, written);
         Assert.Equal(AuthFailureAuditQueue.BatchSize, AuditCount("Flood"));

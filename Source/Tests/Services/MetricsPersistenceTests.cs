@@ -1,3 +1,4 @@
+using PortwayApi.Tests.Support;
 using Microsoft.Data.Sqlite;
 using PortwayApi.Services;
 using Xunit;
@@ -37,9 +38,7 @@ public class MetricsPersistenceTests : IDisposable
         var metrics = new MetricsService();
         var service = new MetricsPersistenceService(metrics, _dbPath);
         await service.StartAsync(ct);
-        var deadline = DateTime.UtcNow.AddSeconds(5);
-        while (metrics.GetHealth(TimeSpan.FromHours(1), new HealthFilter()).Summary.Total < 3 && DateTime.UtcNow < deadline)
-            await Task.Delay(50, ct);
+        await Poll.UntilAsync(() => metrics.GetHealth(TimeSpan.FromHours(1), new HealthFilter()).Summary.Total >= 3, TimeSpan.FromSeconds(5), ct);
         await service.StopAsync(ct);
 
         Assert.Equal(3, metrics.GetHealth(TimeSpan.FromHours(1), new HealthFilter()).Summary.Total);

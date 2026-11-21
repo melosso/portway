@@ -2,6 +2,9 @@ using PortwayApi.Classes;
 using PortwayApi.Helpers;
 using PortwayApi.Tests.Support;
 using System.Text.Json;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 using Xunit;
 using System.Reflection;
 
@@ -162,18 +165,39 @@ public class EnvironmentSettingsProviderTests : IDisposable
         // Editor truncated the file and keeps it open, the state the watcher reads
         var writer = new FileStream(settingsPath, FileMode.Create, FileAccess.Write, FileShare.None);
 
-        // Dedicated thread, a pooled task can start too late on a loaded CI runner
-        var releaseWriter = Task.Factory.StartNew(() =>
+        using var readerBlocked = new ManualResetEventSlim();
+        var previous = Log.Logger;
+        Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().WriteTo.Sink(new LockedReadSink(readerBlocked)).CreateLogger();
+        try
         {
-            Thread.Sleep(50);
-            writer.Write(System.Text.Encoding.UTF8.GetBytes(json));
-            writer.Dispose();
-        }, TaskCreationOptions.LongRunning);
+            // Dedicated thread, a pooled task can start too late on a loaded CI runner
+            var releaseWriter = Task.Factory.StartNew(() =>
+            {
+                readerBlocked.Wait(TimeSpan.FromSeconds(5));
+                writer.Write(System.Text.Encoding.UTF8.GetBytes(json));
+                writer.Dispose();
+            }, TaskCreationOptions.LongRunning);
 
-        provider.EncryptEnvironmentIfNeeded(_envName);
-        await releaseWriter;
+            provider.EncryptEnvironmentIfNeeded(_envName);
+            await releaseWriter;
+        }
+        finally
+        {
+            Log.Logger = previous;
+        }
+
+        Assert.True(readerBlocked.IsSet);
 
         var resultConfig = JsonSerializer.Deserialize<EnvironmentConfig>(File.ReadAllText(settingsPath))!;
         Assert.True(SettingsEncryptionHelper.IsEncrypted(resultConfig.ConnectionString!));
+    }
+
+    private sealed class LockedReadSink(ManualResetEventSlim readerBlocked) : ILogEventSink
+    {
+        public void Emit(LogEvent logEvent)
+        {
+            if (logEvent.MessageTemplate.Text.StartsWith("Settings file {Path} is locked", StringComparison.Ordinal))
+                readerBlocked.Set();
+        }
     }
 }
