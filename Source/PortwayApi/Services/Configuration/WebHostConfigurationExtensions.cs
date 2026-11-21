@@ -45,7 +45,7 @@ public static class WebHostConfigurationExtensions
             serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(30);
 
             // 4. Connection rate limiting to prevent DoS
-            serverOptions.Limits.MaxConcurrentConnections = 1000;
+            serverOptions.Limits.MaxConcurrentConnections = builder.Configuration.GetValue<long?>("Kestrel:Limits:MaxConcurrentConnections") ?? 1000;
             serverOptions.Limits.MaxConcurrentUpgradedConnections = 100;
 
             // 5. Data rate limiting to prevent slow requests

@@ -21,6 +21,7 @@ public static class EnvAliases
         ("PORTWAY_PROMO_TEXT", "Console__Customization__PromoText", "Console:Customization:PromoText"),
         ("PORTWAY_LOGIN_FOOTER", "Console__Customization__LoginFooter", "Console:Customization:LoginFooter"),
         ("PORTWAY_PROMO_LOGIN_ENABLED", "Console__Customization__PromoLogin", "Console:Customization:PromoLogin"),
+        ("PORTWAY_MAX_CONNECTIONS", "Kestrel__Limits__MaxConcurrentConnections", "Kestrel:Limits:MaxConcurrentConnections"),
         ("PORTWAY_KNOWN_PROXIES", "ForwardedHeaders__KnownProxies__0", "ForwardedHeaders:KnownProxies[]"),
         ("PORTWAY_KNOWN_NETWORKS", "ForwardedHeaders__KnownNetworks__0", "ForwardedHeaders:KnownNetworks[]"),
         ("PORTWAY_OIDC_ENABLED", "Oidc__Enabled", "Oidc:Enabled"),
