@@ -77,7 +77,7 @@ public static partial class UrlRewriter
                 var uri = new Uri(originalBaseUrl);
                 var originalDomain = uri.Host;
 
-                if (!string.IsNullOrEmpty(originalDomain))
+                if (!string.IsNullOrEmpty(originalDomain) && content.Contains(originalDomain, StringComparison.Ordinal))
                 {
                     var domainPattern = @"([""\'])(" + Regex.Escape(originalDomain) + @")([""\'])";
                     var newUri = new Uri(newBaseUrl);
@@ -97,17 +97,20 @@ public static partial class UrlRewriter
             }
 
             // 4. Rewrite all Exact.Entity.REST.svc URLs regardless of domain/path
-            content = SvcEntityUrl().Replace(content, m =>
+            if (content.Contains("Exact.Entity.REST.", StringComparison.Ordinal))
             {
-                var hasQuotes = m.Groups[1].Success;
-                var entityName = m.Groups[2].Value; // e.g., Request, Classification  
-                var idPart = m.Groups[3].Value; // Everything between parentheses
-                var end = m.Groups[4].Value;
+                content = SvcEntityUrl().Replace(content, m =>
+                {
+                    var hasQuotes = m.Groups[1].Success;
+                    var entityName = m.Groups[2].Value; // e.g., Request, Classification  
+                    var idPart = m.Groups[3].Value; // Everything between parentheses
+                    var end = m.Groups[4].Value;
 
-                // Use the new base URL, path, and just the ID part
-                var rewritten = $"{newBaseUrl.TrimEnd('/')}{newPath.TrimEnd('/')}({idPart})";
-                return (hasQuotes ? "\"" : "") + rewritten + end;
-            });
+                    // Use the new base URL, path, and just the ID part
+                    var rewritten = $"{newBaseUrl.TrimEnd('/')}{newPath.TrimEnd('/')}({idPart})";
+                    return (hasQuotes ? "\"" : "") + rewritten + end;
+                });
+            }
 
             return content;
         }
