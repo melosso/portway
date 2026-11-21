@@ -90,6 +90,8 @@ public class ODataColumnAllowlistTests
     [InlineData("Desc eq 'x'", "Desc")]
     [InlineData("desc eq 'x'", "desc")]
     [InlineData("Öffnung eq 1", "Öffnung")]
+    [InlineData("_x0053_alary gt 1", "_x0053_alary")]
+    [InlineData("Sal_x0061_ry gt 1", "Sal_x0061_ry")]
     [InlineData("Price mul Salary gt 1", "Salary")]
     [InlineData("not (Salary gt 1)", "Salary")]
     [InlineData("contains(tolower(Salary),'x')", "Salary")]
