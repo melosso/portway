@@ -13,11 +13,13 @@ public sealed class ODataToSqlConverter : IODataToSqlConverter
 {
     private readonly IReadOnlyDictionary<SqlProviderType, Compiler> _compilers;
     private readonly IReadOnlyDictionary<SqlProviderType, ISqlProvider> _providers;
+    private readonly IReadOnlyDictionary<SqlProviderType, DynamicODataToSQL.ODataToSqlConverter> _converters;
 
     public ODataToSqlConverter(IEnumerable<ISqlProvider> providers)
     {
         _providers = providers.ToDictionary(p => p.ProviderType);
         _compilers = _providers.ToDictionary(p => p.Key, p => p.Value.GetCompiler());
+        _converters = _compilers.ToDictionary(p => p.Key, p => new DynamicODataToSQL.ODataToSqlConverter(new DynamicODataToSQL.EdmModelBuilder(), p.Value));
     }
 
     public (string SqlQuery, Dictionary<string, object> Parameters) ConvertToSQL(
@@ -110,8 +112,7 @@ public sealed class ODataToSqlConverter : IODataToSqlConverter
         var resolvedSchema = SqlSchemaResolver.Resolve(schema, provider);
         string fullTableName = resolvedSchema.Length > 0 ? $"{resolvedSchema}.{tableName}" : tableName;
 
-        var dynamicEdmModelBuilder = new DynamicODataToSQL.EdmModelBuilder();
-        var dynamicConverter = new DynamicODataToSQL.ODataToSqlConverter(dynamicEdmModelBuilder, compiler);
+        var dynamicConverter = _converters[providerType];
 
         // $expand joins are added after binding so typed FK filters still parse
         bool expandRequested = odataParams.TryGetValue("expand", out var expandValue) && !string.IsNullOrWhiteSpace(expandValue);
