@@ -28,7 +28,7 @@ public class EnvironmentFileWatcher : FileWatchPump
         _broadcaster = broadcaster;
     }
 
-    protected override Task HandleFileChangeAsync(string filePath, WatcherChangeTypes changeType)
+    protected override async Task HandleFileChangeAsync(string filePath, WatcherChangeTypes changeType)
     {
         try
         {
@@ -41,7 +41,7 @@ public class EnvironmentFileWatcher : FileWatchPump
                     _reloadTracker.RecordEnvironmentReload();
                     _broadcaster?.Broadcast("reload", JsonSerializer.Serialize(new { type = "environments" }));
                 }
-                return Task.CompletedTask;
+                return;
             }
 
             // Extract environment name from path
@@ -49,14 +49,14 @@ public class EnvironmentFileWatcher : FileWatchPump
             if (string.IsNullOrEmpty(environmentName))
             {
                 Log.Debug("Could not determine environment name from path: {Path}", filePath);
-                return Task.CompletedTask;
+                return;
             }
 
             // Re-encrypt plaintext connection strings in per-environment settings
             var relativePath = Path.GetRelativePath(WatchPath, filePath);
             var parts = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             if (parts.Length >= 2 && changeType != WatcherChangeTypes.Deleted)
-                _environmentSettingsProvider.EncryptEnvironmentIfNeeded(environmentName);
+                await _environmentSettingsProvider.EncryptEnvironmentIfNeededAsync(environmentName);
 
             Log.Information("Environment '{Environment}' settings changed, definition will reload on next request", environmentName);
             _reloadTracker.RecordEnvironmentReload();
@@ -66,8 +66,6 @@ public class EnvironmentFileWatcher : FileWatchPump
         {
             Log.Error(ex, "Error handling environment file change for {Path}", filePath);
         }
-
-        return Task.CompletedTask;
     }
 
     private bool IsGlobalSettings(string filePath) =>

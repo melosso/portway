@@ -35,7 +35,7 @@ public class EnvironmentSettingsProviderTests : IDisposable
     }
 
     [Fact]
-    public void EncryptEnvironmentIfNeeded_EncryptsConnectionStringAndHeaders()
+    public async Task EncryptEnvironmentIfNeeded_EncryptsConnectionStringAndHeaders()
     {
         var provider = CreateProvider();
 
@@ -65,7 +65,7 @@ public class EnvironmentSettingsProviderTests : IDisposable
         var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
         File.WriteAllText(settingsPath, JsonSerializer.Serialize(config, jsonOptions));
 
-        provider.EncryptEnvironmentIfNeeded(_envName);
+        await provider.EncryptEnvironmentIfNeededAsync(_envName);
 
         var resultJson = File.ReadAllText(settingsPath);
         var resultConfig = JsonSerializer.Deserialize<EnvironmentConfig>(resultJson)!;
@@ -109,7 +109,7 @@ public class EnvironmentSettingsProviderTests : IDisposable
 
         File.WriteAllText(settingsPath, JsonSerializer.Serialize(config));
 
-        provider.EncryptEnvironmentIfNeeded(_envName);
+        await provider.EncryptEnvironmentIfNeededAsync(_envName);
 
         var result = await provider.LoadEnvironmentOrThrowAsync(_envName);
 
@@ -123,7 +123,7 @@ public class EnvironmentSettingsProviderTests : IDisposable
     }
 
     [Fact]
-    public void EncryptEnvironmentIfNeeded_SkipsIfInvalidConnectionString()
+    public async Task EncryptEnvironmentIfNeeded_SkipsIfInvalidConnectionString()
     {
         var provider = CreateProvider();
 
@@ -138,7 +138,7 @@ public class EnvironmentSettingsProviderTests : IDisposable
 
         File.WriteAllText(settingsPath, JsonSerializer.Serialize(config));
 
-        provider.EncryptEnvironmentIfNeeded(_envName);
+        await provider.EncryptEnvironmentIfNeededAsync(_envName);
 
         var resultJson = File.ReadAllText(settingsPath);
         var resultConfig = JsonSerializer.Deserialize<EnvironmentConfig>(resultJson)!;
@@ -178,7 +178,7 @@ public class EnvironmentSettingsProviderTests : IDisposable
                 writer.Dispose();
             }, TaskCreationOptions.LongRunning);
 
-            provider.EncryptEnvironmentIfNeeded(_envName);
+            await provider.EncryptEnvironmentIfNeededAsync(_envName);
             await releaseWriter;
         }
         finally
@@ -190,6 +190,22 @@ public class EnvironmentSettingsProviderTests : IDisposable
 
         var resultConfig = JsonSerializer.Deserialize<EnvironmentConfig>(File.ReadAllText(settingsPath))!;
         Assert.True(SettingsEncryptionHelper.IsEncrypted(resultConfig.ConnectionString!));
+    }
+
+    [Fact]
+    public async Task EncryptEnvironmentIfNeeded_LockedFile_DoesNotBlockTheCaller()
+    {
+        var provider = CreateProvider();
+        var envDir = Path.Combine(_environmentsDir, _envName);
+        Directory.CreateDirectory(envDir);
+        var writer = new FileStream(Path.Combine(envDir, "settings.json"), FileMode.Create, FileAccess.Write, FileShare.None);
+
+        var encrypting = provider.EncryptEnvironmentIfNeededAsync(_envName);
+        var returnedWhileWaiting = !encrypting.IsCompleted;
+        await writer.DisposeAsync();
+        await encrypting;
+
+        Assert.True(returnedWhileWaiting);
     }
 
     private sealed class LockedReadSink(ManualResetEventSlim readerBlocked) : ILogEventSink

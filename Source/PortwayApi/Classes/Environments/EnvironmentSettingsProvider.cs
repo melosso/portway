@@ -190,7 +190,7 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         }
     }
 
-    public void EncryptEnvironmentIfNeeded(string envName)
+    public async Task EncryptEnvironmentIfNeededAsync(string envName)
     {
         if (string.IsNullOrWhiteSpace(_privateKeyPem))
         {
@@ -203,7 +203,7 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 
         try
         {
-            var json = ReadSettingsWhenWritable(settingsPath);
+            var json = await ReadSettingsWhenWritableAsync(settingsPath);
             if (string.IsNullOrWhiteSpace(json))
             {
                 Log.Debug("Skipping encryption for '{Env}': settings.json was empty or locked while being written", envName);
@@ -221,13 +221,13 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
     }
 
     // The watcher fires as soon as an editor truncates the file, so retry briefly until content lands
-    private static string ReadSettingsWhenWritable(string path)
+    private static async Task<string> ReadSettingsWhenWritableAsync(string path)
     {
         for (var attempt = 0; attempt < 10; attempt++)
         {
             try
             {
-                var json = File.ReadAllText(path);
+                var json = await File.ReadAllTextAsync(path);
                 if (!string.IsNullOrWhiteSpace(json)) return json;
             }
             catch (IOException ex)
@@ -235,7 +235,7 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
                 Log.Debug("Settings file {Path} is locked by its writer: {Message}", path, ex.Message);
             }
 
-            Thread.Sleep(100);
+            await Task.Delay(100);
         }
 
         return string.Empty;

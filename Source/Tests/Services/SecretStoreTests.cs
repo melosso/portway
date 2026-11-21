@@ -46,11 +46,11 @@ public sealed class SecretStoreTests : IDisposable
         _vault.Setup(c => c.GetSecretAsync(name, It.IsAny<string>(), It.IsAny<CancellationToken>())).ThrowsAsync(ex);
 
     [Fact]
-    public void Secrets_EncryptedAtStartup()
+    public async Task Secrets_EncryptedAtStartup()
     {
         WriteSettings(new Dictionary<string, object> { ["ConnectionString"] = "Server=s;Database=d", ["Secrets"] = new Dictionary<string, string> { ["ERP-KEY"] = "plain-key" } });
 
-        Provider().EncryptEnvironmentIfNeeded(Env);
+        await Provider().EncryptEnvironmentIfNeededAsync(Env);
 
         var saved = File.ReadAllText(SettingsPath);
         Assert.DoesNotContain("plain-key", saved);
@@ -58,11 +58,11 @@ public sealed class SecretStoreTests : IDisposable
     }
 
     [Fact]
-    public void Secrets_EncryptFalse_StaysPlaintext()
+    public async Task Secrets_EncryptFalse_StaysPlaintext()
     {
         WriteSettings(new Dictionary<string, object> { ["Encrypt"] = false, ["Secrets"] = new Dictionary<string, string> { ["ERP-KEY"] = "plain-key" } });
 
-        Provider().EncryptEnvironmentIfNeeded(Env);
+        await Provider().EncryptEnvironmentIfNeededAsync(Env);
 
         Assert.Contains("plain-key", File.ReadAllText(SettingsPath));
     }
@@ -72,17 +72,17 @@ public sealed class SecretStoreTests : IDisposable
     {
         WriteSettings(new Dictionary<string, object> { ["Secrets"] = new Dictionary<string, string> { ["ERP-KEY"] = "plain-key" } });
         var provider = Provider();
-        provider.EncryptEnvironmentIfNeeded(Env);
+        await provider.EncryptEnvironmentIfNeededAsync(Env);
 
         Assert.Equal("plain-key", await provider.GetSecretAsync(Env, "erp-key", TestContext.Current.CancellationToken));
     }
 
     [Fact]
-    public void EncryptionSave_KeepsUnknownKeys()
+    public async Task EncryptionSave_KeepsUnknownKeys()
     {
         File.WriteAllText(SettingsPath, """{"ConnectionString":"Server=s;Database=d;Password=p","FutureKey":{"Nested":[1,2]}}""");
 
-        Provider().EncryptEnvironmentIfNeeded(Env);
+        await Provider().EncryptEnvironmentIfNeededAsync(Env);
 
         using var saved = JsonDocument.Parse(File.ReadAllText(SettingsPath));
         Assert.Equal(2, saved.RootElement.GetProperty("FutureKey").GetProperty("Nested").GetArrayLength());
