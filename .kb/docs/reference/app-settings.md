@@ -214,6 +214,7 @@ A snapshot contains password hashes, token hashes and connection strings encrypt
 | `PathBase` | `""` | Path prefix when hosted under a sub-path (e.g. `/portway`) |
 | `Hosting:ApiPort` | `8080` | API listener port |
 | `Hosting:ConsolePort` | `8081` | Console listener port |
+| `Kestrel:Limits:MaxConcurrentConnections` | `1000` | Maximum open client connections. A connection over the limit is closed without a response. An idle keep-alive connection counts for up to 2 minutes |
 
 The API port returns `404` for `/_/*` and `/index.html`, and redirects `/` to `/docs`. The console port serves every path. If both ports are equal: one listener serves the API and the console. Portway ignores `urls`, `ASPNETCORE_URLS` and `ASPNETCORE_HTTP_PORTS`. On IIS, the site binding sets the port and both keys are ignored.
 
@@ -260,6 +261,7 @@ Any key is set with `__` as separator (e.g. `RateLimiting__IpLimit`). Portway-sp
 | `PORTWAY_PATH_BASE` | `PathBase` | `PathBase` |
 | `PORTWAY_PORT_API` | `Hosting:ApiPort` | `Hosting__ApiPort` |
 | `PORTWAY_PORT_CONSOLE` | `Hosting:ConsolePort` | `Hosting__ConsolePort` |
+| `PORTWAY_MAX_CONNECTIONS` | `Kestrel:Limits:MaxConcurrentConnections` | `Kestrel__Limits__MaxConcurrentConnections` |
 | `PORTWAY_HTTPS_ENABLED` | Kestrel serves HTTPS | `PORTWAY_USE_HTTPS`, `Use_HTTPS` |
 | `PORTWAY_PROXY_USERNAME` | Outbound proxy user | `PROXY_USERNAME` |
 | `PORTWAY_PROXY_PASSWORD` | Outbound proxy password | `PROXY_PASSWORD` |

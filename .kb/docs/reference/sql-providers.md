@@ -7,7 +7,7 @@ keywords: [SQL Server, PostgreSQL, MySQL, SQLite, connection string, provider de
 
 # SQL Providers
 
-Portway supports SQL Server, PostgreSQL, MySQL/MariaDB and SQLite. The provider of an environment is detected from the `ConnectionString` in its `settings.json`. The parity suite runs against SQL Server 2025, PostgreSQL 18 and MySQL 8.0.
+Portway supports SQL Server, PostgreSQL, MySQL/MariaDB and SQLite. The provider of an environment is detected from the `ConnectionString` in its `settings.json`. The parity suite runs against SQL Server 2025, PostgreSQL 19, MySQL 26 and MariaDB 13.
 
 ## Detection
 

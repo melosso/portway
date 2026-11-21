@@ -77,7 +77,7 @@ The `SupportsOData` flag documents `$select`, `$top` and `$filter` on the endpoi
 
 ## URL rewriting
 
-Internal URLs in responses are rewritten to gateway paths.
+Internal URLs in responses are rewritten to gateway paths. Rewriting applies to text, JSON and XML responses. Binary responses (images, PDF, archives) are returned byte for byte and are not cached.
 
 Internal service response:
 
