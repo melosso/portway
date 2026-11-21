@@ -358,29 +358,37 @@ public sealed partial class McpChatService
     {
         var facts = new List<string>();
         var rest = content;
-        try
+        if (ParseOrNull(content) is JsonObject result)
         {
-            if (JsonNode.Parse(content) is JsonObject result)
+            if (result["value"] is JsonArray rows)
             {
-                if (result["value"] is JsonArray rows)
-                {
-                    facts.Add($"rows: {rows.Count}");
-                    if (result["totalCount"] is JsonValue total) facts.Add($"totalCount: {total.ToJsonString()}");
-                    if (rows.FirstOrDefault() is JsonObject first) facts.Add($"fields: {string.Join(", ", first.Select(p => p.Key))}");
-                    rest = rows.ToJsonString();
-                }
-                else if (result["error"] is JsonValue error)
-                {
-                    facts.Add($"error: {error.ToJsonString()}");
-                    rest = string.Empty;
-                }
+                facts.Add($"rows: {rows.Count}");
+                if (result["totalCount"] is JsonValue total) facts.Add($"totalCount: {total.ToJsonString()}");
+                if (rows.FirstOrDefault() is JsonObject first) facts.Add($"fields: {string.Join(", ", first.Select(p => p.Key))}");
+                rest = rows.ToJsonString();
+            }
+            else if (result["error"] is JsonValue error)
+            {
+                facts.Add($"error: {error.ToJsonString()}");
+                rest = string.Empty;
             }
         }
-        catch (JsonException) { }
 
         var head = $"{EarlierResult} {string.Join("; ", facts)}".TrimEnd() + "\n";
         var room = Math.Max(0, maxChars - head.Length);
         return head + (rest.Length > room ? rest[..room] + " [...]" : rest);
+    }
+
+    private static JsonNode? ParseOrNull(string content)
+    {
+        try
+        {
+            return JsonNode.Parse(content);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     // internal, reused by mcp tool call

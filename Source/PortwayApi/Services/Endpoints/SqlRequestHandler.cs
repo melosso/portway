@@ -44,7 +44,7 @@ public sealed partial class SqlRequestHandler
     /// <summary>
     /// Runs a write procedure with the dialect-correct invocation for the environment's provider
     /// </summary>
-    private async Task<List<dynamic>> ExecuteProcedureAsync(
+    private async Task<object?> ExecuteProcedureAsync(
         DbConnection connection, string connectionString, string procedure, DynamicParameters parameters)
     {
         var provider = _providerFactory.GetProvider(connectionString);
@@ -54,8 +54,8 @@ public sealed partial class SqlRequestHandler
         await provider.AddMissingProcedureArgumentsAsync(connection, schema, name, parameters, CancellationToken.None);
 
         var (commandText, commandType) = provider.BuildProcedureInvocation(schema, name, parameters.ParameterNames.ToList());
-        var rows = await connection.QueryAsync(commandText, parameters, commandType: commandType);
-        return rows.ToList();
+        IEnumerable<object> rows = await connection.QueryAsync(commandText, parameters, commandType: commandType);
+        return rows.FirstOrDefault();
     }
 
     private const string InvalidODataMessage = "Invalid OData query. Check $filter, $select, $orderby and $expand syntax.";
@@ -643,13 +643,11 @@ public sealed partial class SqlRequestHandler
             // Intentional user errors (RAISERROR and friends) are caught below
             try
             {
-                var result = await ExecuteProcedureAsync(connection, connectionString, procedure, dynamicParams);
-
-                var resultList = result.ToList();
+                var row = await ExecuteProcedureAsync(connection, connectionString, procedure, dynamicParams);
 
                 Log.Debug("Successfully executed INSERT procedure for {Endpoint}", endpointName);
 
-                return PortwayResults.Create($"/api/{env}/{EndpointVersion.RoutePath(endpointName)}", "Record created successfully", resultList.FirstOrDefault());
+                return PortwayResults.Create($"/api/{env}/{EndpointVersion.RoutePath(endpointName)}", "Record created successfully", row);
             }
             catch (DbException dbEx) when (SqlErrorClassifier.IsIntentionalUserError(dbEx))
             {
@@ -788,15 +786,10 @@ public sealed partial class SqlRequestHandler
             // Intentional user errors (RAISERROR and friends) are caught below
             try
             {
-                var result = await ExecuteProcedureAsync(connection, connectionString, procedure, dynamicParams);
-
-                // Convert result to a list (could be empty if no rows returned)
-                var resultList = result.ToList();
+                var row = await ExecuteProcedureAsync(connection, connectionString, procedure, dynamicParams);
 
                 Log.Debug("Successfully executed UPDATE procedure for {Endpoint}", endpointName);
-
-                // Return the results, which typically includes the updated record
-                return PortwayResults.Mutation("Record updated successfully", resultList.FirstOrDefault());
+                return PortwayResults.Mutation("Record updated successfully", row);
             }
             catch (DbException dbEx) when (SqlErrorClassifier.IsIntentionalUserError(dbEx))
             {
@@ -933,15 +926,10 @@ public sealed partial class SqlRequestHandler
             // Intentional user errors (RAISERROR and friends) are caught below
             try
             {
-                var result = await ExecuteProcedureAsync(connection, connectionString, procedure, dynamicParams);
-
-                // Convert result to a list
-                var resultList = result.ToList();
+                var row = await ExecuteProcedureAsync(connection, connectionString, procedure, dynamicParams);
 
                 Log.Debug("Successfully executed PATCH procedure for {Endpoint}", endpointName);
-
-                // Return the results
-                return PortwayResults.Mutation("Record partially updated successfully", resultList.FirstOrDefault());
+                return PortwayResults.Mutation("Record partially updated successfully", row);
             }
             catch (DbException dbEx) when (SqlErrorClassifier.IsIntentionalUserError(dbEx))
             {
@@ -1071,15 +1059,10 @@ public sealed partial class SqlRequestHandler
             // Intentional user errors (RAISERROR and friends) are caught below
             try
             {
-                var result = await ExecuteProcedureAsync(connection, connectionString, procedure, dynamicParams);
-
-                // Convert result to a list (could be empty if no rows returned)
-                var resultList = result.ToList();
+                var row = await ExecuteProcedureAsync(connection, connectionString, procedure, dynamicParams);
 
                 Log.Debug("Successfully executed DELETE procedure for {Endpoint}", endpointName);
-
-                // Return the results, which typically includes deletion confirmation
-                return PortwayResults.Mutation("Record deleted successfully", resultList.FirstOrDefault());
+                return PortwayResults.Mutation("Record deleted successfully", row);
             }
             catch (DbException dbEx) when (SqlErrorClassifier.IsIntentionalUserError(dbEx))
             {

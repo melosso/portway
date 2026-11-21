@@ -291,8 +291,9 @@ public class FileHandlerService : IDisposable
                 }
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            _logger.Debug("Periodic file task stopped");
         }
     }
 

@@ -183,8 +183,9 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
                     Log.Warning("Environment {Environment} has an authentication method without AllowedEndpoints; it grants every endpoint in the environment",
                         new DirectoryInfo(Path.GetDirectoryName(settingsPath)!).Name);
             }
-            catch (JsonException)
+            catch (JsonException ex)
             {
+                Log.Debug("Skipping the AllowedEndpoints check for {Path}: {Message}", settingsPath, ex.Message);
             }
         }
     }
@@ -229,9 +230,9 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
                 var json = File.ReadAllText(path);
                 if (!string.IsNullOrWhiteSpace(json)) return json;
             }
-            catch (IOException)
+            catch (IOException ex)
             {
-                // File still locked by the writer
+                Log.Debug("Settings file {Path} is locked by its writer: {Message}", path, ex.Message);
             }
 
             Thread.Sleep(100);
