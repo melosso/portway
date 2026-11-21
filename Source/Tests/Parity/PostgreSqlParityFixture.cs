@@ -5,7 +5,7 @@ using Testcontainers.PostgreSql;
 
 public sealed class PostgreSqlParityFixture : ParityDatabaseFixture
 {
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:18-alpine").Build();
+    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:19-alpine").Build();
 
     public override SqlProviderType ProviderType => SqlProviderType.PostgreSql;
     public override string QualifiedProductsTable => "public.Products";

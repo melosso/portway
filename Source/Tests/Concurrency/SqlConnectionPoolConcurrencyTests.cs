@@ -12,7 +12,7 @@ using Xunit;
 /// </summary>
 public class SqlConnectionPoolConcurrencyTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:19-alpine").Build();
 
     private string _connectionString = string.Empty;
 

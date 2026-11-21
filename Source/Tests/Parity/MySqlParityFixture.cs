@@ -5,7 +5,7 @@ using Testcontainers.MySql;
 
 public sealed class MySqlParityFixture : ParityDatabaseFixture
 {
-    private readonly MySqlContainer _container = new MySqlBuilder("mysql:8.0").Build();
+    private readonly MySqlContainer _container = new MySqlBuilder("mysql:26").Build();
 
     public override SqlProviderType ProviderType => SqlProviderType.MySql;
     // MySQL schemas are databases; the container's default database plays that role

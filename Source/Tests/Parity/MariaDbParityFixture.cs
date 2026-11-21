@@ -6,7 +6,7 @@ using Testcontainers.MariaDb;
 
 public sealed class MariaDbParityFixture : ParityDatabaseFixture
 {
-    private readonly MariaDbContainer _container = new MariaDbBuilder("mariadb:11.4").WithDatabase("test").Build();
+    private readonly MariaDbContainer _container = new MariaDbBuilder("mariadb:13").WithDatabase("test").Build();
 
     public override SqlProviderType ProviderType => SqlProviderType.MySql;
     public override string QualifiedProductsTable => "test.Products";
