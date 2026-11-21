@@ -741,6 +741,13 @@ public sealed class ProxyRequestHandler
         // Set status code
         context.Response.StatusCode = (int)response.StatusCode;
 
+        if (response.Content != null && !ContentTypeHelper.IsText(response.Content.Headers.ContentType?.MediaType))
+        {
+            if (context.Response.StatusCode is not (StatusCodes.Status204NoContent or StatusCodes.Status304NotModified))
+                await response.Content.CopyToAsync(context.Response.Body, context.RequestAborted);
+            return (response.IsSuccessStatusCode, string.Empty, responseHeaders, (int)response.StatusCode, null);
+        }
+
         // Read and potentially rewrite response content
         var originalContent = response.Content != null
             ? await response.Content.ReadAsStringAsync(context.RequestAborted)

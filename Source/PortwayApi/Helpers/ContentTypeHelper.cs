@@ -170,6 +170,14 @@ public static class ContentTypeHelper
         { ".mkv", "video/x-matroska" },
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
+    public static bool IsText(string? mediaType) =>
+        mediaType is null
+        || mediaType.StartsWith("text/", StringComparison.OrdinalIgnoreCase)
+        || mediaType.Contains("json", StringComparison.OrdinalIgnoreCase)
+        || mediaType.Contains("xml", StringComparison.OrdinalIgnoreCase)
+        || mediaType.Contains("javascript", StringComparison.OrdinalIgnoreCase)
+        || mediaType.Equals("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>
     /// Gets cache duration based on file extension category
     /// </summary>

@@ -56,4 +56,21 @@ public class ContentTypeHelperTests
     {
         Assert.Equal(TimeSpan.FromMinutes(30), ContentTypeHelper.GetCacheDuration(".unknown"));
     }
+
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData("text/plain", true)]
+    [InlineData("application/json", true)]
+    [InlineData("application/problem+json", true)]
+    [InlineData("application/soap+xml", true)]
+    [InlineData("text/xml", true)]
+    [InlineData("application/javascript", true)]
+    [InlineData("image/png", false)]
+    [InlineData("application/pdf", false)]
+    [InlineData("application/octet-stream", false)]
+    [InlineData("application/zip", false)]
+    public void IsText_SeparatesTextFromBinary(string? mediaType, bool expected)
+    {
+        Assert.Equal(expected, ContentTypeHelper.IsText(mediaType));
+    }
 }
