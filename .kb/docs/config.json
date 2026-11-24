@@ -677,7 +677,7 @@
   "promo": "**Announcement!** Version 0.13 is out now! Check out the [release notes](https://github.com/melosso/portway/releases).",
   "footer": "© {year} Melosso.com · Licensed under [EUPL 1.2](LICENSE). Built with [Bark](https://github.com/hawkinslabdev/bark/).",
   "editLink": {
-    "pattern": "https://github.com/melosso/portway/edit/main/Documentation/docs/:path",
+    "pattern": "https://github.com/melosso/portway/edit/main/.kb/docs/:path",
     "text": "Edit this page on GitHub"
   },
   "head": [],
