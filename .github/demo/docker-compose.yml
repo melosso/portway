@@ -6,7 +6,6 @@ services:
       - "8080:8080"
       - "127.0.0.1:8081:8081"
     volumes:
-      - portway_app:/app:z
       - ./config/environments:/app/environments:z
       - ./config/endpoints:/app/endpoints:z
       - ./log:/app/log:z
