@@ -3,8 +3,10 @@ services:
     image: ghcr.io/melosso/portway:latest
     container_name: demo-portway
     ports:
-      - "127.0.0.1:8080:8080"
+      - "8080:8080"
+      - "127.0.0.1:8081:8081"
     volumes:
+      - portway_app:/app:z
       - ./config/environments:/app/environments:z
       - ./config/endpoints:/app/endpoints:z
       - ./log:/app/log:z
@@ -18,12 +20,13 @@ services:
       - ./keys:/app/.core:z
     environment:
       - PORTWAY_ENCRYPTION_KEY=demo-encryption-key-12345
-      - PORTWAY_PORT_CONSOLE=8080
-      - PORTWAY_ALLOWED_HOSTS=portway-demo.melosso.com;localhost
+      - PORTWAY_PORT_API=8080
+      - PORTWAY_PORT_CONSOLE=8081
+      - PORTWAY_ALLOWED_HOSTS=portway-demo.melosso.com;portway-demo-api.melosso.com;localhost
       - PORTWAY_KNOWN_NETWORKS=172.16.0.0/12
       - PORTWAY_SEED_TOKEN=pwdemo_4819cfc3d3dff6f0f63e7160a6422abee1ae07dd
       - PORTWAY_SECURE_COOKIES=true
-      - PORTWAY_PUBLIC_ORIGINS=https://portway-demo.melosso.com
+      - PORTWAY_PUBLIC_ORIGINS=https://portway-demo.melosso.com;https://portway-demo-api.melosso.com
       - PORTWAY_PROMO_TEXT=This is a public demo instance. All data resets every 12 hours.
       - PORTWAY_PROMO_LOGIN_ENABLED=true
       - "PORTWAY_LOGIN_FOOTER=Sign in with `admin` / `demo-admin-key` (read-only). Use access key `pwdemo_4819cfc3d3dff6f0f63e7160a6422abee1ae07dd` for the API. Read the [documentation](https://github.com/melosso/portway) to learn more."
@@ -33,6 +36,12 @@ services:
     depends_on:
       - nginx
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   nginx:
     image: nginx:alpine
