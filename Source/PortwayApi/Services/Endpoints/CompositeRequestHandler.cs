@@ -44,6 +44,6 @@ public sealed class CompositeRequestHandler
             return new ObjectResult(objectResult.Value) { StatusCode = objectResult.StatusCode ?? 500 };
         }
 
-        return new OkObjectResult(MutationResponse.Of("Record(s) created successfully"));
+        return PortwayResults.Mutation("Record(s) created successfully");
     }
 }

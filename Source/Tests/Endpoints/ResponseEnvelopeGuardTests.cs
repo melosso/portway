@@ -37,10 +37,6 @@ public sealed class ResponseEnvelopeGuardTests
         ["Api/WebUiEndpoints.Tokens.cs|anonymous-error"] = new(14, Pending),
         ["Api/WebUiEndpoints.Users.cs|anonymous-error"] = new(22, Pending),
         ["Api/WebUiEndpoints.Webhooks.cs|anonymous-error"] = new(5, Pending),
-        ["Classes/Endpoints/Composite/CompositeEndpointHandler.cs|anonymous-error"] = new(2, Pending),
-        ["Classes/Endpoints/Composite/CompositeEndpointHandler.cs|minimal-error-result"] = new(3, Pending),
-        ["Middleware/CompositeEndpoint.cs|minimal-error-result"] = new(1, Pending),
-        ["Middleware/RateLimiter.cs|anonymous-error"] = new(2, Pending),
     };
 
     [Fact]

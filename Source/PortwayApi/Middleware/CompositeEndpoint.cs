@@ -34,7 +34,7 @@ public sealed class CompositeEndpoint
             if (!_environmentSettings.IsEnvironmentAllowed(env))
             {
                 Log.Warning("Environment '{Env}' is not in the allowed list.", env);
-                return Results.BadRequest(ErrorResponse.Of($"Environment '{env}' is not allowed."));
+                return PortwayResults.MinimalError($"Environment '{env}' is not allowed.", StatusCodes.Status400BadRequest);
             }
 
             // Read the request body

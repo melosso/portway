@@ -246,14 +246,9 @@ public sealed class RateLimiter
 
                 var retryTime = now.AddSeconds(retryAfterSeconds).ToString("o");
 
-                var errorObject = new
-                {
-                    error = localBlockInfo.ConsecutiveBlocks > _maxConsecutiveBlocks
+                var errorObject = RateLimitErrorResponse.Of(localBlockInfo.ConsecutiveBlocks > _maxConsecutiveBlocks
                         ? "Repeated rate limit violations"
-                        : "Too many requests",
-                    retrytime = retryTime,
-                    success = false
-                };
+                        : "Too many requests", retryTime);
 
                 context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
                 context.Response.ContentType = "application/json";
@@ -355,12 +350,7 @@ public sealed class RateLimiter
                 identifier, retryAfterSeconds, retryTime);
         }
 
-        var errorObject = new
-        {
-            error = "Too many requests",
-            retrytime = retryTime,
-            success = false
-        };
+        var errorObject = RateLimitErrorResponse.Of("Too many requests", retryTime);
 
         await context.Response.WriteAsync(JsonSerializer.Serialize(errorObject, _jsonOptions));
     }

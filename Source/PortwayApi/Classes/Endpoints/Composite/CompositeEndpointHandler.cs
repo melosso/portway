@@ -56,7 +56,7 @@ public sealed class CompositeEndpointHandler
             if (!compositeDefinitions.TryGetValue(endpointName, out var compositeDefinition))
             {
                 Log.Warning("Composite endpoint not found: {Endpoint}", endpointName);
-                return Results.NotFound(ErrorResponse.Of($"Endpoint '{endpointName}' not found"));
+                return PortwayResults.MinimalError($"Endpoint '{endpointName}' not found", StatusCodes.Status404NotFound);
             }
 
             var endpointDefinitions = EndpointHandler.GetProxyEndpoints();
@@ -71,7 +71,7 @@ public sealed class CompositeEndpointHandler
             if (endpointDefinitions.TryGetValue(endpointName, out var endpointDefinition) && !endpointDefinition.AllowsEnvironment(env))
             {
                 Log.Warning("Environment '{Env}' is not allowed for endpoint '{Endpoint}'.", env, endpointName);
-                return Results.BadRequest(ErrorResponse.Of($"Environment '{env}' is not allowed for this endpoint."));
+                return PortwayResults.MinimalError($"Environment '{env}' is not allowed for this endpoint.", StatusCodes.Status400BadRequest);
             }
 
             // Parse request body
@@ -87,7 +87,7 @@ public sealed class CompositeEndpointHandler
             catch (JsonException ex)
             {
                 Log.Warning(ex, "Invalid JSON in request body for composite endpoint: {Endpoint}", endpointName);
-                return Results.BadRequest(ErrorResponse.Of("Invalid request format"));
+                return PortwayResults.MinimalError("Invalid request format", StatusCodes.Status400BadRequest);
             }
 
             // Create execution context and result container
@@ -120,16 +120,9 @@ public sealed class CompositeEndpointHandler
 
                     int statusCode = ex.StatusCode >= 400 && ex.StatusCode < 600 ? ex.StatusCode : 500;
 
-                    return Results.Json(new
-                    {
-                        success = false,
-                        error = $"Error executing step '{ex.StepName}'",
-                        details = ex.ErrorDetail,
-                        traceId = PortwayResults.TraceIdOf(context),
-                        step = ex.StepName,
-                        statusCode = ex.StatusCode,
-                        completedSteps
-                    }, statusCode: statusCode);
+                    return Results.Json(CompositeErrorResponse.Of($"Error executing step '{ex.StepName}'",
+                        PortwayResults.TraceIdOf(context), ex.StepName, completedSteps, ex.ErrorDetail, ex.StatusCode),
+                        statusCode: statusCode);
                 }
                 catch (Exception ex)
                 {
@@ -137,14 +130,8 @@ public sealed class CompositeEndpointHandler
                         step.Name, endpointName, ex.Message);
 
                     // Detail stays masked; the trace id correlates the response with the logged exception
-                    return Results.Json(new
-                    {
-                        success = false,
-                        error = $"Error executing step '{step.Name}'",
-                        traceId = PortwayResults.TraceIdOf(context),
-                        step = step.Name,
-                        completedSteps
-                    }, statusCode: Services.ProxyRequestHandler.IsUpstreamUnavailable(ex, context.RequestAborted)
+                    return Results.Json(CompositeErrorResponse.Of($"Error executing step '{step.Name}'",
+                        PortwayResults.TraceIdOf(context), step.Name, completedSteps), statusCode: Services.ProxyRequestHandler.IsUpstreamUnavailable(ex, context.RequestAborted)
                         ? StatusCodes.Status503ServiceUnavailable
                         : StatusCodes.Status500InternalServerError);
                 }
