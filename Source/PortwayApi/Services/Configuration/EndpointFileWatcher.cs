@@ -84,8 +84,7 @@ public class EndpointFileWatcher : FileWatchPump
         return Task.CompletedTask;
     }
 
-    private static readonly HashSet<string> _typeFolderNames = new(StringComparer.OrdinalIgnoreCase)
-        { "SQL", "Proxy", "Static", "Files", "Webhooks" };
+    private static readonly HashSet<string> _typeFolderNames = new(EndpointHandler.RoutingOrder.Select(t => t.Folder), StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Endpoint identity, e.g. CRM/Accounts@v2

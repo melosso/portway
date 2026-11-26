@@ -196,7 +196,7 @@ public sealed partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTran
     {
         try
         {
-            string webhookEntityPath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Webhooks", "entity.json");
+            string webhookEntityPath = Path.Combine(EndpointHandler.DirectoryOf(EndpointType.Webhook), "entity.json");
             if (!File.Exists(webhookEntityPath))
             {
                 _logger.LogWarning("Webhook entity.json not found at: {Path}", webhookEntityPath);

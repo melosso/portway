@@ -270,7 +270,7 @@ public sealed class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
 
     private string ResolveContentFilePath(EndpointDefinition endpoint, string endpointName)
     {
-        var endpointPath = endpoint.ConfigDirectory ?? Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", endpointName);
+        var endpointPath = endpoint.ConfigDirectory ?? Path.Combine(EndpointHandler.DirectoryOf(EndpointType.Static), endpointName);
 
         if (endpoint.Properties?.TryGetValue("ContentFile", out var contentFileObj) == true)
         {

@@ -14,7 +14,7 @@ public sealed class CompositeEndpointHandler
     private static readonly JsonSerializerOptions CaseInsensitiveIndentedOptions = new() { PropertyNameCaseInsensitive = true, WriteIndented = true };
 
     private readonly IHttpClientFactory _httpClientFactory;
-    private static readonly string ProxyEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy");
+    private static readonly string ProxyEndpointsDirectory = EndpointHandler.DirectoryOf(EndpointType.Proxy);
     private readonly string _serverName;
     private readonly Helpers.UrlValidator _urlValidator;
     private readonly CacheManager _cacheManager;

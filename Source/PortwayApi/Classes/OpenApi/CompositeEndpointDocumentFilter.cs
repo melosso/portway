@@ -210,14 +210,14 @@ public sealed class CompositeEndpointDocumentFilter : IOpenApiDocumentTransforme
             // Try namespace + endpoint name if available
             if (!string.IsNullOrEmpty(definition.EffectiveNamespace))
             {
-                var namespacedPath = Path.Combine("Proxy", definition.EffectiveNamespace, definition.EndpointName);
+                var namespacedPath = Path.Combine(EndpointHandler.FolderOf(EndpointType.Proxy), definition.EffectiveNamespace, definition.EndpointName);
                 example = _exampleLoader.LoadExample(namespacedPath);
                 if (example != null)
                     return example;
             }
 
             // Try simple endpoint name
-            var simplePath = Path.Combine("Proxy", definition.EndpointName);
+            var simplePath = Path.Combine(EndpointHandler.FolderOf(EndpointType.Proxy), definition.EndpointName);
             return _exampleLoader.LoadExample(simplePath);
         }
         catch (Exception ex)

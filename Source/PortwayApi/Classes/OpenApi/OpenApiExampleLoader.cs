@@ -86,8 +86,8 @@ public sealed class OpenApiExampleLoader
     {
         // Build the full path
         var endpointPath = string.IsNullOrEmpty(namespacePath)
-            ? Path.Combine("Proxy", compositeEndpointName)
-            : Path.Combine("Proxy", namespacePath, compositeEndpointName);
+            ? Path.Combine(EndpointHandler.FolderOf(EndpointType.Proxy), compositeEndpointName)
+            : Path.Combine(EndpointHandler.FolderOf(EndpointType.Proxy), namespacePath, compositeEndpointName);
 
         return LoadExample(endpointPath);
     }

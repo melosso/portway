@@ -178,6 +178,13 @@ public static partial class EndpointHandler
         return endpointMap;
     }
 
+    /// <summary>
+    /// The folder below endpoints a type is read from; a composite is read from the proxy folder
+    /// </summary>
+    internal static string FolderOf(EndpointType type) => RoutingOrder[RoutingIndex(type)].Folder;
+
+    internal static string DirectoryOf(EndpointType type) => Path.Combine(EndpointsBasePath, FolderOf(type));
+
     private static int RoutingIndex(EndpointType type) =>
         Array.FindIndex(RoutingOrder, t => t.Type == (type is EndpointType.Composite ? EndpointType.Proxy : type));
 

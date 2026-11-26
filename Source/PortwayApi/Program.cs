@@ -229,7 +229,7 @@ try
     var webhookEndpoints = EndpointHandler.GetSqlWebhookEndpoints();
     var fileEndpoints = EndpointHandler.GetFileEndpoints();
     var staticEndpoints = EndpointHandler.GetStaticEndpoints();
-    var proxyEndpointMap = EndpointHandler.GetEndpoints(Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy"));
+    var proxyEndpointMap = EndpointHandler.GetEndpoints(EndpointHandler.DirectoryOf(EndpointType.Proxy));
 
     EndpointSummaryHelper.LogEndpointSummary(sqlEndpointList, proxyEndpointMap, webhookEndpoints, fileEndpoints, staticEndpoints);
 

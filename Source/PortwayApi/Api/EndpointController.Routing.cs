@@ -267,7 +267,7 @@ public sealed partial class EndpointController
                 return NotFound();
             }
 
-            var endpointPath = endpoint.ConfigDirectory ?? Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", endpointName);
+            var endpointPath = endpoint.ConfigDirectory ?? Path.Combine(EndpointHandler.DirectoryOf(EndpointType.Static), endpointName);
 
             var contentFile = endpoint.Properties!["ContentFile"].ToString()!;
             var contentFilePath = Path.Combine(endpointPath, contentFile);

@@ -1,5 +1,6 @@
 namespace PortwayApi.Endpoints;
 
+using System.Collections.Frozen;
 using System.Reflection;
 using System.Security.Cryptography;
 using Serilog;
@@ -233,15 +234,8 @@ public static partial class WebUiEndpointExtensions
         });
     }
 
-    private static string? TypeFolder(string type) => type.ToLowerInvariant() switch
-    {
-        "sql" => "endpoints/SQL",
-        "proxy" or "composite" => "endpoints/Proxy",
-        "file" => "endpoints/Files",
-        "static" => "endpoints/Static",
-        "webhook" => "endpoints/Webhooks",
-        _ => null
-    };
+    private static string? TypeFolder(string type) =>
+        TypeStringToEndpointType(type) is { } endpointType ? "endpoints/" + EndpointHandler.FolderOf(endpointType) : null;
 
     private static string? EndpointsDirectoryOf(string type) =>
         TypeFolder(type) is { } folder ? Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), folder)) : null;
@@ -277,16 +271,18 @@ public static partial class WebUiEndpointExtensions
         return (filePath, null);
     }
 
-    private static EndpointType? TypeStringToEndpointType(string type) => type.ToLowerInvariant() switch
+    private static readonly FrozenDictionary<string, EndpointType> ConsoleTypes = new Dictionary<string, EndpointType>(StringComparer.OrdinalIgnoreCase)
     {
-        "sql" => EndpointType.SQL,
-        "proxy" => EndpointType.Proxy,
-        "composite" => EndpointType.Composite,
-        "file" => EndpointType.Files,
-        "static" => EndpointType.Static,
-        "webhook" => EndpointType.Webhook,
-        _ => null
-    };
+        ["sql"] = EndpointType.SQL,
+        ["proxy"] = EndpointType.Proxy,
+        ["composite"] = EndpointType.Composite,
+        ["file"] = EndpointType.Files,
+        ["static"] = EndpointType.Static,
+        ["webhook"] = EndpointType.Webhook,
+    }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+
+    private static EndpointType? TypeStringToEndpointType(string type) =>
+        ConsoleTypes.TryGetValue(type, out var endpointType) ? endpointType : null;
 
     /// <summary>
     /// Reloads endpoints after a console write; MCP and SQL metadata are refreshed here when the file watcher is off

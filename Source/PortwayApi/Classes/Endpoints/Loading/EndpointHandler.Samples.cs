@@ -14,7 +14,7 @@ public static partial class EndpointHandler
         try
         {
             // Create SQL endpoint directory
-            var sqlEndpointsDir = Path.Combine(baseDirectory, "SQL");
+            var sqlEndpointsDir = Path.Combine(baseDirectory, FolderOf(EndpointType.SQL));
             if (!Directory.Exists(sqlEndpointsDir))
             {
                 Directory.CreateDirectory(sqlEndpointsDir);
@@ -24,7 +24,7 @@ public static partial class EndpointHandler
             CreateSampleSqlEndpoint(sqlEndpointsDir);
 
             // Create Proxy endpoint directory
-            var proxyEndpointsDir = Path.Combine(baseDirectory, "Proxy");
+            var proxyEndpointsDir = Path.Combine(baseDirectory, FolderOf(EndpointType.Proxy));
             if (!Directory.Exists(proxyEndpointsDir))
             {
                 Directory.CreateDirectory(proxyEndpointsDir);
@@ -37,7 +37,7 @@ public static partial class EndpointHandler
             CreateSampleCompositeEndpoint(proxyEndpointsDir);
 
             // Create Webhook directory
-            var webhookDir = Path.Combine(baseDirectory, "Webhooks");
+            var webhookDir = Path.Combine(baseDirectory, FolderOf(EndpointType.Webhook));
             if (!Directory.Exists(webhookDir))
             {
                 Directory.CreateDirectory(webhookDir);
@@ -47,7 +47,7 @@ public static partial class EndpointHandler
             CreateSampleWebhookEndpoint(webhookDir);
 
             // Create Files endpoint directory
-            var filesEndpointsDir = Path.Combine(baseDirectory, "Files");
+            var filesEndpointsDir = Path.Combine(baseDirectory, FolderOf(EndpointType.Files));
             if (!Directory.Exists(filesEndpointsDir))
             {
                 Directory.CreateDirectory(filesEndpointsDir);
