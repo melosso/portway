@@ -122,14 +122,14 @@ Failure response:
 {
   "success": false,
   "error": "Error executing step 'CreateOrderHeader'",
-  "details": { "message": "Insufficient credit limit" },
+  "details": "Upstream returned HTTP 400",
   "step": "CreateOrderHeader",
   "statusCode": 400,
   "completedSteps": ["CreateOrderLines"]
 }
 ```
 
-The response status is the failing step's status. `details` contains the step's upstream error body; a non-JSON body is truncated to 200 characters. `completedSteps` contains the steps completed before the failure.
+The response status is the failing step's status. `details` names the cause of the failure. The response body of the failing step is not returned; it is written to the server log at Debug level. `completedSteps` contains the steps completed before the failure.
 
 ## Troubleshooting
 
