@@ -299,6 +299,40 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.Contains("`utm_source`,`powered-by`", bundle);
     }
 
+    // the markdown download clones scalar's json button, the vendored bundle must still render it
+    [Fact]
+    public async Task ScalarPage_MarkdownDownloadMatchesVendoredBundle()
+    {
+        var html = await _client.GetStringAsync("/docs", TestContext.Current.CancellationToken);
+        var match = System.Text.RegularExpressions.Regex.Match(html, "<script type=\"module\" src=\"/js/docs-markdown.js\" data-markdown=\"([^\"]*)\"");
+        Assert.True(match.Success);
+        using var config = JsonDocument.Parse(System.Net.WebUtility.HtmlDecode(match.Groups[1].Value));
+        Assert.Equal("/docs", config.RootElement.GetProperty("base").GetString());
+        Assert.Equal("/docs/openapi.md", config.RootElement.GetProperty("fallback").GetProperty("url").GetString());
+
+        var root = Path.Combine(AppContext.BaseDirectory, "wwwroot", "js");
+        var script = await File.ReadAllTextAsync(Path.Combine(root, "docs-markdown.js"), TestContext.Current.CancellationToken);
+        Assert.Contains("'.download-container'", script);
+        Assert.Contains("'button.download-button'", script);
+        Assert.Contains("'.extension'", script);
+
+        var bundle = await File.ReadAllTextAsync(Path.Combine(root, "vendor", "scalar-api-reference.js"), TestContext.Current.CancellationToken);
+        Assert.Contains("`download-container group`", bundle);
+        Assert.Contains("class:`download-button`", bundle);
+        Assert.Contains("extension hidden group-hover:flex", bundle);
+    }
+
+    [Theory]
+    [InlineData("OpenApi:ServeMarkdown", "false")]
+    [InlineData("OpenApi:Scalar:HideDownloadButton", "true")]
+    public async Task ScalarPage_MarkdownDownloadFollowsSettings(string key, string value)
+    {
+        using var factory = _factory.WithWebHostBuilder(b => b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?> { [key] = value })));
+
+        var html = await factory.CreateClient().GetStringAsync("/docs", TestContext.Current.CancellationToken);
+        Assert.DoesNotContain("docs-markdown.js", html);
+    }
+
     // scalar draws an empty operations card for namespace groups, the page css hides it
     [Fact]
     public async Task ScalarPage_HidesEmptyOperationsCard()

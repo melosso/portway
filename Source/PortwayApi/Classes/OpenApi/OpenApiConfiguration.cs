@@ -205,7 +205,23 @@ public static class OpenApiConfiguration
         // Configure OpenAPI JSON endpoint (server URL is handled by document transformer in ConfigureOpenApi)
         app.MapOpenApi("/docs/openapi.json");
 
-        // one document per endpoint version; any other name is the pre 0.8 versioned url of the full document
+        // one document per endpoint version, null when no endpoint has that version
+        async Task<OpenApiDocument?> VersionDocumentAsync(string version, HttpContext context)
+        {
+            var provider = context.RequestServices.GetRequiredKeyedService<IOpenApiDocumentProvider>(DocumentName);
+            var document = await provider.GetOpenApiDocumentAsync(context.RequestAborted);
+            if (!OpenApiVersionSelector.Select(document, version))
+                return null;
+
+            if (document.Self is { } self)
+                document.Self = new Uri(self, $"openapi/{version}/openapi.json");
+
+            document.Info.Version = version;
+            document.Info.Description = document.Info.Description?.Replace("/docs/openapi.md)", $"/docs/openapi/{version}/openapi.md)");
+            return document;
+        }
+
+        // any other name is the pre 0.8 versioned url of the full document
         app.MapGet("/docs/openapi/{documentName}/openapi.json", async (string documentName, HttpContext context) =>
         {
             if (!EndpointVersion.TryParse(documentName, out var version))
@@ -213,22 +229,18 @@ public static class OpenApiConfiguration
                 return Results.Redirect($"{context.Request.PathBase}/docs/openapi.json", permanent: true, preserveMethod: true);
             }
 
-            var provider = context.RequestServices.GetRequiredKeyedService<IOpenApiDocumentProvider>(DocumentName);
-            var document = await provider.GetOpenApiDocumentAsync(context.RequestAborted);
-            if (!OpenApiVersionSelector.Select(document, version))
-            {
-                return Results.Json(ErrorResponse.Of("Not found"), statusCode: StatusCodes.Status404NotFound);
-            }
-
-            if (document.Self is { } self)
-            {
-                document.Self = new Uri(self, $"openapi/{version}/openapi.json");
-            }
-
-            document.Info.Version = version;
-
-            return Results.Text(await document.SerializeAsJsonAsync(OpenApiSpecVersion.OpenApi3_2, context.RequestAborted), "application/json; charset=utf-8");
+            return await VersionDocumentAsync(version, context) is { } document
+                ? Results.Text(await document.SerializeAsJsonAsync(OpenApiSpecVersion.OpenApi3_2, context.RequestAborted), "application/json; charset=utf-8")
+                : Results.Json(ErrorResponse.Of("Not found"), statusCode: StatusCodes.Status404NotFound);
         }).ExcludeFromDescription();
+
+        app.MapGet("/docs/openapi/{documentName}/openapi.md", async (string documentName, HttpContext context) =>
+            openApiMonitor.CurrentValue.ServeMarkdown
+            && EndpointVersion.TryParse(documentName, out var version)
+            && await VersionDocumentAsync(version, context) is { } document
+                ? Results.Text(OpenApiMarkdownRenderer.Render(document), "text/markdown; charset=utf-8")
+                : Results.Json(ErrorResponse.Of("Not found"), statusCode: StatusCodes.Status404NotFound))
+            .ExcludeFromDescription();
 
         // markdown for llms, opt in and read per request so the console switch applies on save
         app.MapGet("/docs/openapi.md", async (HttpContext context) =>
@@ -348,6 +360,9 @@ public static class OpenApiConfiguration
             var (asyncId, asyncAttr) = GenerateRandomElementIds();
             var (openapiId, openapiAttr) = GenerateRandomElementIds();
             var (overlayId, overlayAttr) = GenerateRandomElementIds();
+            var markdownScript = openApiSettings.ServeMarkdown && !openApiSettings.Scalar.HideDownloadButton
+                ? $@"<script type=""module"" src=""{pathBase}/js/docs-markdown.js"" data-markdown=""{System.Text.Encodings.Web.HtmlEncoder.Default.Encode(MarkdownDownloads(pathBase, versions))}""></script>"
+                : "";
 
             var html = $@"
 <!doctype html>
@@ -478,6 +493,7 @@ public static class OpenApiConfiguration
         }});
         observer.observe(document.body, {{ childList: true, subtree: true }});
     </script>
+    {markdownScript}
 </body>
 </html>";
             return Results.Content(CspNonce.Apply(html, context), "text/html");
@@ -487,6 +503,20 @@ public static class OpenApiConfiguration
         app.MapGet("/docs", DocsPage);
         app.MapGet("/docs/{**slug}", (string? slug, HttpContext context) => DocsPage(context)).ExcludeFromDescription();
     }
+
+    // file per version for the markdown download button, no version in the path means the latest
+    private static string MarkdownDownloads(string pathBase, IReadOnlyList<string> versions)
+    {
+        var all = new MarkdownDownload($"{pathBase}/docs/openapi.md", "openapi.md");
+        if (versions.Count < 2)
+            return JsonSerializer.Serialize(new { @base = pathBase + "/docs", documents = new Dictionary<string, MarkdownDownload>(), fallback = all }, JsonSerializerOptions.Web);
+
+        var documents = versions.ToDictionary(v => v, v => new MarkdownDownload($"{pathBase}/docs/openapi/{v}/openapi.md", $"{v}.md"));
+        documents["all"] = all;
+        return JsonSerializer.Serialize(new { @base = pathBase + "/docs", documents, fallback = documents[versions[^1]] }, JsonSerializerOptions.Web);
+    }
+
+    private sealed record MarkdownDownload(string Url, string Name);
 
     /// <summary>
     /// Logs whether /docs is served.

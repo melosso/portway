@@ -322,6 +322,20 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
     }
 
     [Fact]
+    public async Task VersionMarkdown_ContainsThatVersionAndLinksToItself()
+    {
+        using var v2 = await Document("/docs/openapi/v2/openapi.json");
+        Assert.Contains("/docs/openapi/v2/openapi.md)", v2.RootElement.GetProperty("info").GetProperty("description").GetString());
+
+        var markdown = await (await Get("/docs/openapi/v2/openapi.md")).Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        Assert.Contains("/api/{env}/v2/VerTest/Items", markdown);
+        Assert.DoesNotContain("/api/{env}/VerTest/Items", markdown);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await Get("/docs/openapi/v9/openapi.md")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await Get("/docs/openapi/latest/openapi.md")).StatusCode);
+    }
+
+    [Fact]
     public async Task HighestVersionDocument_IncludesUnversionedEndpoints()
     {
         using var v2 = await Document("/docs/openapi/v2/openapi.json");
@@ -332,6 +346,21 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
 
         using var v1 = await Document("/docs/openapi/v1/openapi.json");
         Assert.Contains("/api/{env}/VerTest/Plain", v1.RootElement.GetProperty("paths").EnumerateObject().Select(p => p.Name));
+    }
+
+    [Fact]
+    public async Task DocsPage_MarkdownDownloadFollowsTheSelectedVersion()
+    {
+        var html = await _client.GetStringAsync("/docs", TestContext.Current.CancellationToken);
+        var match = System.Text.RegularExpressions.Regex.Match(html, "data-markdown=\"([^\"]*)\"");
+        Assert.True(match.Success);
+        using var config = JsonDocument.Parse(WebUtility.HtmlDecode(match.Groups[1].Value));
+        var documents = config.RootElement.GetProperty("documents");
+
+        Assert.Equal("/docs/openapi/v1/openapi.md", documents.GetProperty("v1").GetProperty("url").GetString());
+        Assert.Equal("v1.md", documents.GetProperty("v1").GetProperty("name").GetString());
+        Assert.Equal("/docs/openapi.md", documents.GetProperty("all").GetProperty("url").GetString());
+        Assert.Equal(documents.GetProperty("v2").GetRawText(), config.RootElement.GetProperty("fallback").GetRawText());
     }
 
     [Fact]
