@@ -485,7 +485,7 @@ function renderDetail() {
   const version = selectedVersion();
 
   const nameDisplay = _renaming
-    ? `<input type="text" id="renameInput" value="${esc(name.split('/').pop())}" class="input input-title" data-on="keydown:keyAction" data-args='[{"ref":"event"}, "confirmRename", "cancelRename"]' autofocus>
+    ? `<input type="text" id="renameInput" value="${esc(name)}" class="input input-title" data-on="keydown:keyAction" data-args='[{"ref":"event"}, "confirmRename", "cancelRename"]' autofocus>
        <button class="btn btn-primary btn-sm" data-on="click:confirmRename">Save</button>
        <button class="btn btn-outline btn-sm" data-on="click:cancelRename">Cancel</button>`
     : `<h2>${esc(version ? name.slice(0, -(version.length + 1)) : name)}</h2>
