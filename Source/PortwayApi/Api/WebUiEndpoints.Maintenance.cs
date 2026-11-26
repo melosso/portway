@@ -1,6 +1,7 @@
 namespace PortwayApi.Endpoints;
 
 using PortwayApi.Auth;
+using PortwayApi.Helpers;
 using PortwayApi.Services.Database;
 
 public static partial class WebUiEndpointExtensions
@@ -28,11 +29,11 @@ public static partial class WebUiEndpointExtensions
             }
             catch (FileNotFoundException)
             {
-                return Results.Json(new { error = "Backup not found" }, statusCode: 404);
+                return PortwayResults.MinimalError("Backup not found", 404);
             }
             catch (InvalidDataException ex)
             {
-                return Results.Json(new { error = ex.Message }, statusCode: 400);
+                return PortwayResults.MinimalError(ex.Message, 400);
             }
 
             configAudit.Record("restore", "backup", name, ctx.Connection.RemoteIpAddress?.ToString(), "applied at the next start");
@@ -54,10 +55,10 @@ public static partial class WebUiEndpointExtensions
         app.MapGet("/_/api/backups/{name}", async (string name, HttpContext ctx, AdminUserService users) =>
         {
             if (ctx.Items[SignedInUserKey] is not int me || await users.FindByIdAsync(me) is not { Role: AdminUserRoles.Administrator })
-                return Results.Json(new { error = "This action needs an administrator account" }, statusCode: 403);
+                return PortwayResults.MinimalError("This action needs an administrator account", 403);
 
             if (BackupArchive.Resolve(Directory.GetCurrentDirectory(), name) is not { } path)
-                return Results.Json(new { error = "Backup not found" }, statusCode: 404);
+                return PortwayResults.MinimalError("Backup not found", 404);
 
             configAudit.Record("download", "backup", name, ctx.Connection.RemoteIpAddress?.ToString());
             return Results.File(path, "application/zip", name);

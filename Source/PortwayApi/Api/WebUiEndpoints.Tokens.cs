@@ -45,7 +45,7 @@ public static partial class WebUiEndpointExtensions
         {
             var request = await context.Request.ReadFromJsonAsync<TokenCreateRequest>();
             if (request is null)
-                return Results.Json(new { error = "username is required" }, statusCode: 400);
+                return PortwayResults.MinimalError("username is required", 400);
             var error = await UiValidationHelper.FirstErrorAsync(request, context.RequestServices, context.RequestAborted);
             if (error != null)
                 return Results.Json(new { error }, statusCode: error.EndsWith("already exists") ? 409 : 400);
@@ -64,27 +64,27 @@ public static partial class WebUiEndpointExtensions
             if (body.TryGetProperty("allowed_scopes", out var scopes) && scopes.ValueKind == JsonValueKind.String)
             {
                 if (TokenScopeValidator.Validate(scopes.GetString()) is { } scopeError)
-                    return Results.Json(new { error = scopeError }, statusCode: 400);
+                    return PortwayResults.MinimalError(scopeError, 400);
 
                 if (!await tokenService.UpdateTokenScopesAsync(id, scopes.GetString() ?? "*"))
-                    return Results.Json(new { error = "Cannot narrow the last full-access token" }, statusCode: 409);
+                    return PortwayResults.MinimalError("Cannot narrow the last full-access token", 409);
             }
 
             if (body.TryGetProperty("allowed_environments", out var envs) && envs.ValueKind == JsonValueKind.String)
             {
                 if (!await tokenService.UpdateTokenEnvironmentsAsync(id, envs.GetString() ?? "*"))
-                    return Results.Json(new { error = "Cannot narrow the last full-access token" }, statusCode: 409);
+                    return PortwayResults.MinimalError("Cannot narrow the last full-access token", 409);
             }
 
             if (body.TryGetProperty("allowed_tenants", out var tenants))
             {
                 Dictionary<string, List<string>>? raw;
                 try { raw = tenants.ValueKind == JsonValueKind.Null ? null : tenants.Deserialize<Dictionary<string, List<string>>>(); }
-                catch (JsonException) { return Results.Json(new { error = "allowed_tenants must be an object of header names to lists of values" }, statusCode: 400); }
+                catch (JsonException) { return PortwayResults.MinimalError("allowed_tenants must be an object of header names to lists of values", 400); }
                 if (!TenantGrants.TryCreate(raw, out var grants, out var tenantError))
-                    return Results.Json(new { error = tenantError }, statusCode: 400);
+                    return PortwayResults.MinimalError(tenantError, 400);
                 if (!await tokenService.UpdateTokenTenantsAsync(id, grants))
-                    return Results.Json(new { error = "Token not found" }, statusCode: 404);
+                    return PortwayResults.MinimalError("Token not found", 404);
             }
 
             if (body.TryGetProperty("description", out var desc) && desc.ValueKind == JsonValueKind.String)
@@ -103,7 +103,7 @@ public static partial class WebUiEndpointExtensions
                               rlWindow.ValueKind == JsonValueKind.Number ? rlWindow.GetInt32() : null;
 
                 if (requests is < 1 || window is < 1 or > 86400)
-                    return Results.Json(new { error = "Rate limit values are out of range" }, statusCode: 400);
+                    return PortwayResults.MinimalError("Rate limit values are out of range", 400);
 
                 await tokenService.UpdateTokenRateLimitAsync(id, requests, requests.HasValue ? window ?? 60 : null);
             }
@@ -119,19 +119,19 @@ public static partial class WebUiEndpointExtensions
             var blockReason = await tokenService.GetRevokeBlockReasonAsync(id);
 
             if (blockReason != null)
-                return Results.Json(new { error = blockReason }, statusCode: 409);
+                return PortwayResults.MinimalError(blockReason, 409);
 
             var ok = await tokenService.RevokeTokenAsync(id);
             if (ok) Audit(context, "archive", await NameOf(tokenService, id));
 
-            return ok ? Results.Ok(new { ok = true }) : Results.Json(new { error = "Token not found" }, statusCode: 404);
+            return ok ? Results.Ok(new { ok = true }) : PortwayResults.MinimalError("Token not found", 404);
         }).ExcludeFromDescription();
 
         app.MapPost("/_/api/tokens/{id:int}/unarchive", async (int id, HttpContext context, TokenService tokenService) =>
         {
             var ok = await tokenService.UnarchiveTokenAsync(id);
             if (ok) Audit(context, "restore", await NameOf(tokenService, id));
-            return ok ? Results.Ok(new { ok = true }) : Results.Json(new { error = "Token not found or not archived" }, statusCode: 404);
+            return ok ? Results.Ok(new { ok = true }) : PortwayResults.MinimalError("Token not found or not archived", 404);
         }).ExcludeFromDescription();
 
         app.MapPost("/_/api/tokens/{id:int}/rotate", async (int id, HttpContext context, TokenService tokenService) =>
@@ -139,10 +139,10 @@ public static partial class WebUiEndpointExtensions
             var existing = (await tokenService.GetAllTokensAsync()).FirstOrDefault(t => t.Id == id);
 
             if (existing == null)
-                return Results.Json(new { error = "Token not found" }, statusCode: 404);
+                return PortwayResults.MinimalError("Token not found", 404);
 
             if (existing.RevokedAt != null)
-                return Results.Json(new { error = "Cannot rotate an archived token" }, statusCode: 400);
+                return PortwayResults.MinimalError("Cannot rotate an archived token", 400);
 
             int? expiresInDays = null;
 
@@ -183,7 +183,7 @@ public static partial class WebUiEndpointExtensions
         {
             var token = (await tokenService.GetAllTokensAsync()).FirstOrDefault(t => t.Id == id);
             if (token is null)
-                return Results.Json(new { error = "Token not found" }, statusCode: 404);
+                return PortwayResults.MinimalError("Token not found", 404);
             var entries = await tokenService.GetAuditLogAsync(username: token.Username, maxRecords: 50);
             return Results.Json(entries.Select(e => new
             {

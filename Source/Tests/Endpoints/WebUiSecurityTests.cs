@@ -158,6 +158,43 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task EnvironmentRawRead_Failure_MasksTheFilePath()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "relies on unix file modes");
+        var ct = TestContext.Current.CancellationToken;
+        var envDir = Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "environments", "zzmasked")).FullName;
+        var settings = Path.Combine(envDir, "settings.json");
+        try
+        {
+            await File.WriteAllTextAsync(settings, "{}", ct);
+            File.SetUnixFileMode(settings, UnixFileMode.None);
+            Assert.SkipWhen(CanRead(settings), "the test process can read a mode 000 file");
+
+            var client = CreateClient();
+            var (authCookie, _) = await LoginAsync(client);
+            var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/environments/zzmasked/raw", authCookie), ct);
+
+            Assert.Equal(HttpStatusCode.InternalServerError, resp.StatusCode);
+            var text = await resp.Content.ReadAsStringAsync(ct);
+            Assert.DoesNotContain(envDir, text);
+            var body = JsonDocument.Parse(text).RootElement;
+            Assert.False(body.GetProperty("success").GetBoolean());
+            Assert.False(string.IsNullOrWhiteSpace(body.GetProperty("traceId").GetString()));
+        }
+        finally
+        {
+            File.SetUnixFileMode(settings, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            Directory.Delete(envDir, recursive: true);
+        }
+
+        static bool CanRead(string path)
+        {
+            try { File.ReadAllText(path); return true; }
+            catch (UnauthorizedAccessException) { return false; }
+        }
+    }
+
+    [Fact]
     public async Task Logs_ReadOlderFile_WhenNewestFileIsLarge()
     {
         var ct = TestContext.Current.CancellationToken;

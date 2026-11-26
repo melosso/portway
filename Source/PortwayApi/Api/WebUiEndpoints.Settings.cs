@@ -288,22 +288,22 @@ public static partial class WebUiEndpointExtensions
             }
             catch (JsonException)
             {
-                return Results.Json(new { error = "Invalid JSON body" }, statusCode: 400);
+                return PortwayResults.MinimalError("Invalid JSON body", 400);
             }
 
             if (changes is null || changes.Count == 0)
-                return Results.Json(new { error = "No settings supplied" }, statusCode: 400);
+                return PortwayResults.MinimalError("No settings supplied", 400);
 
             if (changes.Count > 50)
-                return Results.Json(new { error = "Too many settings in one request" }, statusCode: 400);
+                return PortwayResults.MinimalError("Too many settings in one request", 400);
 
             // refuse a change that would lock the caller out of the console
             if (WouldLockCallerOut(ctx, config, urlValidator, changes) is { } lockout)
-                return Results.Json(new { error = lockout.Message, field = lockout.Field }, statusCode: 400);
+                return PortwayResults.MinimalError(lockout.Message, 400, lockout.Field);
 
             var result = await writer.ApplyAsync(changes, ctx.RequestAborted);
             if (!result.Ok)
-                return Results.Json(new { error = result.Error, field = result.Field }, statusCode: 400);
+                return PortwayResults.MinimalError(result.Error, 400, result.Field);
 
             Audit(ctx, "update", "settings", string.Join(", ", changes.Keys),
                 $"{changes.Count} setting(s) changed");
@@ -329,16 +329,16 @@ public static partial class WebUiEndpointExtensions
         {
             System.Text.Json.Nodes.JsonNode? body = null;
             try { body = await System.Text.Json.Nodes.JsonNode.ParseAsync(request.Body); }
-            catch { return Results.BadRequest(new { error = "Invalid JSON body" }); }
+            catch { return PortwayResults.MinimalError("Invalid JSON body", 400); }
 
             var provider = body?["provider"]?.GetValue<string>();
             var model = body?["model"]?.GetValue<string>();
             var apiKey = body?["apiKey"]?.GetValue<string>();
 
             if (provider is not null && string.IsNullOrWhiteSpace(provider))
-                return Results.BadRequest(new { error = "provider cannot be blank" });
+                return PortwayResults.MinimalError("provider cannot be blank", 400);
             if (apiKey is not null && string.IsNullOrWhiteSpace(apiKey))
-                return Results.BadRequest(new { error = "apiKey cannot be blank" });
+                return PortwayResults.MinimalError("apiKey cannot be blank", 400);
 
             await mcpConfig.SaveConfigAsync(provider, model, apiKey);
             Audit(request.HttpContext, "update", "mcp-config", "chat configuration",

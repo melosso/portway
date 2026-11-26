@@ -17,26 +17,14 @@ public sealed class ResponseEnvelopeGuardTests
 
     private sealed record Allowance(int Count, string Reason);
 
-    private const string Pending = "pending envelope migration";
-
     private static readonly Dictionary<string, Allowance> Allowed = new()
     {
         ["Api/EndpointController.Routing.cs|bodyless-error"] = new(2, "HEAD responses carry no body"),
         ["Api/HealthCheckEndpoints.cs|plain-text-body"] = new(1, "/health/live answers plain text by design"),
-        ["Api/WebUiEndpoints.Audit.cs|anonymous-error"] = new(3, Pending),
-        ["Api/WebUiEndpoints.cs|anonymous-error"] = new(4, Pending),
         ["Api/WebUiEndpoints.cs|minimal-error-result"] = new(2, "console HTML pages"),
-        ["Api/WebUiEndpoints.EndpointsCrud.cs|anonymous-error"] = new(26, Pending),
-        ["Api/WebUiEndpoints.Environments.cs|anonymous-error"] = new(27, Pending),
-        ["Api/WebUiEndpoints.Maintenance.cs|anonymous-error"] = new(4, Pending),
-        ["Api/WebUiEndpoints.Oidc.cs|anonymous-error"] = new(16, Pending),
-        ["Api/WebUiEndpoints.Oidc.cs|minimal-error-result"] = new(2, Pending),
-        ["Api/WebUiEndpoints.Pages.cs|anonymous-error"] = new(10, Pending),
-        ["Api/WebUiEndpoints.Settings.cs|anonymous-error"] = new(8, Pending),
-        ["Api/WebUiEndpoints.Settings.cs|minimal-error-result"] = new(3, Pending),
-        ["Api/WebUiEndpoints.Tokens.cs|anonymous-error"] = new(14, Pending),
-        ["Api/WebUiEndpoints.Users.cs|anonymous-error"] = new(22, Pending),
-        ["Api/WebUiEndpoints.Webhooks.cs|anonymous-error"] = new(5, Pending),
+        ["Api/WebUiEndpoints.EndpointsCrud.cs|anonymous-error"] = new(1, "console validation list, read by api() as errors"),
+        ["Api/WebUiEndpoints.Environments.cs|anonymous-error"] = new(1, "connection test result payload with status 200"),
+        ["Api/WebUiEndpoints.Oidc.cs|minimal-error-result"] = new(1, "browser OIDC start route"),
     };
 
     [Fact]

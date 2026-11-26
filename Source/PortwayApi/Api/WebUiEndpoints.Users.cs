@@ -17,11 +17,11 @@ public static partial class WebUiEndpointExtensions
         async Task<IResult?> RefuseUnconfirmed(HttpContext ctx, AdminUserService users, JsonElement body)
         {
             if (ctx.Items[SignedInUserKey] is not int me)
-                return Results.Json(new { error = "Sign in to continue" }, statusCode: 401);
+                return PortwayResults.MinimalError("Sign in to continue", 401);
 
             var clientIp = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
             if (WebUiAuthHelper.BeginAttempt(clientIp, $"#{me}") is { } blocked)
-                return Results.Json(new { error = blocked }, statusCode: 429);
+                return PortwayResults.MinimalError(blocked, 429);
 
             var confirm = body.TryGetProperty("current_password", out var c) ? c.GetString() ?? "" : "";
             if (await users.ConfirmPasswordAsync(me, confirm))
@@ -31,7 +31,7 @@ public static partial class WebUiEndpointExtensions
             }
 
             Log.Warning("Account change refused: the password for the signed-in account was wrong, from {ClientIp}", clientIp);
-            return Results.Json(new { error = "That password is incorrect", field = "current_password" }, statusCode: 403);
+            return PortwayResults.MinimalError("That password is incorrect", 403, "current_password");
         }
 
         app.MapGet("/_/api/avatars/candidates", (HttpRequest request, PortwayApi.Services.Avatars.AvatarService avatars) =>
@@ -101,7 +101,7 @@ public static partial class WebUiEndpointExtensions
         {
             JsonElement body;
             try { body = await JsonSerializer.DeserializeAsync<JsonElement>(ctx.Request.Body); }
-            catch (JsonException) { return Results.Json(new { error = "Invalid JSON body" }, statusCode: 400); }
+            catch (JsonException) { return PortwayResults.MinimalError("Invalid JSON body", 400); }
 
             if (await RefuseUnconfirmed(ctx, users, body) is { } refusal) return refusal;
 
@@ -111,23 +111,23 @@ public static partial class WebUiEndpointExtensions
                                                               : AdminUserRoles.Administrator;
 
             if (AdminUserService.ValidateUsername(username) is { } nameError)
-                return Results.Json(new { error = nameError, field = "username" }, statusCode: 400);
+                return PortwayResults.MinimalError(nameError, 400, "username");
             if (AdminUserService.ValidatePassword(password) is { } passError)
-                return Results.Json(new { error = passError, field = "password" }, statusCode: 400);
+                return PortwayResults.MinimalError(passError, 400, "password");
             if (!AdminUserRoles.IsKnown(role))
-                return Results.Json(new { error = "Unknown role", field = "role" }, statusCode: 400);
+                return PortwayResults.MinimalError("Unknown role", 400, "role");
 
             if (await users.FindAsync(username!) is not null)
-                return Results.Json(new { error = "That username is already taken", field = "username" }, statusCode: 409);
+                return PortwayResults.MinimalError("That username is already taken", 409, "username");
 
             var (displayName, displayError) = AdminUserService.NormalizeDisplayName(
                 body.TryGetProperty("display_name", out var dn) ? dn.GetString() : null);
             if (displayError is not null)
-                return Results.Json(new { error = displayError, field = "display_name" }, statusCode: 400);
+                return PortwayResults.MinimalError(displayError, 400, "display_name");
 
             var (avatar, avatarError) = ReadAvatar(body);
             if (avatarError is not null)
-                return Results.Json(new { error = avatarError, field = "avatar" }, statusCode: 400);
+                return PortwayResults.MinimalError(avatarError, 400, "avatar");
             var (avatarStyle, avatarSeed) = avatar ?? Services.Avatars.AvatarService.Random();
 
             var email = body.TryGetProperty("email", out var e) ? e.GetString() ?? "" : "";
@@ -144,12 +144,12 @@ public static partial class WebUiEndpointExtensions
         {
             JsonElement body;
             try { body = await JsonSerializer.DeserializeAsync<JsonElement>(ctx.Request.Body); }
-            catch (JsonException) { return Results.Json(new { error = "Invalid JSON body" }, statusCode: 400); }
+            catch (JsonException) { return PortwayResults.MinimalError("Invalid JSON body", 400); }
 
             if (await RefuseUnconfirmed(ctx, users, body) is { } refusal) return refusal;
 
             var target = await users.FindByIdAsync(id);
-            if (target is null) return Results.Json(new { error = "Account not found" }, statusCode: 404);
+            if (target is null) return PortwayResults.MinimalError("Account not found", 404);
 
             string? password = body.TryGetProperty("password", out var p) ? p.GetString() : null;
             string? role = body.TryGetProperty("role", out var r) ? r.GetString() : null;
@@ -157,29 +157,29 @@ public static partial class WebUiEndpointExtensions
                 ? a.GetBoolean() : null;
 
             if (!string.IsNullOrEmpty(password) && AdminUserService.ValidatePassword(password) is { } passError)
-                return Results.Json(new { error = passError, field = "password" }, statusCode: 400);
+                return PortwayResults.MinimalError(passError, 400, "password");
             if (role is not null && !AdminUserRoles.IsKnown(role))
-                return Results.Json(new { error = "Unknown role", field = "role" }, statusCode: 400);
+                return PortwayResults.MinimalError("Unknown role", 400, "role");
 
             if (isActive == false && ctx.Items[SignedInUserKey] is int me && me == id)
-                return Results.Json(new { error = "Another administrator must deactivate this account", field = "is_active" }, statusCode: 409);
+                return PortwayResults.MinimalError("Another administrator must deactivate this account", 409, "is_active");
 
             // Never let the console lock itself out
             var losingAdmin = (role is not null && role != AdminUserRoles.Administrator) || isActive == false;
             if (losingAdmin && target.Role == AdminUserRoles.Administrator && await users.IsLastAdministratorAsync(id))
-                return Results.Json(new { error = "This is the last active administrator" }, statusCode: 409);
+                return PortwayResults.MinimalError("This is the last active administrator", 409);
 
             string? displayName = null;
             if (body.TryGetProperty("display_name", out var dn))
             {
                 (displayName, var displayError) = AdminUserService.NormalizeDisplayName(dn.GetString());
                 if (displayError is not null)
-                    return Results.Json(new { error = displayError, field = "display_name" }, statusCode: 400);
+                    return PortwayResults.MinimalError(displayError, 400, "display_name");
             }
 
             var (avatar, avatarError) = ReadAvatar(body);
             if (avatarError is not null)
-                return Results.Json(new { error = avatarError, field = "avatar" }, statusCode: 400);
+                return PortwayResults.MinimalError(avatarError, 400, "avatar");
 
             string? email = body.TryGetProperty("email", out var e) ? e.GetString() : null;
             await users.UpdateAsync(id, password, role, isActive, email, displayName, avatar);
@@ -196,18 +196,18 @@ public static partial class WebUiEndpointExtensions
         {
             JsonElement body;
             try { body = await JsonSerializer.DeserializeAsync<JsonElement>(ctx.Request.Body); }
-            catch (JsonException) { return Results.Json(new { error = "Invalid JSON body" }, statusCode: 400); }
+            catch (JsonException) { return PortwayResults.MinimalError("Invalid JSON body", 400); }
 
             if (await RefuseUnconfirmed(ctx, users, body) is { } refusal) return refusal;
 
             var target = await users.FindByIdAsync(id);
-            if (target is null) return Results.Json(new { error = "Account not found" }, statusCode: 404);
+            if (target is null) return PortwayResults.MinimalError("Account not found", 404);
 
             if (ctx.Items[SignedInUserKey] is int me && me == id)
-                return Results.Json(new { error = "You cannot delete the account you are signed in with" }, statusCode: 409);
+                return PortwayResults.MinimalError("You cannot delete the account you are signed in with", 409);
 
             if (target.Role == AdminUserRoles.Administrator && await users.IsLastAdministratorAsync(id))
-                return Results.Json(new { error = "This is the last active administrator" }, statusCode: 409);
+                return PortwayResults.MinimalError("This is the last active administrator", 409);
 
             await users.DeleteAsync(id);
             WebUiAuthState.Enabled = await users.CountAsync() > 0;

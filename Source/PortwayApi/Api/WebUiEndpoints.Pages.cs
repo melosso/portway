@@ -61,7 +61,7 @@ public static partial class WebUiEndpointExtensions
         app.MapPost("/_/api/auth", async (HttpContext context) =>
         {
             if (await ReadSignInBodyAsync(context.Request) is not { } body)
-                return Results.Json(new { error = InvalidSignInBody }, statusCode: 400);
+                return PortwayResults.MinimalError(InvalidSignInBody, 400);
 
             var username = body.TryGetProperty("username", out var up) ? up.GetString() ?? "" : "";
             var password = body.TryGetProperty("password", out var pp) ? pp.GetString() ?? "" : "";
@@ -71,14 +71,14 @@ public static partial class WebUiEndpointExtensions
             var blockReason = WebUiAuthHelper.BeginAttempt(clientIp, username);
             if (blockReason != null)
             {
-                return Results.Json(new { error = blockReason }, statusCode: 429);
+                return PortwayResults.MinimalError(blockReason, 429);
             }
 
             // CSRF validation
             var csrfToken = body.TryGetProperty("csrf", out var csrf) ? csrf.GetString() : null;
             if (!WebUiAuthHelper.TryConsumeCsrfToken(csrfToken))
             {
-                return Results.Json(new { error = "Invalid or expired CSRF token" }, statusCode: 403);
+                return PortwayResults.MinimalError("Invalid or expired CSRF token", 403);
             }
 
             var users = context.RequestServices.GetRequiredService<AdminUserService>();
@@ -86,7 +86,7 @@ public static partial class WebUiEndpointExtensions
             if (account is null)
             {
                 Log.Warning("Failed console sign-in for {Username} from {ClientIp}", username, clientIp);
-                return Results.Json(new { error = "Invalid username or password" }, statusCode: 401);
+                return PortwayResults.MinimalError("Invalid username or password", 401);
             }
 
             // Success - clear failed attempts
@@ -104,7 +104,7 @@ public static partial class WebUiEndpointExtensions
         app.MapPost("/_/api/auth/password", async (HttpContext context) =>
         {
             if (await ReadSignInBodyAsync(context.Request) is not { } body)
-                return Results.Json(new { error = InvalidSignInBody }, statusCode: 400);
+                return PortwayResults.MinimalError(InvalidSignInBody, 400);
 
             var username = body.TryGetProperty("username", out var u) ? u.GetString() ?? "" : "";
             var current = body.TryGetProperty("password", out var p) ? p.GetString() ?? "" : "";
@@ -112,24 +112,24 @@ public static partial class WebUiEndpointExtensions
 
             // policy errors reveal nothing about the account and do not count toward the lockout
             if (AdminUserService.ValidatePassword(next) is { } problem)
-                return Results.Json(new { error = problem, field = "newPassword" }, statusCode: 400);
+                return PortwayResults.MinimalError(problem, 400, "newPassword");
             if (next == current)
-                return Results.Json(new { error = "Choose a password you have not used here before", field = "newPassword" }, statusCode: 400);
+                return PortwayResults.MinimalError("Choose a password you have not used here before", 400, "newPassword");
 
             var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
             if (WebUiAuthHelper.BeginAttempt(clientIp, username) is { } blocked)
-                return Results.Json(new { error = blocked }, statusCode: 429);
+                return PortwayResults.MinimalError(blocked, 429);
 
             var csrf = body.TryGetProperty("csrf", out var c) ? c.GetString() : null;
             if (!WebUiAuthHelper.TryConsumeCsrfToken(csrf))
             {
-                return Results.Json(new { error = "Invalid or expired CSRF token" }, statusCode: 403);
+                return PortwayResults.MinimalError("Invalid or expired CSRF token", 403);
             }
 
             var users = context.RequestServices.GetRequiredService<AdminUserService>();
             if (!await users.ChangePasswordAsync(username, current, next))
             {
-                return Results.Json(new { error = "Invalid username or password" }, statusCode: 401);
+                return PortwayResults.MinimalError("Invalid username or password", 401);
             }
 
             WebUiAuthHelper.ClearFailedAttempts(clientIp, username);

@@ -55,24 +55,24 @@ public static partial class WebUiEndpointExtensions
             AuthDbContext db, IConfiguration config, HttpContext ctx, AdminUserService users, string slug) =>
         {
             if (ctx.Items[SignedInUserKey] is not int me)
-                return Results.Json(new { error = "Sign in to continue" }, statusCode: 401);
+                return PortwayResults.MinimalError("Sign in to continue", 401);
 
             JsonElement body;
             try { body = await JsonSerializer.DeserializeAsync<JsonElement>(ctx.Request.Body); }
-            catch (JsonException) { return Results.Json(new { error = "Invalid JSON body" }, statusCode: 400); }
+            catch (JsonException) { return PortwayResults.MinimalError("Invalid JSON body", 400); }
 
             var provider = await UsableAsync(db, config, slug);
-            if (provider is null) return Results.NotFound();
+            if (provider is null) return PortwayResults.MinimalError("Provider not found", 404);
 
             var clientIp = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
             if (WebUiAuthHelper.BeginAttempt(clientIp, $"#{me}") is { } blocked)
-                return Results.Json(new { error = blocked }, statusCode: 429);
+                return PortwayResults.MinimalError(blocked, 429);
 
             // Require the current password so a hijacked session cannot attach a new sign-in method to the account
             var confirm = body.TryGetProperty("current_password", out var c) ? c.GetString() ?? "" : "";
             if (!await users.ConfirmPasswordAsync(me, confirm))
             {
-                return Results.Json(new { error = "That password is incorrect", field = "current_password" }, statusCode: 403);
+                return PortwayResults.MinimalError("That password is incorrect", 403, "current_password");
             }
             WebUiAuthHelper.ClearFailedAttempts(clientIp, $"#{me}");
 
@@ -84,21 +84,21 @@ public static partial class WebUiEndpointExtensions
             catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or IOException)
             {
                 Log.Error(ex, "Could not read the discovery document for {Provider}", provider.Slug);
-                return Results.Json(new { error = "That provider could not be reached. Check its issuer URL." }, statusCode: 400);
+                return PortwayResults.MinimalError("That provider could not be reached. Check its issuer URL.", 400);
             }
         }).ExcludeFromDescription();
 
         app.MapDelete("/_/api/oidc/link", async (HttpContext ctx, AuthDbContext db, AdminUserService users) =>
         {
             if (ctx.Items[SignedInUserKey] is not int me)
-                return Results.Json(new { error = "Sign in to continue" }, statusCode: 401);
+                return PortwayResults.MinimalError("Sign in to continue", 401);
 
             var account = await db.AdminUsers.FirstOrDefaultAsync(u => u.Id == me);
-            if (account is null) return Results.Json(new { error = "Account not found" }, statusCode: 404);
+            if (account is null) return PortwayResults.MinimalError("Account not found", 404);
 
             // Unbinding an account with no password would leave it with no way to sign in at all
             if (account.PasswordHash.Length == 0)
-                return Results.Json(new { error = "Set a password before unlinking, or this account loses its only way in" }, statusCode: 409);
+                return PortwayResults.MinimalError("Set a password before unlinking, or this account loses its only way in", 409);
 
             account.Provider = AdminUserProviders.Local;
             account.ExternalId = null;
@@ -189,14 +189,14 @@ public static partial class WebUiEndpointExtensions
         {
             JsonElement body;
             try { body = await JsonSerializer.DeserializeAsync<JsonElement>(ctx.Request.Body); }
-            catch (JsonException) { return Results.Json(new { error = "Invalid JSON body" }, statusCode: 400); }
+            catch (JsonException) { return PortwayResults.MinimalError("Invalid JSON body", 400); }
 
             var provider = new OidcProvider();
             if (Apply(body, provider, isNew: true) is { } problem)
-                return Results.Json(new { error = problem.Message, field = problem.Field }, statusCode: 400);
+                return PortwayResults.MinimalError(problem.Message, 400, problem.Field);
 
             if (await db.OidcProviders.AnyAsync(p => p.Slug == provider.Slug))
-                return Results.Json(new { error = "That key is already in use", field = "slug" }, statusCode: 409);
+                return PortwayResults.MinimalError("That key is already in use", 409, "slug");
 
             db.OidcProviders.Add(provider);
             await db.SaveChangesAsync();
@@ -211,16 +211,16 @@ public static partial class WebUiEndpointExtensions
         {
             JsonElement body;
             try { body = await JsonSerializer.DeserializeAsync<JsonElement>(ctx.Request.Body); }
-            catch (JsonException) { return Results.Json(new { error = "Invalid JSON body" }, statusCode: 400); }
+            catch (JsonException) { return PortwayResults.MinimalError("Invalid JSON body", 400); }
 
             var provider = await db.OidcProviders.FirstOrDefaultAsync(p => p.Id == id);
-            if (provider is null) return Results.Json(new { error = "Provider not found" }, statusCode: 404);
+            if (provider is null) return PortwayResults.MinimalError("Provider not found", 404);
 
             if (Apply(body, provider, isNew: false) is { } problem)
-                return Results.Json(new { error = problem.Message, field = problem.Field }, statusCode: 400);
+                return PortwayResults.MinimalError(problem.Message, 400, problem.Field);
 
             if (await db.OidcProviders.AnyAsync(p => p.Slug == provider.Slug && p.Id != id))
-                return Results.Json(new { error = "That key is already in use", field = "slug" }, statusCode: 409);
+                return PortwayResults.MinimalError("That key is already in use", 409, "slug");
 
             await db.SaveChangesAsync();
             // Evict the cached discovery document so a rotated secret or changed authority takes effect immediately
@@ -235,7 +235,7 @@ public static partial class WebUiEndpointExtensions
         app.MapDelete("/_/api/oidc/providers/{id:int}", async (HttpContext ctx, int id, AuthDbContext db) =>
         {
             var provider = await db.OidcProviders.FirstOrDefaultAsync(p => p.Id == id);
-            if (provider is null) return Results.Json(new { error = "Provider not found" }, statusCode: 404);
+            if (provider is null) return PortwayResults.MinimalError("Provider not found", 404);
 
             // A deleted provider leaves bound accounts with a dangling reference that blocks any other provider from adopting them
             var bound = await db.AdminUsers.Where(u => u.Provider == provider.Slug).ToListAsync();

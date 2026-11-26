@@ -40,7 +40,7 @@ public static partial class WebUiEndpointExtensions
                 Log.Warning("Web UI request to {Path} rejected: neither Console:Enabled nor Console:AdminApiKey is configured", path);
                 context.Response.StatusCode = 503;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new { error = "Web UI is disabled" });
+                await context.Response.WriteAsJsonAsync(ErrorResponse.Of("Web UI is disabled"));
                 return;
             }
 
@@ -57,13 +57,7 @@ public static partial class WebUiEndpointExtensions
                     context.Response.StatusCode = 403;
                     context.Response.ContentType = "application/json";
 
-                    await context.Response.WriteAsJsonAsync(new
-                    {
-                        error = "Access denied",
-                        clientIp = remoteIp?.ToString() ?? "Unknown",
-                        requestedPath = context.Request.Path.Value,
-                        success = false
-                    });
+                    await context.Response.WriteAsJsonAsync(ErrorResponse.Of("Access denied"));
 
                     return;
                 }
@@ -112,7 +106,7 @@ public static partial class WebUiEndpointExtensions
                     {
                         context.Response.StatusCode = 403;
                         context.Response.ContentType = "application/json";
-                        await context.Response.WriteAsJsonAsync(new { error = "CSRF token missing or invalid" });
+                        await context.Response.WriteAsJsonAsync(ErrorResponse.Of("CSRF token missing or invalid"));
                         return;
                     }
 
@@ -123,7 +117,7 @@ public static partial class WebUiEndpointExtensions
                             signedIn.UserId, context.Request.Method, path.Value);
                         context.Response.StatusCode = 403;
                         context.Response.ContentType = "application/json";
-                        await context.Response.WriteAsJsonAsync(new { error = "This action needs an administrator account" });
+                        await context.Response.WriteAsJsonAsync(ErrorResponse.Of("This action needs an administrator account"));
                         return;
                     }
                 }

@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PortwayApi.Classes;
 using PortwayApi.Helpers;
 using PortwayApi.Interfaces;
+using Serilog;
 
 
 public static partial class WebUiEndpointExtensions
@@ -76,7 +77,7 @@ public static partial class WebUiEndpointExtensions
         {
             var isAdministrator = context.Items[SignedInRoleKey] as string == AdminUserRoles.Administrator;
             if (!EnvironmentNamePattern().IsMatch(name))
-                return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
+                return PortwayResults.MinimalError("Invalid environment name", 400);
 
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
             if (!File.Exists(envPath))
@@ -122,21 +123,21 @@ public static partial class WebUiEndpointExtensions
             }
             catch (Exception ex)
             {
-                return Results.Json(new { error = $"Failed to read settings: {ex.Message}" }, statusCode: 500);
+                return PortwayResults.MinimalError($"Failed to read settings: {ex.Message}", 500);
             }
         }).ExcludeFromDescription();
 
         app.MapGet("/_/api/environments/{name}/raw", (string name, HttpContext context) =>
         {
             if (context.Items[SignedInRoleKey] as string != AdminUserRoles.Administrator)
-                return Results.Json(new { error = "This action needs an administrator account" }, statusCode: 403);
+                return PortwayResults.MinimalError("This action needs an administrator account", 403);
 
             if (!EnvironmentNamePattern().IsMatch(name))
-                return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
+                return PortwayResults.MinimalError("Invalid environment name", 400);
 
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
             if (!File.Exists(envPath))
-                return Results.Json(new { error = "File not found" }, statusCode: 404);
+                return PortwayResults.MinimalError("File not found", 404);
 
             try
             {
@@ -146,18 +147,19 @@ public static partial class WebUiEndpointExtensions
             }
             catch (Exception ex)
             {
-                return Results.Json(new { error = ex.Message }, statusCode: 500);
+                Log.Error(ex, "Reading environment {Name} failed", name);
+                return PortwayResults.MinimalServerError(context);
             }
         }).ExcludeFromDescription();
 
         app.MapPut("/_/api/environments/{name}/raw", async (string name, HttpContext context) =>
         {
             if (!EnvironmentNamePattern().IsMatch(name))
-                return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
+                return PortwayResults.MinimalError("Invalid environment name", 400);
 
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
             if (!body.TryGetProperty("content", out var contentEl) || contentEl.ValueKind != JsonValueKind.String)
-                return Results.Json(new { error = "content field required" }, statusCode: 400);
+                return PortwayResults.MinimalError("content field required", 400);
 
             var raw = contentEl.GetString() ?? "";
             JsonElement root;
@@ -168,11 +170,11 @@ public static partial class WebUiEndpointExtensions
                 if (!root.TryGetProperty("ConnectionString", out _) &&
                     !root.TryGetProperty("ServerName", out _) &&
                     !root.TryGetProperty("Headers", out _))
-                    return Results.Json(new { error = "JSON must contain at least one of: ConnectionString, ServerName, Headers" }, statusCode: 400);
+                    return PortwayResults.MinimalError("JSON must contain at least one of: ConnectionString, ServerName, Headers", 400);
             }
             catch (JsonException ex)
             {
-                return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400);
+                return PortwayResults.MinimalError($"Invalid JSON: {ex.Message}", 400);
             }
 
             // raw saves never bypass encryption, unless the file opts out
@@ -191,11 +193,11 @@ public static partial class WebUiEndpointExtensions
         app.MapPut("/_/api/environments/{name}/secrets/{secret}", async (string name, string secret, HttpContext context) =>
         {
             if (!EnvironmentNamePattern().IsMatch(name) || !SecretReference.IsValidName(secret))
-                return Results.Json(new { error = "Invalid environment or secret name" }, statusCode: 400);
+                return PortwayResults.MinimalError("Invalid environment or secret name", 400);
 
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
             if (!body.TryGetProperty("value", out var valueEl) || valueEl.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(valueEl.GetString()))
-                return Results.Json(new { error = "A secret value is required" }, statusCode: 400);
+                return PortwayResults.MinimalError("A secret value is required", 400);
 
             return await EditSecretsAsync(context, name, secret, secrets =>
             {
@@ -208,7 +210,7 @@ public static partial class WebUiEndpointExtensions
         app.MapDelete("/_/api/environments/{name}/secrets/{secret}", async (string name, string secret, HttpContext context) =>
         {
             if (!EnvironmentNamePattern().IsMatch(name) || !SecretReference.IsValidName(secret))
-                return Results.Json(new { error = "Invalid environment or secret name" }, statusCode: 400);
+                return PortwayResults.MinimalError("Invalid environment or secret name", 400);
 
             return await EditSecretsAsync(context, name, secret, secrets => RemoveSecret(secrets, secret), "delete-secret");
         }).ExcludeFromDescription();
@@ -217,15 +219,15 @@ public static partial class WebUiEndpointExtensions
         {
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
             if (!File.Exists(envPath))
-                return Results.Json(new { error = "Environment not found" }, statusCode: 404);
+                return PortwayResults.MinimalError("Environment not found", 404);
 
             if (System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(envPath)) is not System.Text.Json.Nodes.JsonObject settings)
-                return Results.Json(new { error = "settings.json is not a JSON object" }, statusCode: 400);
+                return PortwayResults.MinimalError("settings.json is not a JSON object", 400);
 
             var secrets = settings["Secrets"] as System.Text.Json.Nodes.JsonObject ?? new System.Text.Json.Nodes.JsonObject();
             settings["Secrets"] = secrets;
             if (!edit(secrets))
-                return Results.Json(new { error = "Secret not found" }, statusCode: 404);
+                return PortwayResults.MinimalError("Secret not found", 404);
             if (secrets.Count == 0)
                 settings.Remove("Secrets");
 
@@ -240,11 +242,11 @@ public static partial class WebUiEndpointExtensions
         app.MapPost("/_/api/environments/{name}/test", async (string name) =>
         {
             if (!EnvironmentNamePattern().IsMatch(name))
-                return Results.Json(new { ok = false, error = "Invalid environment name" }, statusCode: 400);
+                return PortwayResults.MinimalError("Invalid environment name", 400);
 
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
             if (!File.Exists(envPath))
-                return Results.Json(new { ok = false, error = "No settings.json found for this environment" }, statusCode: 404);
+                return PortwayResults.MinimalError("No settings.json found for this environment", 404);
 
             try
             {
@@ -279,9 +281,9 @@ public static partial class WebUiEndpointExtensions
             var globalPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
 
             if (!EnvironmentNamePattern().IsMatch(name))
-                return Results.Json(new { error = "Invalid environment name. Use only letters, numbers, hyphens, and underscores." }, statusCode: 400);
+                return PortwayResults.MinimalError("Invalid environment name. Use only letters, numbers, hyphens, and underscores.", 400);
             if (envSettings.AllowedEnvironments.Contains(name, StringComparer.OrdinalIgnoreCase))
-                return Results.Json(new { error = "Environment already exists" }, statusCode: 409);
+                return PortwayResults.MinimalError("Environment already exists", 409);
 
             var envDir = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
             var envSettingsPath = Path.Combine(envDir, "settings.json");
@@ -315,7 +317,7 @@ public static partial class WebUiEndpointExtensions
         app.MapPut("/_/api/environments/{name}", async (string name, HttpContext context) =>
         {
             if (!EnvironmentNamePattern().IsMatch(name))
-                return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
+                return PortwayResults.MinimalError("Invalid environment name", 400);
 
             var envDir = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
             var envSettingsPath = Path.Combine(envDir, "settings.json");
@@ -370,12 +372,12 @@ public static partial class WebUiEndpointExtensions
         app.MapMethods("/_/api/environments/{name}", ["PATCH"], async (string name, HttpContext context) =>
         {
             if (!EnvironmentNamePattern().IsMatch(name))
-                return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
+                return PortwayResults.MinimalError("Invalid environment name", 400);
 
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
             var newName = body.TryGetProperty("new_name", out var nn) ? nn.GetString()?.Trim() ?? "" : "";
             if (!EnvironmentNamePattern().IsMatch(newName))
-                return Results.Json(new { error = "Invalid new name" }, statusCode: 400);
+                return PortwayResults.MinimalError("Invalid new name", 400);
 
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
             var globalPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
@@ -383,9 +385,9 @@ public static partial class WebUiEndpointExtensions
             var newDir = Path.Combine(Directory.GetCurrentDirectory(), "environments", newName);
 
             if (!envSettings.AllowedEnvironments.Contains(name, StringComparer.OrdinalIgnoreCase))
-                return Results.Json(new { error = "Environment not found" }, statusCode: 404);
+                return PortwayResults.MinimalError("Environment not found", 404);
             if (envSettings.AllowedEnvironments.Contains(newName, StringComparer.OrdinalIgnoreCase))
-                return Results.Json(new { error = "An environment with that name already exists" }, statusCode: 409);
+                return PortwayResults.MinimalError("An environment with that name already exists", 409);
 
             if (Directory.Exists(oldDir)) Directory.Move(oldDir, newDir);
 
@@ -402,7 +404,7 @@ public static partial class WebUiEndpointExtensions
         app.MapDelete("/_/api/environments/{name}", async (string name, HttpRequest request) =>
         {
             if (!EnvironmentNamePattern().IsMatch(name))
-                return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
+                return PortwayResults.MinimalError("Invalid environment name", 400);
 
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
             var globalPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");

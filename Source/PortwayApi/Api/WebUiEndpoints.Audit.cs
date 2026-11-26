@@ -3,6 +3,7 @@ namespace PortwayApi.Endpoints;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using PortwayApi.Classes;
+using PortwayApi.Helpers;
 
 
 public static partial class WebUiEndpointExtensions
@@ -35,7 +36,7 @@ public static partial class WebUiEndpointExtensions
         {
             var entry = configAudit.GetById(id);
             if (entry?.BackupPath is null || !File.Exists(entry.BackupPath))
-                return Results.Json(new { error = "No backup available for this change" }, statusCode: 404);
+                return PortwayResults.MinimalError("No backup available for this change", 404);
 
             string? targetPath = entry.TargetType switch
             {
@@ -47,10 +48,10 @@ public static partial class WebUiEndpointExtensions
                 _ => null
             };
             if (targetPath is null)
-                return Results.Json(new { error = "This change type cannot be restored" }, statusCode: 400);
+                return PortwayResults.MinimalError("This change type cannot be restored", 400);
 
             if (!Services.Configuration.ConfigBackupService.Restore(entry.BackupPath, targetPath))
-                return Results.Json(new { error = "Restore failed" }, statusCode: 500);
+                return PortwayResults.MinimalError("Restore failed", 500);
 
             // Reload affected config
             if (entry.TargetType == "endpoint" && entry.Target.IndexOf('/') is var s && s > 0)

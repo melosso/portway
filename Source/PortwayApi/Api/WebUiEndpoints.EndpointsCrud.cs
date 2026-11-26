@@ -21,22 +21,22 @@ public static partial class WebUiEndpointExtensions
         app.MapMethods("/_/api/endpoints/{type}/{**name}", ["PATCH"], async (string type, string name, HttpContext context) =>
         {
             if (IsVersionPath(name))
-                return Results.Json(new { error = "Rename the base endpoint; its versions move with it" }, statusCode: 400);
+                return PortwayResults.MinimalError("Rename the base endpoint; its versions move with it", 400);
 
             var (filePath, err) = ResolveEndpointPath(type, name);
-            if (err != null) return Results.Json(new { error = err }, statusCode: 400);
+            if (err != null) return PortwayResults.MinimalError(err, 400);
             if (!File.Exists(filePath!))
-                return Results.Json(new { error = "Endpoint not found" }, statusCode: 404);
+                return PortwayResults.MinimalError("Endpoint not found", 404);
 
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
             var newName = body.TryGetProperty("new_name", out var nn) ? nn.GetString()?.Trim() ?? "" : "";
             if (!Regex.IsMatch(newName, @"^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$"))
-                return Results.Json(new { error = "Invalid name" }, statusCode: 400);
+                return PortwayResults.MinimalError("Invalid name", 400);
 
             var (newFilePath, newErr) = ResolveEndpointPath(type, newName);
-            if (newErr != null) return Results.Json(new { error = newErr }, statusCode: 400);
+            if (newErr != null) return PortwayResults.MinimalError(newErr, 400);
             if (File.Exists(newFilePath!))
-                return Results.Json(new { error = "An endpoint with that name already exists" }, statusCode: 409);
+                return PortwayResults.MinimalError("An endpoint with that name already exists", 409);
 
             var oldDir = Path.GetDirectoryName(filePath!)!;
             var oldFolderName = Path.GetFileName(oldDir);
@@ -73,10 +73,10 @@ public static partial class WebUiEndpointExtensions
         app.MapGet("/_/api/endpoints/{type}/{**name}", (string type, string name, HttpContext context) =>
         {
             var (filePath, err) = ResolveEndpointPath(type, name);
-            if (err != null) return Results.Json(new { error = err }, statusCode: 400);
+            if (err != null) return PortwayResults.MinimalError(err, 400);
 
             if (!File.Exists(filePath!))
-                return Results.Json(new { error = "Endpoint not found" }, statusCode: 404);
+                return PortwayResults.MinimalError("Endpoint not found", 404);
 
             try
             {
@@ -93,7 +93,8 @@ public static partial class WebUiEndpointExtensions
             }
             catch (Exception ex)
             {
-                return Results.Json(new { error = ex.Message }, statusCode: 500);
+                Log.Error(ex, "Reading endpoint {Type}/{Name} failed", type, name);
+                return PortwayResults.MinimalServerError(context);
             }
         }).ExcludeFromDescription();
 
@@ -101,7 +102,7 @@ public static partial class WebUiEndpointExtensions
         app.MapPut("/_/api/endpoints/{type}/{**name}", async (string type, string name, HttpContext context) =>
         {
             var (filePath, err) = ResolveEndpointPath(type, name);
-            if (err != null) return Results.Json(new { error = err }, statusCode: 400);
+            if (err != null) return PortwayResults.MinimalError(err, 400);
 
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
 
@@ -109,13 +110,13 @@ public static partial class WebUiEndpointExtensions
             if (context.Request.Query["raw"] == "true")
             {
                 if (!body.TryGetProperty("content", out var contentEl) || contentEl.ValueKind != JsonValueKind.String)
-                    return Results.Json(new { error = "content field required" }, statusCode: 400);
+                    return PortwayResults.MinimalError("content field required", 400);
                 rawContent = contentEl.GetString() ?? "";
             }
             else
             {
                 if (!body.TryGetProperty("content", out var contentEl) || contentEl.ValueKind == JsonValueKind.Undefined)
-                    return Results.Json(new { error = "content field required" }, statusCode: 400);
+                    return PortwayResults.MinimalError("content field required", 400);
                 rawContent = contentEl.GetRawText();
             }
 
@@ -126,7 +127,7 @@ public static partial class WebUiEndpointExtensions
                 using var doc = JsonDocument.Parse(rawContent);
                 rawContent = JsonSerializer.Serialize(doc.RootElement, format);
             }
-            catch (JsonException ex) { return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400); }
+            catch (JsonException ex) { return PortwayResults.MinimalError($"Invalid JSON: {ex.Message}", 400); }
 
             rawContent = KeepInlineValues(StampDeprecatedSince(rawContent, existing, format), existing, format);
 
@@ -154,13 +155,13 @@ public static partial class WebUiEndpointExtensions
             var name = body.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
 
             if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$"))
-                return Results.Json(new { error = "Invalid endpoint name. Use letters, numbers, hyphens, underscores, and forward slashes as separators." }, statusCode: 400);
+                return PortwayResults.MinimalError("Invalid endpoint name. Use letters, numbers, hyphens, underscores, and forward slashes as separators.", 400);
 
             var (filePath, err) = ResolveEndpointPath(type, name);
-            if (err != null) return Results.Json(new { error = err }, statusCode: 400);
+            if (err != null) return PortwayResults.MinimalError(err, 400);
 
             if (File.Exists(filePath!))
-                return Results.Json(new { error = "Endpoint already exists" }, statusCode: 409);
+                return PortwayResults.MinimalError("Endpoint already exists", 409);
 
             string rawContent;
             if (body.TryGetProperty("content", out var contentEl) && contentEl.ValueKind == JsonValueKind.String)
@@ -171,7 +172,7 @@ public static partial class WebUiEndpointExtensions
                 rawContent = "{}";
 
             try { using var _ = JsonDocument.Parse(rawContent); }
-            catch (JsonException ex) { return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400); }
+            catch (JsonException ex) { return PortwayResults.MinimalError($"Invalid JSON: {ex.Message}", 400); }
 
             var (postErrors, postWarnings) = CheckEndpointConfig(type, rawContent, filePath!);
             if (postErrors.Count > 0)
@@ -191,13 +192,13 @@ public static partial class WebUiEndpointExtensions
         app.MapDelete("/_/api/endpoints/{type}/{**name}", (string type, string name, HttpContext context) =>
         {
             var (filePath, err) = ResolveEndpointPath(type, name);
-            if (err != null) return Results.Json(new { error = err }, statusCode: 400);
+            if (err != null) return PortwayResults.MinimalError(err, 400);
 
             if (!File.Exists(filePath!))
-                return Results.Json(new { error = "Endpoint not found" }, statusCode: 404);
+                return PortwayResults.MinimalError("Endpoint not found", 404);
 
             if (!IsVersionPath(name) && VersionFolders(Path.GetDirectoryName(filePath!)!) is { Count: > 0 } versions)
-                return Results.Json(new { error = $"Delete versions {string.Join(", ", versions)} first" }, statusCode: 409);
+                return PortwayResults.MinimalError($"Delete versions {string.Join(", ", versions)} first", 409);
 
             var backupPath = Services.Configuration.ConfigBackupService.Backup(filePath!);
             var dir = Path.GetDirectoryName(filePath!);
@@ -218,15 +219,15 @@ public static partial class WebUiEndpointExtensions
         {
             var baseName = IsVersionPath(name) ? name[..name.LastIndexOf('/')] : name;
             var (filePath, err) = ResolveEndpointPath(type, name);
-            if (err != null) return Results.Json(new { error = err }, statusCode: 400);
+            if (err != null) return PortwayResults.MinimalError(err, 400);
             if (!File.Exists(filePath!))
-                return Results.Json(new { error = "Endpoint not found" }, statusCode: 404);
+                return PortwayResults.MinimalError("Endpoint not found", 404);
 
             var sourceDir = Path.GetDirectoryName(filePath!)!;
             var baseDir = IsVersionPath(name) ? Path.GetDirectoryName(sourceDir)! : sourceDir;
             var next = VersionFolders(baseDir).Select(EndpointVersion.Number).Append(1).Max() + 1;
             if (next > 999)
-                return Results.Json(new { error = "Version limit reached" }, statusCode: 409);
+                return PortwayResults.MinimalError("Version limit reached", 409);
 
             var targetDir = Path.Combine(baseDir, $"v{next}");
             Directory.CreateDirectory(targetDir);
@@ -249,7 +250,7 @@ public static partial class WebUiEndpointExtensions
         {
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
             if (!body.TryGetProperty("content", out var contentEl) || contentEl.ValueKind == JsonValueKind.Undefined)
-                return Results.Json(new { error = "content field required" }, statusCode: 400);
+                return PortwayResults.MinimalError("content field required", 400);
 
             var rawContent = contentEl.ValueKind == JsonValueKind.String
                 ? contentEl.GetString() ?? ""
@@ -267,7 +268,7 @@ public static partial class WebUiEndpointExtensions
             }
 
             if (TypeStringToEndpointType(type) is null)
-                return Results.Json(new { error = $"Unknown endpoint type: {type}" }, statusCode: 400);
+                return PortwayResults.MinimalError($"Unknown endpoint type: {type}", 400);
 
             string? filePath = null;
             if (body.TryGetProperty("name", out var nameEl) && nameEl.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(nameEl.GetString()))
