@@ -968,12 +968,13 @@ function fieldAllowedEnvs(value) {
   const list = (Array.isArray(value) ? value : String(value ?? '*').split(',')).map(v => String(v).trim()).filter(v => v && v !== '*');
   const all = !list.length;
   const names = [...new Set([..._allowedEnvs, ...list])];
-  const option = (env, checked, extra = '') => `<label class="env-option"><input type="checkbox" data-env="${esc(env)}" ${checked ? 'checked' : ''} ${extra} data-on="change:envChanged" data-args='[{"ref": "this"}]'><span>${env === '*' ? 'All allowed' : esc(env)}</span>${env !== '*' && !_allowedEnvs.includes(env) ? '<span class="env-flag">not in the global allowlist</span>' : ''}</label>`;
+  const option = (env, checked, extra = '') => `<label class="env-option"><input type="checkbox" data-env="${esc(env)}" ${checked ? 'checked' : ''} ${extra} data-on="change:envChanged" data-args='[{"ref": "this"}]'><span>${env === '*' ? 'All environments' : esc(env)}</span>${env !== '*' && !_allowedEnvs.includes(env) ? '<span class="env-flag">not in the global allowlist</span>' : ''}</label>`;
   return `<div class="field">
     <span class="field-label" id="allowedEnvironments-label">Environments</span>
     <div class="env-picker" id="allowedEnvironments" role="group" aria-labelledby="allowedEnvironments-label">
       ${option('*', all)}${names.map(env => option(env, list.includes(env), all ? 'disabled' : '')).join('')}
     </div>
+    <div class="field-help">Clear All environments to choose specific ones.</div>
   </div>`;
 }
 
@@ -1446,7 +1447,7 @@ function readEnvs() {
 
 function validateEnvs(errors) {
   const envs = readEnvs();
-  if (envs && !envs.length) errors.push(fieldError('allowedEnvironments', 'Select an environment or All allowed'));
+  if (envs && !envs.length) errors.push(fieldError('allowedEnvironments', 'Select an environment or All environments'));
 }
 
 function fieldError(target, message) {

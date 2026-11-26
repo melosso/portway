@@ -4544,7 +4544,7 @@ body.has-promo .signin-theme {
     }
 
     .ep-split.has-selection .ep-list,
-    .ep-filter-bar:has(+ .ep-split.has-selection) {
+    .filter-bar:has(+ .ep-split.has-selection) {
         display: none;
     }
 
