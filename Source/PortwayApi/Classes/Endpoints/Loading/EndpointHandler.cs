@@ -7,13 +7,10 @@ using Serilog;
 
 public static partial class EndpointHandler
 {
-    // Cache for loaded endpoints to avoid multiple loads
-    private static volatile FrozenDictionary<string, EndpointDefinition>? _loadedProxyEndpoints = null;
-    private static volatile FrozenDictionary<string, EndpointDefinition>? _loadedSqlEndpoints = null;
-    private static volatile FrozenDictionary<string, EndpointDefinition>? _loadedSqlWebhookEndpoints = null;
-    private static volatile FrozenDictionary<string, EndpointDefinition>? _loadedFileEndpoints = null;
-    private static volatile FrozenDictionary<string, EndpointDefinition>? _loadedStaticEndpoints = null;
-    private static readonly object _loadLock = new object();
+    // every type in one record so a reload publishes all of them in one write
+    private sealed record EndpointSnapshot(FrozenDictionary<string, EndpointDefinition>[] Scanned, FrozenDictionary<string, EndpointDefinition>[] Routed);
+    private static volatile EndpointSnapshot? _snapshot;
+    private static readonly object _loadLock = new();
 
     private static readonly EndpointLoaderSpec ProxyLoaderSpec = new(
         "Proxy", "proxy", "", "*.json", NamespaceAware: true,
@@ -68,6 +65,16 @@ public static partial class EndpointHandler
             }
         });
 
+    // the order a name resolves in, a later type skips names an earlier type uses
+    internal static readonly (EndpointType Type, string Folder, EndpointLoaderSpec Spec)[] RoutingOrder =
+    [
+        (EndpointType.SQL, "SQL", SqlLoaderSpec),
+        (EndpointType.Webhook, "Webhooks", WebhookLoaderSpec),
+        (EndpointType.Proxy, "Proxy", ProxyLoaderSpec),
+        (EndpointType.Files, "Files", FileLoaderSpec),
+        (EndpointType.Static, "Static", StaticLoaderSpec),
+    ];
+
     /// <summary>
     /// Load errors for an endpoint file
     /// </summary>
@@ -90,9 +97,11 @@ public static partial class EndpointHandler
 
         try
         {
-            var (_, definition, errors, metadataErrors) = EndpointDirectoryLoader.Evaluate(
+            var (key, definition, errors, metadataErrors) = EndpointDirectoryLoader.Evaluate(
                 file is not null && endpointsDirectory is not null ? file : null, json, endpointsDirectory ?? "", spec);
             errors.AddRange(metadataErrors);
+            if (endpointsDirectory is not null && key is not null && NameOwner(key, type) is { } owner)
+                errors.Add($"This name is already used by the {owner} endpoint {key}. Pick another name so both stay reachable.");
             if (type == EndpointType.Webhook)
                 errors.AddRange((definition?.AllowedColumns ?? []).Where(UnroutableWebhookId).Select(id => $"AllowedColumns id '{id}' cannot be used in a URL; remove spaces, slashes, quotes, brackets, ? # and %"));
             var warnings = new List<string>();
@@ -124,44 +133,23 @@ public static partial class EndpointHandler
     /// </summary>
     private static string GetEndpointsBasePath() => EndpointsBasePath;
 
-    /// <summary>
-    /// Gets SQL endpoints from the /endpoints/SQL directory
-    /// </summary>
-    public static IReadOnlyDictionary<string, EndpointDefinition> GetSqlEndpoints()
-    {
-        string sqlEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "SQL");
-        return LoadSqlEndpointsIfNeeded(sqlEndpointsDirectory);
-    }
+    public static IReadOnlyDictionary<string, EndpointDefinition> GetSqlEndpoints() => EndpointsOf(EndpointType.SQL);
 
-    /// <summary>
-    /// Gets SQL webhook endpoints from the /endpoints/Webhooks directory
-    /// </summary>
-    public static IReadOnlyDictionary<string, EndpointDefinition> GetSqlWebhookEndpoints()
-    {
-        string sqlWebhookEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Webhooks");
-        return LoadSqlWebhookEndpointsIfNeeded(sqlWebhookEndpointsDirectory);
-    }
+    public static IReadOnlyDictionary<string, EndpointDefinition> GetSqlWebhookEndpoints() => EndpointsOf(EndpointType.Webhook);
 
-    /// <summary>
-    /// Gets Proxy endpoints from the /endpoints/Proxy directory
-    /// </summary>
-    public static IReadOnlyDictionary<string, EndpointDefinition> GetProxyEndpoints()
-    {
-        string proxyEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Proxy");
-        return LoadProxyEndpointsIfNeeded(proxyEndpointsDirectory);
-    }
+    public static IReadOnlyDictionary<string, EndpointDefinition> GetProxyEndpoints() => EndpointsOf(EndpointType.Proxy);
+
+    public static IReadOnlyDictionary<string, EndpointDefinition> GetFileEndpoints() => EndpointsOf(EndpointType.Files);
+
+    public static IReadOnlyDictionary<string, EndpointDefinition> GetStaticEndpoints() => EndpointsOf(EndpointType.Static);
 
     /// <summary>
     /// Gets all composite endpoint definitions from the endpoints directory
     /// </summary>
     public static Dictionary<string, CompositeDefinition> GetCompositeDefinitions(Dictionary<string, ProxyEndpointInfo> endpointMap)
     {
-        // We already have endpoints loaded, so just extract the composite configs
         var compositeDefinitions = new Dictionary<string, CompositeDefinition>(StringComparer.OrdinalIgnoreCase);
-
-        var proxyEndpoints = LoadProxyEndpointsIfNeeded(Path.Combine(GetEndpointsBasePath(), "Proxy"));
-
-        foreach (var kvp in proxyEndpoints)
+        foreach (var kvp in GetProxyEndpoints())
         {
             if (kvp.Value.IsComposite && kvp.Value.CompositeConfig != null)
             {
@@ -172,108 +160,104 @@ public static partial class EndpointHandler
         return compositeDefinitions;
     }
 
-    // Readers take the published dictionary without the lock; a reload swaps the field after its scan
-    /// <summary>
-    /// Loads file endpoints if they haven't been loaded yet
-    /// </summary>
-    private static FrozenDictionary<string, EndpointDefinition> LoadFileEndpointsIfNeeded(string endpointsDirectory)
-    {
-        if (_loadedFileEndpoints is { } loaded)
-            return loaded;
-        lock (_loadLock)
-            return _loadedFileEndpoints ??= LoadFileEndpoints(endpointsDirectory);
-    }
-
-    /// <summary>
-    /// Loads static endpoints if they haven't been loaded yet
-    /// </summary>
-    private static FrozenDictionary<string, EndpointDefinition> LoadStaticEndpointsIfNeeded(string endpointsDirectory)
-    {
-        if (_loadedStaticEndpoints is { } loaded)
-            return loaded;
-        lock (_loadLock)
-            return _loadedStaticEndpoints ??= LoadStaticEndpoints(endpointsDirectory);
-    }
-
     /// <summary>
     /// Scans a directory for endpoint definitions keyed by endpoint name
     /// </summary>
     public static Dictionary<string, ProxyEndpointInfo> GetEndpoints(string endpointsDirectory)
     {
-        // Check if the directory is for proxy or SQL endpoints
-        bool isProxyEndpoint = endpointsDirectory.Contains("Proxy", StringComparison.OrdinalIgnoreCase);
+        var endpointMap = new Dictionary<string, ProxyEndpointInfo>(StringComparer.OrdinalIgnoreCase);
+        if (!endpointsDirectory.Contains("Proxy", StringComparison.OrdinalIgnoreCase))
+            return endpointMap;
 
-        // Load endpoints if not already loaded
-        if (isProxyEndpoint)
+        // legacy format, includes AllowedEnvironments for composite step validation
+        foreach (var kvp in GetProxyEndpoints())
         {
-            var proxyEndpoints = LoadProxyEndpointsIfNeeded(endpointsDirectory);
+            endpointMap[kvp.Key] = kvp.Value.ToProxyEndpointInfo();
+        }
 
-            // Convert to the legacy format (includes AllowedEnvironments for composite step validation)
-            var endpointMap = new Dictionary<string, ProxyEndpointInfo>(StringComparer.OrdinalIgnoreCase);
-            foreach (var kvp in proxyEndpoints)
+        return endpointMap;
+    }
+
+    private static int RoutingIndex(EndpointType type) =>
+        Array.FindIndex(RoutingOrder, t => t.Type == (type is EndpointType.Composite or EndpointType.Standard ? EndpointType.Proxy : type));
+
+    /// <summary>
+    /// Endpoints of a type as routing serves them; a composite is a proxy endpoint
+    /// </summary>
+    internal static IReadOnlyDictionary<string, EndpointDefinition> EndpointsOf(EndpointType type) =>
+        RoutingIndex(type) is var i and >= 0 ? Snapshot.Routed[i] : FrozenDictionary<string, EndpointDefinition>.Empty;
+
+    /// <summary>
+    /// The type routing serves a name with, read from one snapshot
+    /// </summary>
+    internal static bool TryFindByName(string key, out EndpointType type)
+    {
+        var routed = Snapshot.Routed;
+        for (var i = 0; i < routed.Length; i++)
+        {
+            if (!routed[i].TryGetValue(key, out var found)) continue;
+            type = RoutingOrder[i].Type == EndpointType.Proxy && found.IsComposite ? EndpointType.Composite : RoutingOrder[i].Type;
+            return true;
+        }
+
+        type = EndpointType.Standard;
+        return false;
+    }
+
+    /// <summary>
+    /// The label of another endpoint type that uses a name, or null when none does
+    /// </summary>
+    internal static string? NameOwner(string key, EndpointType type)
+    {
+        var own = RoutingIndex(type);
+        var routed = Snapshot.Routed;
+        for (var i = 0; i < routed.Length; i++)
+        {
+            if (i != own && routed[i].ContainsKey(key))
+                return RoutingOrder[i].Spec.TypeLabel;
+        }
+        return null;
+    }
+
+    // readers take the published snapshot without the lock
+    private static EndpointSnapshot Snapshot
+    {
+        get
+        {
+            if (_snapshot is { } current)
+                return current;
+            lock (_loadLock)
+                return _snapshot ??= Route([.. RoutingOrder.Select(t => Scan(t, null))]);
+        }
+    }
+
+    private static FrozenDictionary<string, EndpointDefinition> Scan((EndpointType Type, string Folder, EndpointLoaderSpec Spec) type, IReadOnlyDictionary<string, EndpointDefinition>? previous) =>
+        EndpointDirectoryLoader.Load(Path.Combine(EndpointsBasePath, type.Folder), type.Spec, previous);
+
+    /// <summary>
+    /// Drops names an earlier type in the routing order already uses, since the resolver never reaches them
+    /// </summary>
+    private static EndpointSnapshot Route(FrozenDictionary<string, EndpointDefinition>[] scanned)
+    {
+        var routed = new FrozenDictionary<string, EndpointDefinition>[scanned.Length];
+        for (var i = 0; i < scanned.Length; i++)
+        {
+            List<string>? skipped = null;
+            foreach (var key in scanned[i].Keys)
             {
-                endpointMap[kvp.Key] = kvp.Value.ToProxyEndpointInfo();
+                var owner = Array.FindIndex(routed, 0, i, earlier => earlier.ContainsKey(key));
+                if (owner < 0) continue;
+                Log.Error("{Type} endpoint {Name} was skipped because the {Owner} endpoint already uses that name. Rename one to keep both reachable.",
+                    RoutingOrder[i].Spec.TypeLabel, key, RoutingOrder[owner].Spec.TypeLabel);
+                (skipped ??= []).Add(key);
             }
 
-            return endpointMap;
+            routed[i] = skipped is null
+                ? scanned[i]
+                : scanned[i].Where(kv => !skipped.Contains(kv.Key)).ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
         }
-        else
-        {
-            // Create an empty dictionary for now - SQL endpoints are handled differently
-            return new Dictionary<string, ProxyEndpointInfo>(StringComparer.OrdinalIgnoreCase);
-        }
+        return new EndpointSnapshot(scanned, routed);
     }
-
-    /// <summary>
-    /// Internal method to load proxy endpoints if they haven't been loaded yet
-    /// </summary>
-    private static FrozenDictionary<string, EndpointDefinition> LoadProxyEndpointsIfNeeded(string endpointsDirectory)
-    {
-        if (_loadedProxyEndpoints is { } loaded)
-            return loaded;
-        lock (_loadLock)
-            return _loadedProxyEndpoints ??= LoadProxyEndpoints(endpointsDirectory);
-    }
-
-    /// <summary>
-    /// Internal method to load SQL endpoints if they haven't been loaded yet
-    /// </summary>
-    private static FrozenDictionary<string, EndpointDefinition> LoadSqlEndpointsIfNeeded(string endpointsDirectory)
-    {
-        if (_loadedSqlEndpoints is { } loaded)
-            return loaded;
-        lock (_loadLock)
-            return _loadedSqlEndpoints ??= LoadSqlEndpoints(endpointsDirectory);
-    }
-
-    /// <summary>
-    /// Internal method to load SQL endpoints if they haven't been loaded yet
-    /// </summary>
-    private static FrozenDictionary<string, EndpointDefinition> LoadSqlWebhookEndpointsIfNeeded(string endpointsDirectory)
-    {
-        if (_loadedSqlWebhookEndpoints is { } loaded)
-            return loaded;
-        lock (_loadLock)
-            return _loadedSqlWebhookEndpoints ??= LoadSqlWebhookEndpoints(endpointsDirectory);
-    }
-
-    /// <summary>
-    /// Internal method to load all proxy endpoints from the endpoints directory
-    /// </summary>
-    private static FrozenDictionary<string, EndpointDefinition> LoadProxyEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
-        => EndpointDirectoryLoader.Load(endpointsDirectory, ProxyLoaderSpec, previous);
-
-    /// <summary>
-    /// Internal method to load all SQL endpoints from the endpoints directory
-    /// </summary>
-    private static FrozenDictionary<string, EndpointDefinition> LoadSqlEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
-        => EndpointDirectoryLoader.Load(endpointsDirectory, SqlLoaderSpec, previous);
-
-    /// <summary>
-    /// Internal method to load all webhook endpoints from the endpoints directory (namespace-aware)
-    /// </summary>
-    private static FrozenDictionary<string, EndpointDefinition> LoadSqlWebhookEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
-        => EndpointDirectoryLoader.Load(endpointsDirectory, WebhookLoaderSpec, previous);
 
     /// <summary>
     /// Reloads all endpoint definitions from disk
@@ -282,98 +266,37 @@ public static partial class EndpointHandler
     {
         lock (_loadLock)
         {
-            _loadedProxyEndpoints = null;
-            _loadedSqlEndpoints = null;
-            _loadedSqlWebhookEndpoints = null;
-            _loadedFileEndpoints = null;
-            _loadedStaticEndpoints = null;
-
+            _snapshot = null;
             Log.Information("All endpoint caches cleared, will reload on next access");
         }
     }
 
     /// <summary>
-    /// Reloads a specific endpoint type
+    /// Rescans one endpoint type and publishes every type again in one write
     /// </summary>
     public static void ReloadEndpointType(EndpointType type)
     {
         lock (_loadLock)
         {
-            switch (type)
+            var i = RoutingIndex(type);
+            if (i < 0 || type == EndpointType.Standard)
             {
-                case EndpointType.SQL:
-                    // Reload immediately so singletons get updated data
-                    _loadedSqlEndpoints = ReloadSqlEndpoints();
-                    _loadedSqlWebhookEndpoints = ReloadWebhookEndpoints();
-                    Log.Information("SQL endpoints reloaded from disk");
-                    break;
-                case EndpointType.Webhook:
-                    _loadedSqlWebhookEndpoints = ReloadWebhookEndpoints();
-                    Log.Information("Webhook endpoints reloaded from disk");
-                    break;
-                case EndpointType.Proxy:
-                case EndpointType.Composite:
-                    _loadedProxyEndpoints = ReloadProxyEndpoints();
-                    Log.Information("Proxy endpoints reloaded from disk");
-                    break;
-                case EndpointType.Files:
-                    _loadedFileEndpoints = ReloadFileEndpoints();
-                    Log.Information("File endpoints reloaded from disk");
-                    break;
-                case EndpointType.Static:
-                    _loadedStaticEndpoints = ReloadStaticEndpoints();
-                    Log.Information("Static endpoints reloaded from disk");
-                    break;
-                default:
-                    Log.Warning("Unknown endpoint type for reload: {Type}", type);
-                    break;
+                Log.Warning("Unknown endpoint type for reload: {Type}", type);
+                return;
             }
+
+            var current = Snapshot;
+            var scanned = (FrozenDictionary<string, EndpointDefinition>[])current.Scanned.Clone();
+            scanned[i] = Scan(RoutingOrder[i], current.Scanned[i]);
+            if (type == EndpointType.SQL)
+            {
+                var webhooks = RoutingIndex(EndpointType.Webhook);
+                scanned[webhooks] = Scan(RoutingOrder[webhooks], current.Scanned[webhooks]);
+            }
+
+            _snapshot = Route(scanned);
+            Log.Information("{Type} endpoints reloaded from disk", RoutingOrder[i].Spec.TypeLabel);
         }
-    }
-
-    /// <summary>
-    /// Forces immediate reload of SQL endpoints
-    /// </summary>
-    private static FrozenDictionary<string, EndpointDefinition> ReloadSqlEndpoints()
-    {
-        var sqlEndpointsDirectory = Path.Combine(EndpointsBasePath, "SQL");
-        return LoadSqlEndpoints(sqlEndpointsDirectory, _loadedSqlEndpoints);
-    }
-
-    /// <summary>
-    /// Forces immediate reload of proxy endpoints
-    /// </summary>
-    private static FrozenDictionary<string, EndpointDefinition> ReloadProxyEndpoints()
-    {
-        var proxyEndpointsDirectory = Path.Combine(EndpointsBasePath, "Proxy");
-        return LoadProxyEndpoints(proxyEndpointsDirectory, _loadedProxyEndpoints);
-    }
-
-    /// <summary>
-    /// Forces immediate reload of file endpoints
-    /// </summary>
-    private static FrozenDictionary<string, EndpointDefinition> ReloadFileEndpoints()
-    {
-        var fileEndpointsDirectory = Path.Combine(EndpointsBasePath, "Files");
-        return LoadFileEndpoints(fileEndpointsDirectory, _loadedFileEndpoints);
-    }
-
-    /// <summary>
-    /// Forces immediate reload of webhook endpoints
-    /// </summary>
-    private static FrozenDictionary<string, EndpointDefinition> ReloadWebhookEndpoints()
-    {
-        var webhookEndpointsDirectory = Path.Combine(EndpointsBasePath, "Webhooks");
-        return LoadSqlWebhookEndpoints(webhookEndpointsDirectory, _loadedSqlWebhookEndpoints);
-    }
-
-    /// <summary>
-    /// Forces immediate reload of static endpoints
-    /// </summary>
-    private static FrozenDictionary<string, EndpointDefinition> ReloadStaticEndpoints()
-    {
-        var staticEndpointsDirectory = Path.Combine(EndpointsBasePath, "Static");
-        return LoadStaticEndpoints(staticEndpointsDirectory, _loadedStaticEndpoints);
     }
 
     /// <summary>

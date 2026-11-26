@@ -229,41 +229,8 @@ public sealed partial class EndpointController
     /// <summary>
     /// Resolves existence and endpoint type in one pass; probe order decides ties, so this method is the sole owner of that order
     /// </summary>
-    private static bool TryDetermineEndpointType(string key, out EndpointType type)
-    {
-        if (EndpointHandler.GetSqlEndpoints().ContainsKey(key))
-        {
-            type = EndpointType.SQL;
-            return true;
-        }
-
-        if (EndpointHandler.GetSqlWebhookEndpoints().ContainsKey(key))
-        {
-            type = EndpointType.Webhook;
-            return true;
-        }
-
-        if (EndpointHandler.GetProxyEndpoints().TryGetValue(key, out var proxy))
-        {
-            type = proxy.IsComposite ? EndpointType.Composite : EndpointType.Proxy;
-            return true;
-        }
-
-        if (EndpointHandler.GetFileEndpoints().ContainsKey(key))
-        {
-            type = EndpointType.Files;
-            return true;
-        }
-
-        if (EndpointHandler.GetStaticEndpoints().ContainsKey(key))
-        {
-            type = EndpointType.Static;
-            return true;
-        }
-
-        type = EndpointType.Standard;
-        return false;
-    }
+    private static bool TryDetermineEndpointType(string key, out EndpointType type) =>
+        EndpointHandler.TryFindByName(key, out type);
 
     /// <summary>
     /// Determines endpoint type for a given key (supports both namespaced and non-namespaced)

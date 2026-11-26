@@ -29,18 +29,6 @@ public static partial class EndpointHandler
     }
 
     /// <summary>
-    /// Internal method to load all file endpoints from the endpoints directory
-    /// </summary>
-    private static FrozenDictionary<string, EndpointDefinition> LoadFileEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
-        => EndpointDirectoryLoader.Load(endpointsDirectory, FileLoaderSpec, previous);
-
-    /// <summary>
-    /// Internal method to load all static endpoints from the endpoints directory
-    /// </summary>
-    private static FrozenDictionary<string, EndpointDefinition> LoadStaticEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
-        => EndpointDirectoryLoader.Load(endpointsDirectory, StaticLoaderSpec, previous);
-
-    /// <summary>
     /// Parses a file endpoint definition from JSON
     /// </summary>
     private static EndpointDefinition? ParseFileEndpointDefinition(string json)
@@ -98,21 +86,6 @@ public static partial class EndpointHandler
 
         entity.ApplyTo(definition);
         return definition;
-    }
-
-    public static IReadOnlyDictionary<string, EndpointDefinition> GetFileEndpoints()
-    {
-        string fileEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Files");
-        return LoadFileEndpointsIfNeeded(fileEndpointsDirectory);
-    }
-
-    /// <summary>
-    /// Gets Static endpoints from the /endpoints/Static directory
-    /// </summary>
-    public static IReadOnlyDictionary<string, EndpointDefinition> GetStaticEndpoints()
-    {
-        string staticEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Static");
-        return LoadStaticEndpointsIfNeeded(staticEndpointsDirectory);
     }
 
     /// <summary>

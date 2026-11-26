@@ -55,12 +55,8 @@ public static partial class EndpointHandler
             // Create Files sample endpoint
             CreateSampleFileEndpoint(filesEndpointsDir);
 
-            // Clear the cached endpoints to force a reload
             lock (_loadLock)
-            {
-                _loadedProxyEndpoints = null;
-                _loadedSqlEndpoints = null;
-            }
+                _snapshot = null;
 
             Log.Information("Created sample endpoints in each endpoint directory");
         }
