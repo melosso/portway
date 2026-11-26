@@ -67,8 +67,8 @@ public sealed class TokenCreateRequest : IAsyncValidatableObject
         if (validationContext.GetService(typeof(TokenService)) is not TokenService tokenService)
             yield break;
 
-        var active = await tokenService.GetActiveTokensAsync();
-        if (active.Any(t => string.Equals(t.Username.Trim(), username, StringComparison.OrdinalIgnoreCase)))
+        var all = await tokenService.GetAllTokensAsync();
+        if (all.Any(t => string.Equals(t.Username.Trim(), username, StringComparison.OrdinalIgnoreCase)))
             yield return new ValidationResult($"A token named '{username}' already exists", [nameof(Username)]);
     }
 }

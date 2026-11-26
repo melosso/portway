@@ -307,7 +307,7 @@ public class TokenService
     /// <summary>
     /// Get all tokens (including expired and revoked)
     /// </summary>
-    public async Task<IEnumerable<AuthToken>> GetAllTokensAsync()
+    public virtual async Task<IEnumerable<AuthToken>> GetAllTokensAsync()
     {
         return await _dbContext.Tokens
             .AsNoTracking()

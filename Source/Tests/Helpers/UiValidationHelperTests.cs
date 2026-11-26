@@ -10,16 +10,13 @@ namespace PortwayApi.Tests.Helpers;
 
 public class UiValidationHelperTests
 {
-    private static IServiceProvider BuildServices(params string[] existingUsernames)
+    private static IServiceProvider BuildServices(params string[] existingUsernames) =>
+        BuildServicesWith(existingUsernames.Select(u => new AuthToken { Username = u, TokenHash = "hash", TokenSalt = "salt" }).ToArray());
+
+    private static IServiceProvider BuildServicesWith(params AuthToken[] tokens)
     {
         var tokenService = new Mock<TokenService>((AuthDbContext)null!, (ITokenVerificationCache)null!);
-        tokenService.Setup(s => s.GetActiveTokensAsync())
-            .ReturnsAsync(existingUsernames.Select(u => new AuthToken
-            {
-                Username = u,
-                TokenHash = "hash",
-                TokenSalt = "salt"
-            }).ToList());
+        tokenService.Setup(s => s.GetAllTokensAsync()).ReturnsAsync(tokens.ToList());
 
         return new ServiceCollection()
             .AddSingleton(tokenService.Object)
@@ -64,5 +61,16 @@ public class UiValidationHelperTests
         var error = await UiValidationHelper.FirstErrorAsync(request, BuildServices("Existing"), CancellationToken.None);
 
         Assert.EndsWith("already exists", error);
+    }
+
+    [Fact]
+    public async Task DuplicateCheck_IncludesArchivedTokens()
+    {
+        var archived = new AuthToken { Username = "old", TokenHash = "hash", TokenSalt = "salt", RevokedAt = DateTime.UtcNow };
+        var request = new TokenCreateRequest { Username = "Old" };
+
+        var error = await UiValidationHelper.FirstErrorAsync(request, BuildServicesWith(archived), CancellationToken.None);
+
+        Assert.Equal("A token named 'Old' already exists", error);
     }
 }
