@@ -23,33 +23,15 @@ Built for databases, internal services and webhooks. Configuration is easy and f
 * [Linux](https://melosso.github.io/portway/guide/deployment-linux/)
 * [Windows Server](https://melosso.github.io/portway/guide/deployment-windows/)
 
+The [install guide](https://melosso.github.io/portway/guide/install) describes application pool identity for proxies, security settings and production hardening.
+
 ### Define Your Environments
 
-Environments isolate server and connection settings for all endpoints. Follow the native web-console or instead configure your API manually. The `environments/settings.json` configures the allowed environments; each has its own `settings.json`:
-
-**`environments/settings.json`**
-
-```json
-{
-  "Environment": {
-    "ServerName": "localhost",
-    "AllowedEnvironments": ["prod", "dev"]
-  }
-}
-```
-
-**`environments/prod/settings.json`**
-
-```json
-{
-  "ServerName": "localhost",
-  "ConnectionString": "Server=localhost;Database=prod;Trusted_Connection=True;Connection Timeout=5;TrustServerCertificate=true;"
-}
-```
+An environment, such as `prod` or `dev`, is the first part of every request URL: `/api/{env}/{endpoint}`. Each environment has its own connection string, headers and secrets, stored in `environments/{env}/settings.json`. The [Environments](https://melosso.github.io/portway/guide/environments/) guide contains the file format.
 
 ### Define Your Endpoints
 
-Each endpoint is an `entity.json` file in a directory per type. Advanced configuration is in the [documentation](https://melosso.github.io/portway/). Endpoint types:
+An endpoint is one route of the API, such as `/api/prod/Products`. The endpoint defines its type, the allowed methods, columns and environments. The console creates and edits endpoints. On disk, each endpoint is an `entity.json` file in `endpoints/{type}/{name}/`. Endpoint types:
 
 * **SQL** (SQL Server, PostgreSQL, MySQL, SQLite): Direct CRUD access with schema-level control and documentation
 * **Proxy**: Forward to internal services; supports complex orchestration
@@ -58,11 +40,7 @@ Each endpoint is an `entity.json` file in a directory per type. Advanced configu
 * **Webhook**: Receive external calls and persist data to SQL
 * **Static**: read static files or set up a mock endpoint
 
-Configuration and usage examples for each type are shown in the [Endpoints](https://melosso.github.io/portway/guide/endpoints/).
-
-### Deploy
-
-The [install guide](https://melosso.github.io/portway/guide/install) describes Docker, Linux and Windows Server installs, application pool identity for proxies, security settings and production hardening.
+The [Endpoints](https://melosso.github.io/portway/guide/endpoints/) guide contains configuration and usage examples for each type.
 
 ### Connect
 
