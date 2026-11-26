@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using PortwayApi.Helpers;
 
 /// <summary>
 /// Per-request nonce for the inline scripts the server emits; the Content-Security-Policy runs no other inline script
@@ -70,6 +71,8 @@ public sealed class SecurityHeadersMiddleware
         if (!ValidateInboundRequest(context.Request))
         {
             context.Response.StatusCode = 400;
+            context.Response.Headers.Connection = "close";
+            await context.Response.WriteAsJsonAsync(ErrorResponse.Of("Invalid request framing"));
             return;
         }
 
