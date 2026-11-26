@@ -60,6 +60,9 @@ public static class PortwayResults
         => Results.Json(ErrorResponse.Traced(detail, TraceIdOf(context)),
                         statusCode: StatusCodes.Status500InternalServerError);
 
+    public static IResult MinimalError(string error, int statusCode, string? field = null)
+        => Results.Json(ErrorResponse.Of(error, field), statusCode: statusCode);
+
     /// <summary>
     /// Trace id a caller can quote when reporting a masked error
     /// </summary>

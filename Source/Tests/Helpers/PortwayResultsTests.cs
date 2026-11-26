@@ -49,6 +49,32 @@ public class PortwayResultsTests
         Assert.Equal("Error processing endpoint Orders", body.RootElement.GetProperty("error").GetString());
     }
 
+    [Fact]
+    public async Task MinimalError_UsesSharedEnvelope_AndOmitsFieldWhenNull()
+    {
+        var context = BuildContext();
+
+        await PortwayResults.MinimalError("Token not found", StatusCodes.Status404NotFound).ExecuteAsync(context);
+
+        Assert.Equal(StatusCodes.Status404NotFound, context.Response.StatusCode);
+        using var body = ReadBody(context);
+        var keys = body.RootElement.EnumerateObject().Select(p => p.Name).ToArray();
+        Assert.Equal(["success", "error"], keys);
+        Assert.Equal("Token not found", body.RootElement.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task MinimalError_IncludesFieldWhenSet()
+    {
+        var context = BuildContext();
+
+        await PortwayResults.MinimalError("That username is already taken", StatusCodes.Status409Conflict, "username").ExecuteAsync(context);
+
+        using var body = ReadBody(context);
+        Assert.Equal(JsonValueKind.False, body.RootElement.GetProperty("success").ValueKind);
+        Assert.Equal("username", body.RootElement.GetProperty("field").GetString());
+    }
+
     private static DefaultHttpContext BuildContext()
     {
         var services = new ServiceCollection();

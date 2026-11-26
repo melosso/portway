@@ -11,9 +11,14 @@ public sealed record ErrorResponse(
     // Correlates a masked 500 with the server log; omitted from every other status
     [property: JsonPropertyName("traceId")]
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    string? TraceId = null)
+    string? TraceId = null,
+    [property: JsonPropertyName("field")]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? Field = null)
 {
     public static ErrorResponse Of(string error) => new(false, error);
+
+    public static ErrorResponse Of(string error, string? field) => new(false, error, Field: field);
 
     public static ErrorResponse Traced(string error, string? traceId) => new(false, error, traceId);
 }
