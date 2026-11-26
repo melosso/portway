@@ -423,6 +423,7 @@ function renderGlobalDetail() {
         <div class="pill-list">
           ${(d?.allowed_environments ?? []).map(e => `<span class="pill">${esc(e)}</span>`).join('')}
         </div>
+        <div class="field-help">Adding, renaming or removing an environment updates this list.</div>
       </div>
     </div>
     <div style="padding:0.75rem 1rem;display:flex;gap:0.5rem;justify-content:flex-end;flex-shrink:0">
