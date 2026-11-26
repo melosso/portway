@@ -55,7 +55,7 @@ public sealed class HealthCheckService
         // Return the stale cache while another refresh has acquired the lock
         if (!await _lock.WaitAsync(0, cancellationToken))
         {
-            return _cachedReport ?? CreateCheckingReport();
+            return _cachedReport ?? Checking;
         }
 
         try
@@ -94,6 +94,21 @@ public sealed class HealthCheckService
             _lock.Release();
         }
     }
+
+    /// <summary>
+    /// Runs the checks again unless the last run is younger than minInterval
+    /// </summary>
+    public Task<HealthReport> RefreshAsync(TimeSpan minInterval, CancellationToken cancellationToken = default)
+    {
+        if (DateTime.UtcNow - _lastCheckTime >= minInterval)
+            _lastCheckTime = DateTime.MinValue;
+        return CheckHealthAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Placeholder served while the first run is in progress
+    /// </summary>
+    public static readonly HealthReport Checking = CreateCheckingReport();
 
     private static HealthReport CreateCheckingReport() => new(
         new Dictionary<string, HealthReportEntry>

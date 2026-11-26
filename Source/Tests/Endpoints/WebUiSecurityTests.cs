@@ -2105,6 +2105,34 @@ public class WebUiSecurityTests : IDisposable
         });
     }
 
+    // the console's own api calls are background polls, not visits
+    [Fact]
+    public async Task ConsolePageLoads_AreCountedAndConsoleApiCallsAreNot()
+    {
+        var client = CreateClient();
+        var metrics = _factory.Services.GetRequiredService<PortwayApi.Services.MetricsService>();
+        metrics.Clear();
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/_/login", TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/_/api/auth/csrf", TestContext.Current.CancellationToken)).StatusCode);
+
+        Assert.Equal(1, metrics.GetSnapshot("24h").UiRequests);
+    }
+
+    [Fact]
+    public async Task HealthRefresh_ReturnsTheChecksWithItems()
+    {
+        var client = CreateClient();
+        var (authCookie, csrf) = await LoginAsync(client);
+
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Post, "/_/api/health/checks/refresh", authCookie, csrf), TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var checks = (await resp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken)).GetProperty("checks").EnumerateArray().ToList();
+        Assert.NotEmpty(checks);
+        Assert.All(checks, c => Assert.Equal(JsonValueKind.Array, c.GetProperty("items").ValueKind));
+    }
+
     [Fact]
     public async Task CreateUser_AssignsARandomAvatarAndStoresTheDisplayName()
     {

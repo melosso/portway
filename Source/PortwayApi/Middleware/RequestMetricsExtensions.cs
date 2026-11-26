@@ -38,8 +38,10 @@ public static class RequestMetricsExtensions
             finally
             {
                 var path = context.Request.Path;
+                // the console's own api calls are background polls, its page loads count as visits
                 if (statusCode != 0 &&
                     !path.StartsWithSegments("/health") && !path.StartsWithSegments("/scalar") &&
+                    !path.StartsWithSegments("/_/api") &&
                     (scrapePath is null || !path.StartsWithSegments(scrapePath)))
                 {
                     var duration = System.Diagnostics.Stopwatch.GetElapsedTime(startTimestamp);

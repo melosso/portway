@@ -62,24 +62,31 @@ public static partial class WebUiEndpointExtensions
             });
         }).ExcludeFromDescription();
 
-        app.MapGet("/_/api/health/checks", async (PortwayApi.Services.HealthCheckService healthService, CancellationToken ct) =>
+        object HealthPayload(Microsoft.Extensions.Diagnostics.HealthChecks.HealthReport report) => new
         {
-            var report = await healthService.CheckHealthAsync(ct);
-            return Results.Json(new
+            status = report.Status.ToString(),
+            checking = ReferenceEquals(report, PortwayApi.Services.HealthCheckService.Checking),
+            checked_at = DateTime.UtcNow,
+            uptime_seconds = (long)(DateTime.UtcNow - ProcessStartTime).TotalSeconds,
+            version = appVersion,
+            checks = report.Entries.Select(e => new
             {
-                status = report.Status.ToString(),
-                checked_at = DateTime.UtcNow,
-                uptime_seconds = (long)(DateTime.UtcNow - ProcessStartTime).TotalSeconds,
-                version = appVersion,
-                checks = report.Entries.Select(e => new
-                {
-                    name = e.Key,
-                    status = e.Value.Status.ToString(),
-                    description = e.Value.Description,
-                    duration_ms = Math.Round(e.Value.Duration.TotalMilliseconds, 1)
-                })
-            });
-        }).ExcludeFromDescription();
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description,
+                duration_ms = Math.Round(e.Value.Duration.TotalMilliseconds, 1),
+                items = HealthItems(e.Key, e.Value).Select(i => new { name = i.Name, status = i.Status, problem = i.Problem, href = i.Href })
+            })
+        };
+
+        app.MapGet("/_/api/health/checks", async (PortwayApi.Services.HealthCheckService healthService, CancellationToken ct) =>
+            Results.Json(HealthPayload(await healthService.CheckHealthAsync(ct))))
+            .ExcludeFromDescription();
+
+        // outbound probes run at most once per interval however often the button is pressed
+        app.MapPost("/_/api/health/checks/refresh", async (PortwayApi.Services.HealthCheckService healthService, CancellationToken ct) =>
+            Results.Json(HealthPayload(await healthService.RefreshAsync(TimeSpan.FromSeconds(10), ct))))
+            .ExcludeFromDescription();
 
         app.MapGet("/_/api/endpoints", () =>
         {
@@ -182,6 +189,35 @@ public static partial class WebUiEndpointExtensions
 
     }
 
+    // one entry per environment or endpoint a check probed, with a short problem in place of the raw error
+    internal static IEnumerable<ConsoleHealthItem> HealthItems(string check, Microsoft.Extensions.Diagnostics.HealthChecks.HealthReportEntry entry) =>
+        check is "SqlConnectivity" or "ProxyEndpoints"
+            ? entry.Data.Select(d => HealthItem(check, d.Key, System.Text.Json.JsonSerializer.SerializeToElement(d.Value)))
+            : [];
+
+    private static ConsoleHealthItem HealthItem(string check, string name, System.Text.Json.JsonElement data)
+    {
+        var status = data.TryGetProperty("Status", out var s) ? s.GetString() ?? "Unknown" : "Unknown";
+        var error = data.TryGetProperty("Error", out var e) ? e.GetString() ?? "" : "";
+        var problem = status switch
+        {
+            "Healthy" => null,
+            "NotConfigured" => "Not configured",
+            _ when data.TryGetProperty("StatusCode", out var code) => $"HTTP {code.GetInt32()}",
+            _ when error.Contains("timed out", StringComparison.OrdinalIgnoreCase) => "Timed out",
+            _ when check == "SqlConnectivity" => "Connection failed",
+            _ => "Unreachable"
+        };
+        var href = check switch
+        {
+            "SqlConnectivity" => $"environments#{name}",
+            "ProxyEndpoints" when EndpointHandler.GetProxyEndpoints().TryGetValue(name, out var definition) =>
+                $"endpoints#{(definition.Type.ToString() == "Composite" ? "composite" : "proxy")}/{ConsoleName(name, definition)}",
+            _ => null
+        };
+        return new ConsoleHealthItem(name, status, problem, href);
+    }
+
     // path of the folder the endpoint loaded from, below its endpoint type folder
     private static string ConsoleName(string key, EndpointDefinition definition)
     {
@@ -192,3 +228,5 @@ public static partial class WebUiEndpointExtensions
         return relative[(relative.IndexOf('/') + 1)..];
     }
 }
+
+internal sealed record ConsoleHealthItem(string Name, string Status, string? Problem, string? Href);

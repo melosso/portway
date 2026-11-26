@@ -1,4 +1,4 @@
-// First-run checklist from /_/api/overview, shown until dismissed
+// First-run checklist from /_/api/overview, shown until dismissed or complete
 (function () {
     'use strict';
 
@@ -34,7 +34,7 @@
         root.innerHTML =
             '<div class="card">' +
             '<div class="card-header">' +
-            '<span class="card-title" style="font-size:0.82rem">Getting started</span>' +
+            '<h2 class="card-title">Getting started</h2>' +
             '<button data-on="click:SetupGuide.dismiss" style="background:none;border:none;cursor:pointer;' +
             'font-size:0.75rem;color:hsl(var(--muted-foreground));padding:0;line-height:1;' +
             'text-decoration:underline;text-underline-offset:2px">Dismiss</button>' +
@@ -97,21 +97,13 @@
             }
         ];
 
-        const allDone = steps.every(function (s) {
-            return s.done === true;
-        });
+        // a finished checklist has nothing left to guide
+        if (steps.every((s) => s.done === true)) {
+            document.getElementById('_sgRoot')?.remove();
+            return;
+        }
 
-        el.innerHTML =
-            steps.map(_stepHtml).join('') +
-            (allDone
-                ? '<div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid hsl(var(--border));' +
-                  'font-size:0.75rem;color:hsl(var(--muted-foreground))">' +
-                  'The dashboard displays live Portway traffic data. ' +
-                  '<button data-on="click:SetupGuide.dismiss" style="background:none;border:none;cursor:pointer;' +
-                  'font-size:0.75rem;color:hsl(var(--foreground));text-decoration:underline;' +
-                  'text-underline-offset:2px;padding:0">Dismiss this guide</button>' +
-                  '</div>'
-                : '');
+        el.innerHTML = steps.map(_stepHtml).join('');
     }
 
     function _stepHtml(s) {

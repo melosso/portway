@@ -137,7 +137,8 @@ class AreaChart {
         const lblEvery = Math.max(1, Math.ceil(n / maxLbls));
         const xG = this._el('g');
         for (let i = 0; i < n; i++) {
-            if (i % lblEvery !== 0 && i !== n - 1) continue;
+            // spaced back from the newest point, so the last label never collides with its neighbour
+            if ((n - 1 - i) % lblEvery !== 0) continue;
             const lbl = this._el('text', {
                 x: PAD.left + i * step,
                 y: H - 6,
@@ -146,7 +147,7 @@ class AreaChart {
                 'font-size': '10',
                 'font-family': 'var(--app-font)'
             });
-            lbl.textContent = this._s1[i].label;
+            lbl.textContent = this._axisLabel(this._s1[i]);
             xG.appendChild(lbl);
         }
         svg.appendChild(xG);
@@ -347,14 +348,28 @@ class AreaChart {
         return d;
     }
 
+    // local time from the timestamp; the server label is utc, hourly buckets read as their end so the axis ends at now
+    _axisLabel(pt) {
+        if (!pt.timestamp) return pt.label;
+        if (!this._isHourly())
+            return new Date(pt.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        const step = new Date(this._s1[1].timestamp) - new Date(this._s1[0].timestamp);
+        return new Date(new Date(pt.timestamp).getTime() + step).toLocaleTimeString(undefined, {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    _isHourly() {
+        return this._s1.length > 1 && this._s1[1]?.timestamp
+            ? new Date(this._s1[1].timestamp) - new Date(this._s1[0].timestamp) < 86_400_000
+            : false;
+    }
+
     _fmtLabel(pt) {
         if (!pt.timestamp) return pt.label;
         const d = new Date(pt.timestamp);
-        const isHourly =
-            this._s1.length > 1 && this._s1[1]?.timestamp
-                ? new Date(this._s1[1].timestamp) - new Date(this._s1[0].timestamp) < 86_400_000
-                : false;
-        return isHourly
+        return this._isHourly()
             ? d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
             : d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
     }
