@@ -2221,7 +2221,6 @@ input[type='radio'] {
 
 .signin-remember {
     margin-top: 1rem;
-    font-size: 0.8125rem;
 }
 
 .field-label {
@@ -4196,17 +4195,12 @@ th.sortable.sort-desc .sort-icon {
 }
 
 .dialog-checkbox {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    min-height: 2rem;
     cursor: pointer;
     font-size: 0.875rem;
-}
-
-.dialog-checkbox input {
-    width: 16px;
-    height: 16px;
-    accent-color: hsl(var(--primary));
 }
 
 /* Accordion */
