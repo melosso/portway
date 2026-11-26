@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using PortwayApi.Helpers;
@@ -28,7 +29,7 @@ public static partial class TenantGrants
     public static bool IsValidHeader(string? name) =>
         HeaderPolicy.IsValidName(name) && name!.Length <= MaxHeaderLength && !HeaderPolicy.IsReserved(name);
 
-    public static bool TryParse(string? json, out FrozenDictionary<string, FrozenSet<string>> grants, out string? error)
+    public static bool TryParse(string? json, out FrozenDictionary<string, FrozenSet<string>> grants, [NotNullWhen(false)] out string? error)
     {
         grants = None;
         error = null;
@@ -49,7 +50,7 @@ public static partial class TenantGrants
         return TryCreate(raw, out grants, out error);
     }
 
-    public static bool TryCreate(IReadOnlyDictionary<string, List<string>>? raw, out FrozenDictionary<string, FrozenSet<string>> grants, out string? error)
+    public static bool TryCreate(IReadOnlyDictionary<string, List<string>>? raw, out FrozenDictionary<string, FrozenSet<string>> grants, [NotNullWhen(false)] out string? error)
     {
         grants = None;
         error = null;

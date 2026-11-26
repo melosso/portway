@@ -1,5 +1,6 @@
 namespace PortwayApi.Services.Configuration;
 
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -30,7 +31,11 @@ public enum SettingKind
 /// <summary>
 /// Outcome of a write attempt; Field names the setting that failed so a caller can mark it
 /// </summary>
-public sealed record SettingsWriteResult(bool Ok, string? Error = null, string? Field = null, bool RestartRequired = false);
+public sealed record SettingsWriteResult(string? Error, string? Field = null, bool RestartRequired = false)
+{
+    [MemberNotNullWhen(false, nameof(Error))]
+    public bool Ok => Error is null;
+}
 
 /// <summary>
 /// Writes allowlisted settings to appsettings.overrides.json, never appsettings.json
@@ -274,7 +279,7 @@ public sealed partial class SettingsWriteService
     public async Task<SettingsWriteResult> ApplyAsync(IDictionary<string, JsonElement> changes, CancellationToken cancellationToken = default)
     {
         if (changes.Count == 0)
-            return new SettingsWriteResult(false, "No settings supplied");
+            return new SettingsWriteResult("No settings supplied");
 
         var parsed = new Dictionary<string, JsonNode?>(StringComparer.OrdinalIgnoreCase);
         var restart = false;
@@ -282,17 +287,17 @@ public sealed partial class SettingsWriteService
         foreach (var (key, raw) in changes)
         {
             if (!Allowed.TryGetValue(key, out var spec))
-                return new SettingsWriteResult(false, $"'{key}' is not a writable setting", key);
+                return new SettingsWriteResult($"'{key}' is not a writable setting", key);
 
             if (LockedBy(spec.Key) is { } envName)
-                return new SettingsWriteResult(false, $"'{spec.Key}' is set by {envName}", spec.Key);
+                return new SettingsWriteResult($"'{spec.Key}' is set by {envName}", spec.Key);
 
             if (spec.Kind == SettingKind.Secret && raw.ValueKind == JsonValueKind.String && raw.GetString() is { Length: > 0 } && !SettingsEncryptionHelper.HasKeyPair)
-                return new SettingsWriteResult(false, "Encryption keys are not initialised; restart Portway and retry", spec.Key);
+                return new SettingsWriteResult("Encryption keys are not initialised; restart Portway and retry", spec.Key);
 
             var (node, error) = Coerce(spec, raw);
             if (error is not null)
-                return new SettingsWriteResult(false, error, key);
+                return new SettingsWriteResult(error, key);
 
             parsed[spec.Key] = node;
             restart |= spec.RequiresRestart;
@@ -302,12 +307,12 @@ public sealed partial class SettingsWriteService
         if (parsed.ContainsKey("Telemetry:Provider"))
         {
             if (LockedBy("Telemetry:Enabled") is { } legacyEnv)
-                return new SettingsWriteResult(false, $"'Telemetry:Provider' is set by {legacyEnv}", "Telemetry:Provider");
+                return new SettingsWriteResult($"'Telemetry:Provider' is set by {legacyEnv}", "Telemetry:Provider");
             parsed["Telemetry:Enabled"] = JsonValue.Create(false);
         }
 
         if (CrossCheck(parsed, _root) is { } crossError)
-            return new SettingsWriteResult(false, crossError.Message, crossError.Field);
+            return new SettingsWriteResult(crossError.Message, crossError.Field);
 
         await WriteLock.WaitAsync(cancellationToken);
         try
@@ -321,14 +326,14 @@ public sealed partial class SettingsWriteService
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Log.Error(ex, "Failed to write {File}", OverridesFileName);
-            return new SettingsWriteResult(false, "Could not write the settings file");
+            return new SettingsWriteResult("Could not write the settings file");
         }
         finally
         {
             WriteLock.Release();
         }
 
-        return new SettingsWriteResult(true, RestartRequired: restart);
+        return new SettingsWriteResult(null, RestartRequired: restart);
     }
 
     /// <summary>
