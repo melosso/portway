@@ -1,3 +1,6 @@
+using Microsoft.Extensions.Configuration.Memory;
+using PortwayApi.Services.Configuration;
+
 namespace PortwayApi.Helpers;
 
 /// <summary>
@@ -58,11 +61,41 @@ public static class EnvAliases
         readEnv(newName) ?? (FormerNameOf(newName) is { } former ? readEnv(former) : null);
 
     /// Injects PORTWAY_-prefixed values under their canonical config key. Call before builder.Build().
-    public static void ApplyConfigAliases(IConfigurationBuilder config)
+    public static void ApplyConfigAliases(IConfigurationBuilder config) =>
+        ApplyConfigAliases(config, Environment.GetEnvironmentVariables().Cast<System.Collections.DictionaryEntry>()
+            .ToDictionary(e => (string)e.Key, e => e.Value as string ?? ""));
+
+    // an environment list replaces lower lists, which merge by index otherwise
+    internal static void ApplyConfigAliases(IConfigurationBuilder config, IReadOnlyDictionary<string, string> env)
     {
-        var overrides = Resolve(Environment.GetEnvironmentVariable);
-        if (overrides.Count > 0)
-            config.AddInMemoryCollection(overrides);
+        var values = new Dictionary<string, string?>(Resolve(env.GetValueOrDefault), StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, value) in env)
+        {
+            var key = name.Replace("__", ConfigurationPath.KeyDelimiter);
+            if (ListKeys.Any(l => key.StartsWith(l + ConfigurationPath.KeyDelimiter, StringComparison.OrdinalIgnoreCase)))
+                values.TryAdd(key, value);
+        }
+
+        if (values.Count > 0)
+            config.Add(new EnvironmentAliasSource(values));
+    }
+
+    private static readonly HashSet<string> ListKeys =
+        new(SettingsWriteService.Schema.Where(s => SettingsWriteService.IsList(s.Kind)).Select(s => s.Key), StringComparer.OrdinalIgnoreCase);
+
+    private sealed class EnvironmentAliasSource(Dictionary<string, string?> values) : IConfigurationSource
+    {
+        public IConfigurationProvider Build(IConfigurationBuilder builder) =>
+            new EnvironmentAliasProvider(new MemoryConfigurationSource { InitialData = values });
+    }
+
+    private sealed class EnvironmentAliasProvider(MemoryConfigurationSource source) : MemoryConfigurationProvider(source)
+    {
+        public override IEnumerable<string> GetChildKeys(IEnumerable<string> earlierKeys, string? parentPath) =>
+            base.GetChildKeys(parentPath is not null && ListKeys.Contains(parentPath) && Declares(parentPath) ? [] : earlierKeys, parentPath);
+
+        private bool Declares(string path) =>
+            Data.Keys.Any(k => k.StartsWith(path + ConfigurationPath.KeyDelimiter, StringComparison.OrdinalIgnoreCase));
     }
 
     internal static Dictionary<string, string?> Resolve(Func<string, string?> readEnv)

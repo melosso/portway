@@ -253,8 +253,10 @@ public sealed partial class SettingsWriteService
     /// <summary>
     /// Collections replace lower layers.
     /// </summary>
-    public static bool IsCollection(SettingKind kind) =>
-        kind is SettingKind.OriginList or SettingKind.IpList or SettingKind.CidrList or SettingKind.ExtList or SettingKind.MediaTypeList or SettingKind.IntMap or SettingKind.LevelMap;
+    public static bool IsCollection(SettingKind kind) => IsList(kind) || kind is SettingKind.IntMap or SettingKind.LevelMap;
+
+    public static bool IsList(SettingKind kind) =>
+        kind is SettingKind.OriginList or SettingKind.IpList or SettingKind.CidrList or SettingKind.ExtList or SettingKind.MediaTypeList;
 
     public static string OverridesPath => Path.Combine(Directory.GetCurrentDirectory(), OverridesFileName);
 

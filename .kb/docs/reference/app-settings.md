@@ -20,7 +20,7 @@ From highest to lowest priority:
 | `appsettings.{ASPNETCORE_ENVIRONMENT}.json` | Per-deployment overrides |
 | `appsettings.json` | Shipped defaults, with every section below |
 
-The console never rewrites `appsettings.json`. An environment variable takes precedence over the same key in `appsettings.overrides.json`. The console displays a key set by an environment variable as read-only, with the variable name. `PUT /_/api/settings` returns `400` for that key.
+Environment variables override `appsettings.overrides.json` (completely replacing lists from both JSON files). Any key set via an environment variable is read-only in the console (showing the variable name) and cannot be updated through the API. `appsettings.json` is never modified by the console.
 
 ## Console editing
 
