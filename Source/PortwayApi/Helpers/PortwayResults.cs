@@ -60,6 +60,13 @@ public static class PortwayResults
         => Results.Json(ErrorResponse.Traced(detail, TraceIdOf(context)),
                         statusCode: StatusCodes.Status500InternalServerError);
 
+    public static IActionResult InvalidModelState(ActionContext context)
+    {
+        var (key, entry) = context.ModelState.First(e => e.Value is { Errors.Count: > 0 });
+        var message = entry!.Errors[0].ErrorMessage;
+        return BadRequest(string.IsNullOrEmpty(key) ? message : $"{key}: {message}");
+    }
+
     public static IResult MinimalError(string error, int statusCode, string? field = null)
         => Results.Json(ErrorResponse.Of(error, field), statusCode: statusCode);
 

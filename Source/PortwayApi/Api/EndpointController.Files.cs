@@ -15,7 +15,7 @@ public sealed partial class EndpointController
     public async Task<IActionResult> UploadFileAsync(
         string env,
         string catchall,
-        [FromForm] IFormFile file,
+        [FromForm] IFormFile? file,
         [FromQuery] bool overwrite = false,
         string? version = null)
     {

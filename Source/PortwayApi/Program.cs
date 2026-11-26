@@ -73,7 +73,8 @@ try
     builder.ConfigurePortwayWebHost();
 
     // Add services
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .ConfigureApiBehaviorOptions(o => o.InvalidModelStateResponseFactory = PortwayResults.InvalidModelState);
     builder.Services.AddEndpointVersioning();
 
     // Add caching services (Redis and/or memory cache)

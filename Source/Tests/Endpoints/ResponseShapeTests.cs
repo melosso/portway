@@ -335,4 +335,34 @@ public class ResponseShapeTests : ApiTestBase
         Assert.False(body.RootElement.TryGetProperty("title", out _));
         Assert.False(body.RootElement.TryGetProperty("status", out _));
     }
+
+    [Fact]
+    public async Task UploadWithoutFile_Returns400_WithErrorShape()
+    {
+        SetAllowedEnvironments("500");
+        using var form = new MultipartFormDataContent { { new StringContent("x"), "other" } };
+
+        var response = await _client.PostAsync("/api/500/files/CustomerData", form, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        var body = await ParseBody(response);
+        Assert.Equal(["success", "error"], body.RootElement.EnumerateObject().Select(p => p.Name));
+        Assert.Equal("No file was uploaded", body.RootElement.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task ModelBindingFailure_Returns400_WithErrorShape()
+    {
+        SetAllowedEnvironments("500");
+        using var form = new MultipartFormDataContent { { new ByteArrayContent([1]), "file", "a.csv" } };
+
+        var response = await _client.PostAsync("/api/500/files/CustomerData?overwrite=abc", form, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        var body = await ParseBody(response);
+        Assert.Equal(["success", "error"], body.RootElement.EnumerateObject().Select(p => p.Name));
+        Assert.StartsWith("overwrite: ", body.RootElement.GetProperty("error").GetString());
+    }
 }
