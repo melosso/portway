@@ -107,7 +107,7 @@ public sealed class BackendUnavailableTests : ApiTestBase, IDisposable
         var warning = Assert.Single(events, e => e.Level == Serilog.Events.LogEventLevel.Warning && e.RenderMessage().Contains("Upstream unavailable"));
         Assert.DoesNotContain(events, e => e.Level >= Serilog.Events.LogEventLevel.Error || e.Exception is not null);
 
-        var reference = ((Serilog.Events.ScalarValue)warning.Properties["TraceRef"]).Value as string;
+        var reference = Assert.IsType<string>(((Serilog.Events.ScalarValue)warning.Properties["TraceRef"]).Value);
         Assert.Matches("^[0-9a-f]{8}$", reference);
         Assert.Contains(reference, traceId);
     }
