@@ -2,7 +2,6 @@ namespace PortwayApi.Services;
 
 using Microsoft.AspNetCore.Mvc;
 using PortwayApi.Classes;
-using PortwayApi.Helpers;
 using Serilog;
 
 /// <summary>
@@ -30,20 +29,11 @@ public sealed class CompositeRequestHandler
         var result = await _compositeHandler.ProcessCompositeEndpointAsync(
             context, env, compositeName, requestBody);
 
-        // Convert from IResult to IActionResult
-        if (result is IStatusCodeHttpResult statusCodeResult)
-        {
-            var statusCode = statusCodeResult.StatusCode ?? 200;
-            var value = (result is IValueHttpResult valueResult) ? valueResult.Value : null;
+        return new HttpResultAction(result);
+    }
 
-            return new ObjectResult(value) { StatusCode = statusCode };
-        }
-
-        if (result is ObjectResult objectResult)
-        {
-            return new ObjectResult(objectResult.Value) { StatusCode = objectResult.StatusCode ?? 500 };
-        }
-
-        return PortwayResults.Mutation("Record(s) created successfully");
+    private sealed class HttpResultAction(IResult result) : IActionResult
+    {
+        public Task ExecuteResultAsync(ActionContext context) => result.ExecuteAsync(context.HttpContext);
     }
 }
