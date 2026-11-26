@@ -4,10 +4,10 @@ using Xunit;
 
 namespace PortwayApi.Tests.Helpers;
 
-public sealed class ErrorRecordShapeTests
+public sealed class ErrorRecordKeyTests
 {
     [Fact]
-    public void CompositeStepFailure_KeepsTheDocumentedKeys()
+    public void CompositeStepFailure_HasTheDocumentedKeys()
     {
         var json = JsonSerializer.Serialize(CompositeErrorResponse.Of("Error executing step 'Lines'", "trace", "Lines", ["Header"], "Upstream returned HTTP 400", 400));
 
@@ -23,7 +23,7 @@ public sealed class ErrorRecordShapeTests
     }
 
     [Fact]
-    public void RateLimit_KeepsTheDocumentedRetrytime()
+    public void RateLimit_HasTheDocumentedRetrytime()
     {
         var json = JsonSerializer.Serialize(RateLimitErrorResponse.Of("Too many requests", "2026-01-01T00:00:00Z"));
 

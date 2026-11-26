@@ -19,8 +19,8 @@ public sealed class ResponseEnvelopeGuardTests
 
     private static readonly Dictionary<string, Allowance> Allowed = new()
     {
-        ["Api/EndpointController.Routing.cs|bodyless-error"] = new(2, "HEAD responses carry no body"),
-        ["Api/HealthCheckEndpoints.cs|plain-text-body"] = new(1, "/health/live answers plain text by design"),
+        ["Api/EndpointController.Routing.cs|bodyless-error"] = new(2, "HEAD responses have no body"),
+        ["Api/HealthCheckEndpoints.cs|plain-text-body"] = new(1, "/health/live returns plain text"),
         ["Api/WebUiEndpoints.cs|minimal-error-result"] = new(2, "console HTML pages"),
         ["Api/WebUiEndpoints.EndpointsCrud.cs|anonymous-error"] = new(1, "console validation list, read by api() as errors"),
         ["Api/WebUiEndpoints.Environments.cs|anonymous-error"] = new(1, "connection test result payload with status 200"),
@@ -55,7 +55,7 @@ public sealed class ResponseEnvelopeGuardTests
             .ToList();
 
         Assert.True(problems.Count == 0,
-            "Build error bodies with PortwayResults or a record in Helpers. Lower the allowlist when a site is fixed.\n" + string.Join("\n", problems));
+            "Error bodies require PortwayResults or a record in Helpers. If a site is fixed: lower its allowlist count.\n" + string.Join("\n", problems));
     }
 
     [Theory]

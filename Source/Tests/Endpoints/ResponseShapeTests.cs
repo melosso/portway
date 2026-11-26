@@ -337,7 +337,7 @@ public class ResponseShapeTests : ApiTestBase
     }
 
     [Fact]
-    public async Task UploadWithoutFile_Returns400_WithErrorShape()
+    public async Task UploadWithoutFile_Returns400_WithErrorEnvelope()
     {
         SetAllowedEnvironments("500");
         using var form = new MultipartFormDataContent { { new StringContent("x"), "other" } };
@@ -352,7 +352,7 @@ public class ResponseShapeTests : ApiTestBase
     }
 
     [Fact]
-    public async Task ModelBindingFailure_Returns400_WithErrorShape()
+    public async Task ModelBindingFailure_Returns400_WithErrorEnvelope()
     {
         SetAllowedEnvironments("500");
         using var form = new MultipartFormDataContent { { new ByteArrayContent([1]), "file", "a.csv" } };
@@ -373,7 +373,7 @@ public class ResponseShapeTests : ApiTestBase
     [InlineData("GET", "/api/500/Company/Departments/abc", null, 400)]
     [InlineData("POST", "/api/500/Inventory/Products", "{}", 415)]
     [InlineData("GET", "/api/500/Sales/Invoices", null, 405)]
-    public async Task ErrorSource_ReturnsOnlyTheSharedEnvelope(string method, string url, string? untypedBody, int status)
+    public async Task ErrorSource_ReturnsTheSharedEnvelope(string method, string url, string? untypedBody, int status)
     {
         SetAllowedEnvironments("500");
         using var request = new HttpRequestMessage(new HttpMethod(method), url);

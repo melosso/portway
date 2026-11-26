@@ -575,7 +575,7 @@ public class OpenApiDocumentTests : ApiTestBase
     }
 
     [Fact]
-    public async Task EveryOperation_DocumentsTheRateLimit_AndCompositesTheirStepEnvelope()
+    public async Task EveryOperation_DocumentsRateLimit_CompositeOperationsUseStepEnvelope()
     {
         SetAllowedEnvironments("500", "700", "Synergy", "WMS");
 
