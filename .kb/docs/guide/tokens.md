@@ -11,7 +11,7 @@ Tokens are stored hashed in `auth.db`. The console displays a new token once. Wi
 
 ## Creating a token
 
-Fields in **Access Tokens → New token**:
+Fields in **Access Tokens → Add token**:
 
 | Field | Required | Description |
 |---|---|---|

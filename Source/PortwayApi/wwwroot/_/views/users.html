@@ -210,7 +210,7 @@
 <div class="drawer-backdrop" id="createBackdrop" data-drawer-backdrop="createDrawer"></div>
 <div class="drawer" id="createDrawer">
     <div class="drawer-header">
-        <span class="drawer-title">New user</span>
+        <span class="drawer-title">Add user</span>
         <button class="btn-icon" data-drawer-close="createDrawer" aria-label="Close">
             <svg
                 width="16"
@@ -245,6 +245,10 @@
             <label class="field-label" for="createPassword">Password</label>
             <input type="password" id="createPassword" class="input" autocomplete="new-password" />
             <div class="field-help">At least 12 characters.</div>
+        </div>
+        <div class="field">
+            <label class="field-label" for="createRepeat">Confirm password</label>
+            <input type="password" id="createRepeat" class="input" autocomplete="new-password" />
         </div>
         <div class="field">
             <label class="field-label" for="createEmail">Email</label>
@@ -303,6 +307,10 @@
             <label class="field-label" for="editPassword">New password</label>
             <input type="password" id="editPassword" class="input" autocomplete="new-password" />
             <div class="field-help">Empty retains the current password.</div>
+        </div>
+        <div class="field">
+            <label class="field-label" for="editRepeat">Confirm new password</label>
+            <input type="password" id="editRepeat" class="input" autocomplete="new-password" />
         </div>
         <div class="field">
             <label class="field-label" for="editEmail">Email</label>
@@ -417,11 +425,21 @@ function renderUsers() {
     </tr>`).join('');
 }
 
+function passwordsMatch(id, repeatId) {
+  const repeat = document.getElementById(repeatId);
+  if (document.getElementById(id).value === repeat.value) return true;
+  toast('Passwords do not match.', 'error');
+  repeat.classList.add('input-invalid');
+  repeat.focus();
+  return false;
+}
+
 function openCreateDrawer() {
   document.getElementById('createUsername').value = '';
   document.getElementById('createDisplayName').value = '';
   _createAvatar.reset(null);
   document.getElementById('createPassword').value = '';
+  document.getElementById('createRepeat').value = '';
   document.getElementById('createEmail').value = '';
   document.getElementById('createConfirm').value = '';
   document.getElementById('createRole').value = 'administrator';
@@ -436,6 +454,7 @@ async function closeCreateDrawer() {
 async function createUser() {
   const btn = document.getElementById('createBtn');
   if (btn.disabled) return;
+  if (!passwordsMatch('createPassword', 'createRepeat')) return;
   const body = {
     username: document.getElementById('createUsername').value.trim(),
     display_name: document.getElementById('createDisplayName').value.trim(),
@@ -467,6 +486,7 @@ function openEditDrawer(id) {
   _editingId = id;
   document.getElementById('editTitle').textContent = u.username;
   document.getElementById('editPassword').value = '';
+  document.getElementById('editRepeat').value = '';
   document.getElementById('editEmail').value = u.email ?? '';
   document.getElementById('editDisplayName').value = u.display_name ?? '';
   _editAvatar.reset(u);
@@ -485,6 +505,7 @@ async function saveUser() {
   if (_editingId === null) return;
   const btn = document.getElementById('saveBtn');
   if (btn.disabled) return;
+  if (!passwordsMatch('editPassword', 'editRepeat')) return;
   const password = document.getElementById('editPassword').value;
   const body = {
     role: document.getElementById('editRole').value,

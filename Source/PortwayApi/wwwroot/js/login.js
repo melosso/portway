@@ -67,6 +67,12 @@ async function signIn() {
     const btn = document.getElementById('signInBtn');
     const err = document.getElementById('authError');
     err.hidden = true;
+    if (_changing && newPassword !== document.getElementById('repeatPasswordInput').value) {
+        err.textContent = 'Passwords do not match.';
+        err.hidden = false;
+        document.getElementById('repeatPasswordInput').focus();
+        return;
+    }
     btn.classList.add('is-loading');
     btn.disabled = true;
     try {
@@ -85,6 +91,7 @@ async function signIn() {
             _changing = true;
             csrfToken = d.csrf;
             document.getElementById('newPasswordField').hidden = false;
+            document.getElementById('repeatPasswordField').hidden = false;
             document.querySelector('.signin-header p').textContent = 'Set a new password to complete sign-in.';
             document.querySelector('#signInBtn .btn-label').textContent = 'Set password';
             err.hidden = true;
