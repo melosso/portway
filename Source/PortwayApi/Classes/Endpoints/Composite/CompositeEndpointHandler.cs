@@ -147,7 +147,7 @@ public sealed class CompositeEndpointHandler
                         traceId = PortwayResults.TraceIdOf(context),
                         step = step.Name,
                         completedSteps
-                    }, statusCode: PortwayApi.Services.ProxyRequestHandler.IsUpstreamUnavailable(ex, context.RequestAborted)
+                    }, statusCode: Services.ProxyRequestHandler.IsUpstreamUnavailable(ex, context.RequestAborted)
                         ? StatusCodes.Status503ServiceUnavailable
                         : StatusCodes.Status500InternalServerError);
                 }

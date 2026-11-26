@@ -53,7 +53,7 @@ public static partial class WebUiEndpointExtensions
                                 + fileEps.Count + staticEps.Count + webhookEps.Count
                 },
                 environments = envSettings.AllowedEnvironments.Count,
-                api_version = "v" + PortwayApi.Classes.OpenApi.OpenApiEndpointCatalog.All()
+                api_version = "v" + OpenApiEndpointCatalog.All()
                     .Where(e => e.Definition.Enabled)
                     .Select(e => EndpointVersion.Number(e.Definition.Version))
                     .DefaultIfEmpty(1)

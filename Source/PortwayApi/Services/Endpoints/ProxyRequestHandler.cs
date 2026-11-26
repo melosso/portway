@@ -230,7 +230,7 @@ public sealed class ProxyRequestHandler
                 finally
                 {
                     if (!IsReadMethod(originalMethod))
-                        await _cacheManager.BumpGenerationAsync(Services.Caching.CacheGenerationKeys.ProxyEndpoint(env, endpointName));
+                        await _cacheManager.BumpGenerationAsync(Caching.CacheGenerationKeys.ProxyEndpoint(env, endpointName));
                 }
                 return new EmptyResult(); // Response already written
             }
@@ -240,7 +240,7 @@ public sealed class ProxyRequestHandler
             {
                 // Create a cache key based on the request details
                 var headers = context.Request.Headers ?? new Microsoft.AspNetCore.Http.HeaderDictionary();
-                var generation = await _cacheManager.GetGenerationAsync(Services.Caching.CacheGenerationKeys.ProxyEndpoint(env, endpointName));
+                var generation = await _cacheManager.GetGenerationAsync(Caching.CacheGenerationKeys.ProxyEndpoint(env, endpointName));
                 string cacheKey = CreateCacheKey(env, $"{endpointName}:{generation}", fullUrl, headers, tenants);
 
                 // RFC 10008: the cache key for a QUERY request MUST incorporate the request content
@@ -351,7 +351,7 @@ public sealed class ProxyRequestHandler
                 }
                 finally
                 {
-                    await _cacheManager.BumpGenerationAsync(Services.Caching.CacheGenerationKeys.ProxyEndpoint(env, endpointName));
+                    await _cacheManager.BumpGenerationAsync(Caching.CacheGenerationKeys.ProxyEndpoint(env, endpointName));
                 }
                 return new EmptyResult(); // Response already written
             }

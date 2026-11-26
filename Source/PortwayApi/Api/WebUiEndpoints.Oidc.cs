@@ -455,7 +455,7 @@ public static partial class WebUiEndpointExtensions
 
     internal static AdminUser Provision(AuthDbContext db, OidcProvider provider, OidcIdentity identity)
     {
-        var (avatarStyle, avatarSeed) = PortwayApi.Services.Avatars.AvatarService.Random();
+        var (avatarStyle, avatarSeed) = Services.Avatars.AvatarService.Random();
         // Derive a valid username from the email/subject when the claimed one fails validation, rather than refusing sign-in
         var username = identity.Username;
         if (AdminUserService.ValidateUsername(username) is not null)

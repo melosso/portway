@@ -38,7 +38,7 @@ public class FileHandlerService : IDisposable
         _optionsMonitor = optionsMonitor;
         var options = optionsMonitor.CurrentValue;
         _cacheManager = cacheManager;
-        _logger = Serilog.Log.Logger; // Use Serilog's static logger
+        _logger = Log.Logger; // Use Serilog's static logger
 
         // Create the storage directory if it doesn't exist
         if (!Directory.Exists(_optionsMonitor.CurrentValue.StorageDirectory))

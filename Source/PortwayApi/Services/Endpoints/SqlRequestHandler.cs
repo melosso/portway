@@ -498,14 +498,14 @@ public sealed partial class SqlRequestHandler
     private async Task<string> ReadGenerationAsync(EndpointDefinition endpoint, string env)
     {
         var generations = new List<string>();
-        foreach (var key in Services.Caching.CacheGenerationKeys.SqlEndpoint(env, endpoint))
+        foreach (var key in Caching.CacheGenerationKeys.SqlEndpoint(env, endpoint))
             generations.Add(await _cacheManager.GetGenerationAsync(key));
         return string.Join('.', generations);
     }
 
     private async Task InvalidateReadsAsync(EndpointDefinition endpoint, string env)
     {
-        foreach (var key in Services.Caching.CacheGenerationKeys.SqlEndpoint(env, endpoint))
+        foreach (var key in Caching.CacheGenerationKeys.SqlEndpoint(env, endpoint))
             await _cacheManager.BumpGenerationAsync(key);
     }
 

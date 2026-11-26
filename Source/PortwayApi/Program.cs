@@ -36,7 +36,7 @@ try
     var builder = WebApplication.CreateBuilder(args);
     EnvAliases.ApplyConfigAliases(builder.Configuration);
 
-    PortwayApi.Services.Configuration.SettingsWriteService.EnsureExists();
+    SettingsWriteService.EnsureExists();
     builder.Configuration.AddConsoleOverrides();
 
     Log.Logger = new LoggerConfiguration()
@@ -50,7 +50,7 @@ try
     builder.Host.UseSerilog();
 
     // before any database or endpoint file is opened
-    if (PortwayApi.Services.Database.BackupArchive.ApplyPendingRestore(Directory.GetCurrentDirectory()) is { } restored)
+    if (BackupArchive.ApplyPendingRestore(Directory.GetCurrentDirectory()) is { } restored)
         Log.Warning("Restored backup {Backup}; the replaced files are in .backups/pre-restore-*", restored);
 
     EnvAliases.WarnOnLegacyUsage();
@@ -198,7 +198,7 @@ try
 
     app.UsePortwayCors();
 
-    PortwayApi.Middleware.RateLimiterExtensions.UseRateLimiter(app, webUiEnabled);
+    RateLimiterExtensions.UseRateLimiter(app, webUiEnabled);
 
     app.UseTokenAuthentication();
     app.UseAuthorization();
@@ -240,7 +240,7 @@ try
     app.MapCompositeEndpoint();
 
     // Map health check endpoints
-    PortwayApi.Endpoints.HealthCheckEndpointExtensions.MapHealthCheckEndpoints(app);
+    HealthCheckEndpointExtensions.MapHealthCheckEndpoints(app);
 
     // Map Prometheus scrape endpoint (conditionally enabled)
     app.MapPortwayPrometheusScraping();

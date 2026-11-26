@@ -16,7 +16,7 @@ public static class McpChatEndpoints
         {
             var role = item?["role"] is JsonValue r && r.TryGetValue<string>(out var rv) ? rv : null;
             var content = item?["content"] is JsonValue c && c.TryGetValue<string>(out var cv) ? cv : null;
-            if (role is Services.Mcp.ChatMessage.User or Services.Mcp.ChatMessage.Assistant && content is not null)
+            if (role is ChatMessage.User or ChatMessage.Assistant && content is not null)
                 history.Add(new Services.Mcp.ChatMessage(role, content));
         }
 

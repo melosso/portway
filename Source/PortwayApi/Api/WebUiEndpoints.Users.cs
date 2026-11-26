@@ -38,7 +38,7 @@ public static partial class WebUiEndpointExtensions
         {
             var count = int.TryParse(request.Query["count"], out var c) ? Math.Clamp(c, 1, 24) : 12;
             var candidates = Enumerable.Range(0, count)
-                .Select(_ => PortwayApi.Services.Avatars.AvatarService.Random())
+                .Select(_ => Services.Avatars.AvatarService.Random())
                 .Select(a => new { style = a.Style, seed = a.Seed, avatar = avatars.Render(a.Style, a.Seed) })
                 .Where(a => a.avatar is not null);
             return Results.Json(new { candidates });
@@ -128,7 +128,7 @@ public static partial class WebUiEndpointExtensions
             var (avatar, avatarError) = ReadAvatar(body);
             if (avatarError is not null)
                 return Results.Json(new { error = avatarError, field = "avatar" }, statusCode: 400);
-            var (avatarStyle, avatarSeed) = avatar ?? PortwayApi.Services.Avatars.AvatarService.Random();
+            var (avatarStyle, avatarSeed) = avatar ?? Services.Avatars.AvatarService.Random();
 
             var email = body.TryGetProperty("email", out var e) ? e.GetString() ?? "" : "";
             var created = await users.CreateAsync(username!, password!, role, email, displayName, avatarStyle, avatarSeed);
@@ -228,7 +228,7 @@ public static partial class WebUiEndpointExtensions
 
         var seed = body.TryGetProperty("avatar_seed", out var seedElement) && seedElement.ValueKind == JsonValueKind.String
             ? seedElement.GetString() : null;
-        if (!PortwayApi.Services.Avatars.AvatarService.IsKnownStyle(style) || !PortwayApi.Services.Avatars.AvatarService.IsValidSeed(seed))
+        if (!Services.Avatars.AvatarService.IsKnownStyle(style) || !Services.Avatars.AvatarService.IsValidSeed(seed))
             return (null, "Unknown avatar");
         return ((style, seed), null);
     }

@@ -76,7 +76,7 @@ public static class StartupLogHelper
         {
             Log.Information("Application is hosted on the following URLs:");
             var https = Services.Configuration.WebHostConfigurationExtensions.HttpsEnabled(app.Environment);
-            foreach (var (role, url) in HostingUrls(ports, https, Middleware.RootNavigationExtensions.ConfiguredPathBase(configuration)))
+            foreach (var (role, url) in HostingUrls(ports, https, RootNavigationExtensions.ConfiguredPathBase(configuration)))
                 Log.Information("   {Role,-8} {Url}", role + ":", url);
         }
 

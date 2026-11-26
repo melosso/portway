@@ -51,7 +51,7 @@ public sealed class PostgreSqlProvider : SqlProviderBase
         }
 
         var arguments = string.Join(", ", parameterNames.Select(p => $"{p.ToLowerInvariant()} => @{p}"));
-        return ($"SELECT * FROM \"{schema}\".\"{procedureName}\"({arguments})", System.Data.CommandType.Text);
+        return ($"SELECT * FROM \"{schema}\".\"{procedureName}\"({arguments})", CommandType.Text);
     }
 
     // untyped parameter resolves to uuid or text

@@ -291,7 +291,7 @@ public static partial class EndpointHandler
         }
 
         // Validate $expand relationship shape (identifiers, to-one only, not on a TVF)
-        errors.AddRange(Helpers.OdataExpandRelationshipValidator.ValidateShape(entity));
+        errors.AddRange(OdataExpandRelationshipValidator.ValidateShape(entity));
         errors.AddRange(Services.Caching.CacheGenerationKeys.Validate(entity.Properties));
 
         // Validate allowed methods

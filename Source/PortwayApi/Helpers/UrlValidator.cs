@@ -88,7 +88,7 @@ public class UrlValidator
                 // Add unicast addresses
                 foreach (var unicast in ipProperties.UnicastAddresses)
                 {
-                    if (unicast.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                    if (unicast.Address.AddressFamily == AddressFamily.InterNetwork)
                     {
                         // Add IP address
                         discoveredHosts.Add(unicast.Address.ToString());

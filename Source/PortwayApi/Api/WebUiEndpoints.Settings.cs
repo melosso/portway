@@ -197,7 +197,7 @@ public static partial class WebUiEndpointExtensions
             var forwardedFor = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? "";
             var behindProxy = !string.IsNullOrEmpty(forwardedFor);
             var values = SettingValues(config, openApiMonitor.CurrentValue, telemetry.EffectiveProvider.ToString());
-            if (ctx.Items[SignedInRoleKey] as string != PortwayApi.Auth.AdminUserRoles.Administrator)
+            if (ctx.Items[SignedInRoleKey] as string != Auth.AdminUserRoles.Administrator)
                 HideFromViewer(values);
 
             return Results.Json(new

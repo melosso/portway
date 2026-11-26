@@ -159,5 +159,5 @@ public sealed class ConfigAuditService
 
     // console account of the current request, null for scheduled work and api key sessions
     private string? CurrentActor() =>
-        _httpContext?.HttpContext?.Items[PortwayApi.Endpoints.WebUiEndpointExtensions.SignedInUsernameKey] as string;
+        _httpContext?.HttpContext?.Items[Endpoints.WebUiEndpointExtensions.SignedInUsernameKey] as string;
 }
