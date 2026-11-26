@@ -194,10 +194,13 @@ public sealed class AdminUserService
 
         var username = (migrating || seeding) ? "admin" : "admin-" + RandomNumberGenerator.GetString(ReadableAlphabet, 8);
         var password = seeding ? seedPassword! : RandomNumberGenerator.GetString(ReadableAlphabet, 24);
+        var (avatarStyle, avatarSeed) = PortwayApi.Services.Avatars.AvatarService.Random();
 
         _db.AdminUsers.Add(new AdminUser
         {
             Username = username,
+            AvatarStyle = avatarStyle,
+            AvatarSeed = avatarSeed,
             PasswordHash = HashPassword(password),
             Role = AdminUserRoles.Administrator,
             Provider = AdminUserProviders.Local,

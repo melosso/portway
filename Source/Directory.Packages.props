@@ -15,8 +15,8 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Versioning -->
-    <PackageVersion Include="DiceBear.Core" Version="10.7.0" />
-    <PackageVersion Include="DiceBear.Styles" Version="10.6.0" />
+    <PackageVersion Include="DiceBear.Core" Version="11.0.0" />
+    <PackageVersion Include="DiceBear.Styles" Version="11.0.0" />
     <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
     <PackageVersion Include="Microsoft.OpenApi" Version="3.11.1" />
     <PackageVersion Include="MinVer" Version="8.0.0" />

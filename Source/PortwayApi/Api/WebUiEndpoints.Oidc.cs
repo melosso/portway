@@ -453,8 +453,9 @@ public static partial class WebUiEndpointExtensions
         return $"No active account has the address {identity.Email}, and none is bound to this provider's subject.";
     }
 
-    private static AdminUser Provision(AuthDbContext db, OidcProvider provider, OidcIdentity identity)
+    internal static AdminUser Provision(AuthDbContext db, OidcProvider provider, OidcIdentity identity)
     {
+        var (avatarStyle, avatarSeed) = PortwayApi.Services.Avatars.AvatarService.Random();
         // Derive a valid username from the email/subject when the claimed one fails validation, rather than refusing sign-in
         var username = identity.Username;
         if (AdminUserService.ValidateUsername(username) is not null)
@@ -468,6 +469,8 @@ public static partial class WebUiEndpointExtensions
             Provider = provider.Slug,
             ExternalId = identity.Subject,
             Email = identity.EmailVerified ? identity.Email : string.Empty,
+            AvatarStyle = avatarStyle,
+            AvatarSeed = avatarSeed,
             Role = provider.CreatedRole,
         };
         db.AdminUsers.Add(created);

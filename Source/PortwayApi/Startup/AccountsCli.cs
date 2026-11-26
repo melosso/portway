@@ -124,7 +124,7 @@ public static class AccountsCli
         return 0;
     }
 
-    private static async Task<int> CreateAsync(AuthDbContext db, string username, string password, string role)
+    internal static async Task<int> CreateAsync(AuthDbContext db, string username, string password, string role)
     {
         if (AdminUserService.ValidateUsername(username) is { } nameProblem)
         {
@@ -147,10 +147,13 @@ public static class AccountsCli
             return 1;
         }
 
+        var (avatarStyle, avatarSeed) = Services.Avatars.AvatarService.Random();
         db.AdminUsers.Add(new AdminUser
         {
             Username = username,
             PasswordHash = AdminUserService.HashPassword(password),
+            AvatarStyle = avatarStyle,
+            AvatarSeed = avatarSeed,
             Role = role,
             Provider = AdminUserProviders.Local,
         });

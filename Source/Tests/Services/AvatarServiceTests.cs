@@ -47,6 +47,13 @@ public class AvatarServiceTests
     }
 
     [Fact]
+    public void Render_EveryOfferedStyle()
+    {
+        var failed = AvatarService.Styles.Where(style => _avatars.Render(style, "a1b2c3") is null).ToList();
+        Assert.Empty(failed);
+    }
+
+    [Fact]
     public void For_KeepsTheUsernameIdenticonForAccountsWithoutAChoice()
     {
         var legacy = new AdminUser { Username = "jules" };
