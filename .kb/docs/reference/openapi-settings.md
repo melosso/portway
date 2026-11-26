@@ -162,7 +162,7 @@ With `Enabled: false`, requests return `503` with `Retry-After`, the operations 
 ```json
 {
   "success": false,
-  "error": "This endpoint is temporarily disabled for scheduled maintenance."
+  "error": "This endpoint is temporarily disabled."
 }
 ```
 

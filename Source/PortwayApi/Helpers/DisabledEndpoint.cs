@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 /// </summary>
 public static class DisabledEndpoint
 {
-    public const string Message = "This endpoint is temporarily disabled for scheduled maintenance.";
+    public const string Message = "This endpoint is temporarily disabled.";
 
     public const int RetryAfterSeconds = 3600;
 
