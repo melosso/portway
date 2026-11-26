@@ -38,6 +38,14 @@ public class PortRoutingTests
         Assert.False(Split.IsDenied(8081, new PathString(path)));
 
     [Fact]
+    public void ConsolePort_IsOnlyRecognisedWhenSplit()
+    {
+        Assert.True(Split.IsConsolePort(8081));
+        Assert.False(Split.IsConsolePort(8080));
+        Assert.False(new PortRouting(8080, 8080).IsConsolePort(8080));
+    }
+
+    [Fact]
     public void SharedPort_ServesEverything() =>
         Assert.False(new PortRouting(8080, 8080).IsDenied(8080, new PathString("/_/login")));
 

@@ -16,6 +16,8 @@ public sealed record PortRouting(int ApiPort, int ConsolePort)
 
     public bool IsApiPort(int localPort) => IsSplit && localPort == ApiPort;
 
+    public bool IsConsolePort(int localPort) => IsSplit && localPort == ConsolePort;
+
     public bool IsDenied(int localPort, PathString path) =>
         IsApiPort(localPort)
         && (path.StartsWithSegments("/_", StringComparison.OrdinalIgnoreCase)

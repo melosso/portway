@@ -84,6 +84,7 @@ public static class RootNavigationExtensions
         bool enableLandingPage)
     {
         var docsEnabled = app.Services.GetRequiredService<IOptionsMonitor<OpenApiSettings>>().CurrentValue.Enabled;
+        var ports = app.Services.GetRequiredService<PortRouting>();
         app.Use(async (context, next) =>
         {
             var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
@@ -111,7 +112,7 @@ public static class RootNavigationExtensions
                     return;
                 }
 
-                // Browser request: landing page for local clients or allowed PublicOrigins; others go straight to docs
+                // Browser request: landing page for local clients or allowed PublicOrigins; others go to the console on its own port, else docs
                 var remoteIp = context.Connection.RemoteIpAddress;
                 var urlValidator = context.RequestServices.GetRequiredService<UrlValidator>();
                 var isLocalClient = remoteIp != null && urlValidator.IsClientIpAllowed(
@@ -129,6 +130,13 @@ public static class RootNavigationExtensions
                         context.Response.Redirect($"{pathBase}/index.html", permanent: false);
                         return;
                     }
+                }
+
+                // docs belong to the api port when ports are split
+                if (webUiEnabled && ports.IsConsolePort(context.Connection.LocalPort))
+                {
+                    context.Response.Redirect($"{pathBase}/_", permanent: false);
+                    return;
                 }
 
                 if (docsEnabled)

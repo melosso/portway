@@ -869,6 +869,18 @@ public class OpenApiDocumentTests : ApiTestBase
             Assert.Equal(location, response.Headers.Location?.OriginalString);
     }
 
+    [Theory]
+    [InlineData("true", "203.0.113.7", "text/html", "/_")]
+    [InlineData("false", "203.0.113.7", "text/html", "/_")]
+    [InlineData("true", "127.0.0.1", "text/html", "/index.html")]
+    [InlineData("true", "203.0.113.7", "application/json", "/docs/openapi.json")]
+    public async Task ConsolePortRoot_SendsBrowsersToConsole(string docsEnabled, string clientIp, string accept, string location)
+    {
+        var response = await GetRootAsync(new() { ["OpenApi:Enabled"] = docsEnabled }, PortwayApi.Middleware.PortRouting.DefaultConsolePort, IPAddress.Parse(clientIp), accept);
+
+        Assert.Equal(location, response.Headers.Location?.OriginalString);
+    }
+
     private async Task<HttpResponseMessage> GetRootAsync(Dictionary<string, string?> settings, int? localPort, IPAddress? clientIp, string accept)
     {
         _mockUrlValidator.Setup(v => v.IsClientIpAllowed(Moq.It.IsAny<IPAddress>())).Returns<IPAddress>(IPAddress.IsLoopback);
