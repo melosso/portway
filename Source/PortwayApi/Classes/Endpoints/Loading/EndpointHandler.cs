@@ -307,30 +307,16 @@ public static partial class EndpointHandler
     }
 
     /// <summary>
-    /// Extracts endpoint type from file path
+    /// Endpoint type of a file, read from the folder below the last endpoints folder in its path
     /// </summary>
     public static EndpointType? GetEndpointTypeFromPath(string filePath)
     {
-        if (filePath.Contains("endpoints/SQL", StringComparison.OrdinalIgnoreCase) ||
-            filePath.Contains("endpoints\\SQL", StringComparison.OrdinalIgnoreCase))
-            return EndpointType.SQL;
+        var segments = filePath.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
+        var root = Array.FindLastIndex(segments, s => s.Equals("endpoints", StringComparison.OrdinalIgnoreCase));
+        if (root < 0 || root + 1 >= segments.Length)
+            return null;
 
-        if (filePath.Contains("endpoints/Proxy", StringComparison.OrdinalIgnoreCase) ||
-            filePath.Contains("endpoints\\Proxy", StringComparison.OrdinalIgnoreCase))
-            return EndpointType.Proxy;
-
-        if (filePath.Contains("endpoints/Webhooks", StringComparison.OrdinalIgnoreCase) ||
-            filePath.Contains("endpoints\\Webhooks", StringComparison.OrdinalIgnoreCase))
-            return EndpointType.Webhook;
-
-        if (filePath.Contains("endpoints/Files", StringComparison.OrdinalIgnoreCase) ||
-            filePath.Contains("endpoints\\Files", StringComparison.OrdinalIgnoreCase))
-            return EndpointType.Files;
-
-        if (filePath.Contains("endpoints/Static", StringComparison.OrdinalIgnoreCase) ||
-            filePath.Contains("endpoints\\Static", StringComparison.OrdinalIgnoreCase))
-            return EndpointType.Static;
-
-        return null;
+        var i = Array.FindIndex(RoutingOrder, t => t.Folder.Equals(segments[root + 1], StringComparison.OrdinalIgnoreCase));
+        return i < 0 ? null : RoutingOrder[i].Type;
     }
 }

@@ -1,3 +1,4 @@
+using PortwayApi.Classes;
 using PortwayApi.Services.Configuration;
 using Xunit;
 
@@ -23,4 +24,19 @@ public class EndpointFileWatcherTests
     [InlineData("")]
     public void DescribeEndpoint_OutsideAnEndpointFolder_IsNull(string path) =>
         Assert.Null(EndpointFileWatcher.DescribeEndpoint(path));
+
+    [Theory]
+    [InlineData("/app/endpoints/Proxy/CRM/Accounts/v2/entity.json", EndpointType.Proxy)]
+    [InlineData(@"C:\portway\endpoints\Webhooks\Hooks\entity.json", EndpointType.Webhook)]
+    [InlineData("/srv/endpoints/SQL-gw/endpoints/Proxy/A/entity.json", EndpointType.Proxy)]
+    [InlineData("/srv/endpoints/Static/endpoints/SQL/A/entity.json", EndpointType.SQL)]
+    public void EndpointType_IsReadFromTheSameFolderAsTheName(string path, EndpointType expected) =>
+        Assert.Equal(expected, EndpointHandler.GetEndpointTypeFromPath(path));
+
+    [Theory]
+    [InlineData("/app/other/SQL/Products/entity.json")]
+    [InlineData("/app/endpoints/Unknown/Products/entity.json")]
+    [InlineData("")]
+    public void EndpointType_OutsideAnEndpointFolder_IsNull(string path) =>
+        Assert.Null(EndpointHandler.GetEndpointTypeFromPath(path));
 }
