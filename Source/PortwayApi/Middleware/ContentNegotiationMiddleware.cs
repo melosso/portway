@@ -1,6 +1,7 @@
 namespace PortwayApi.Middleware;
 
 using Microsoft.AspNetCore.Http;
+using PortwayApi.Helpers;
 using Serilog;
 
 /// <summary>
@@ -43,7 +44,7 @@ public sealed class ContentNegotiationMiddleware
             var validationResult = ValidateRequestContentType(context);
             if (!validationResult.IsValid)
             {
-                await WriteErrorResponse(context, validationResult.StatusCode, validationResult.Error, validationResult.Detail);
+                await WriteErrorResponse(context, validationResult.StatusCode, validationResult.Detail);
                 return;
             }
         }
@@ -132,7 +133,7 @@ public sealed class ContentNegotiationMiddleware
     /// <summary>
     /// Validates the Content-Type header for requests with body
     /// </summary>
-    private (bool IsValid, int StatusCode, string Error, string Detail) ValidateRequestContentType(HttpContext context)
+    private (bool IsValid, int StatusCode, string Detail) ValidateRequestContentType(HttpContext context)
     {
         var contentType = context.Request.ContentType;
         var contentLength = context.Request.ContentLength;
@@ -144,14 +145,13 @@ public sealed class ContentNegotiationMiddleware
                 contentLength, context.Connection.RemoteIpAddress);
 
             return (false, StatusCodes.Status413PayloadTooLarge,
-                "Payload Too Large",
                 $"Request body exceeds maximum size of {MaxRequestBodySize / 1024 / 1024}MB");
         }
 
         // Allow empty body without content-type (some clients don't send it)
         if (contentLength == 0 || contentLength == null)
         {
-            return (true, 0, string.Empty, string.Empty);
+            return (true, 0, string.Empty);
         }
 
         // Validate content type for requests with body
@@ -161,7 +161,6 @@ public sealed class ContentNegotiationMiddleware
                 context.Request.Method, context.Connection.RemoteIpAddress);
 
             return (false, StatusCodes.Status415UnsupportedMediaType,
-                "Unsupported Media Type",
                 "Content-Type header is required for requests with body. Use application/json.");
         }
 
@@ -172,11 +171,10 @@ public sealed class ContentNegotiationMiddleware
                 contentType, context.Request.Method, context.Connection.RemoteIpAddress);
 
             return (false, StatusCodes.Status415UnsupportedMediaType,
-                "Unsupported Media Type",
                 $"Content-Type '{contentType}' is not supported. Use application/json.");
         }
 
-        return (true, 0, string.Empty, string.Empty);
+        return (true, 0, string.Empty);
     }
 
     /// <summary>
@@ -201,17 +199,12 @@ public sealed class ContentNegotiationMiddleware
     /// <summary>
     /// Writes a standardized error response
     /// </summary>
-    private static async Task WriteErrorResponse(HttpContext context, int statusCode, string error, string detail)
+    private static async Task WriteErrorResponse(HttpContext context, int statusCode, string detail)
     {
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/json; charset=utf-8";
 
-        await context.Response.WriteAsJsonAsync(new
-        {
-            error,
-            detail,
-            success = false
-        });
+        await context.Response.WriteAsJsonAsync(ErrorResponse.Of(detail));
     }
 }
 

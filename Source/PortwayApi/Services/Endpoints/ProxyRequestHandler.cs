@@ -210,7 +210,7 @@ public sealed class ProxyRequestHandler
             if (!_urlValidator.IsUrlSafe(fullUrl))
             {
                 Log.Warning("Blocked URL due to security restrictions: {Url}", UrlRedaction.Redact(fullUrl));
-                return new ObjectResult(ErrorResponse.Of("Request blocked due to security restrictions")) { StatusCode = 403 };
+                return PortwayResults.Forbidden("Request blocked due to security restrictions");
             }
 
             // Detect if this is likely a SOAP request
@@ -359,7 +359,7 @@ public sealed class ProxyRequestHandler
         catch (HttpRequestException ex) when (ex.InnerException is UnauthorizedAccessException blocked)
         {
             Log.Warning("Blocked proxy connection for {EndpointName}: {Reason}", endpointName, blocked.Message);
-            return new ObjectResult(ErrorResponse.Of("Request blocked due to security restrictions")) { StatusCode = 403 };
+            return PortwayResults.Forbidden("Request blocked due to security restrictions");
         }
         catch (Exception ex) when (!context.Response.HasStarted && IsUpstreamUnavailable(ex, context.RequestAborted))
         {
@@ -784,7 +784,7 @@ public sealed class ProxyRequestHandler
             {
                 Log.Warning("Could not parse endpoint URL as URI: {Url}", UrlRedaction.Redact(endpointConfig.Url));
                 context.Response.StatusCode = 500;
-                await context.Response.WriteAsync("Error processing request");
+                await context.Response.WriteAsJsonAsync(ErrorResponse.Traced("Error processing request", PortwayResults.TraceIdOf(context)));
                 return (false, string.Empty, responseHeaders, 500, null);
             }
 

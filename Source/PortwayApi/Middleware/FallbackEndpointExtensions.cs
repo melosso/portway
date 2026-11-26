@@ -1,5 +1,6 @@
 namespace PortwayApi.Middleware;
 
+using PortwayApi.Helpers;
 using Serilog;
 
 /// <summary>
@@ -63,12 +64,7 @@ public static class FallbackEndpointExtensions
         else
         {
             context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new
-            {
-                error = "Route not found",
-                path = path,
-                timestamp = DateTime.UtcNow
-            });
+            await context.Response.WriteAsJsonAsync(ErrorResponse.Of("Route not found"));
         }
     }
 }

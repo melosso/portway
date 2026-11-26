@@ -365,4 +365,28 @@ public class ResponseShapeTests : ApiTestBase
         Assert.Equal(["success", "error"], body.RootElement.EnumerateObject().Select(p => p.Name));
         Assert.StartsWith("overwrite: ", body.RootElement.GetProperty("error").GetString());
     }
+
+    [Theory]
+    [InlineData("GET", "/nope/route", null, 404)]
+    [InlineData("GET", "/api/notallowed/Inventory/Products", null, 400)]
+    [InlineData("GET", "/api/500/Nope/Nothing", null, 404)]
+    [InlineData("GET", "/api/500/Company/Departments/abc", null, 400)]
+    [InlineData("POST", "/api/500/Inventory/Products", "{}", 415)]
+    [InlineData("GET", "/api/500/Sales/Invoices", null, 405)]
+    public async Task ErrorSource_ReturnsOnlyTheSharedEnvelope(string method, string url, string? untypedBody, int status)
+    {
+        SetAllowedEnvironments("500");
+        using var request = new HttpRequestMessage(new HttpMethod(method), url);
+        if (untypedBody is not null)
+            request.Content = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(untypedBody));
+
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.Equal(status, (int)response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        var body = await ParseBody(response);
+        Assert.Equal(["success", "error"], body.RootElement.EnumerateObject().Select(p => p.Name).Where(n => n != "traceId"));
+        Assert.Equal(JsonValueKind.False, body.RootElement.GetProperty("success").ValueKind);
+        Assert.False(string.IsNullOrWhiteSpace(body.RootElement.GetProperty("error").GetString()));
+    }
 }

@@ -32,22 +32,14 @@ public static class TableValuedFunctionSqlHandler
             if (!SqlTableValuedFunctionHelper.IsTableValuedFunction(endpoint))
             {
                 Log.Warning("Endpoint {Name} is not configured as a Table Valued Function", endpoint.DatabaseObjectName);
-                return (false, new BadRequestObjectResult(new
-                {
-                    error = "This endpoint is not configured as a Table Valued Function",
-                    success = false
-                }), null);
+                return (false, PortwayResults.BadRequest("This endpoint is not configured as a Table Valued Function"), null);
             }
 
             // Check if function parameters are defined
             if (endpoint.FunctionParameters == null || endpoint.FunctionParameters.Count == 0)
             {
                 Log.Warning("TVF endpoint {Name} has no function parameters defined", endpoint.DatabaseObjectName);
-                return (false, new BadRequestObjectResult(new
-                {
-                    error = "Table Valued Function parameters are not configured",
-                    success = false
-                }), null);
+                return (false, PortwayResults.BadRequest("Table Valued Function parameters are not configured"), null);
             }
 
             // Extract parameter values from the request
@@ -62,12 +54,7 @@ public static class TableValuedFunctionSqlHandler
                 Log.Warning("Parameter extraction errors for TVF {Name}: {Errors}",
                     endpoint.DatabaseObjectName, string.Join(", ", extractionErrors));
 
-                return (false, new BadRequestObjectResult(new
-                {
-                    error = "Parameter validation failed",
-                    details = extractionErrors,
-                    success = false
-                }), null);
+                return (false, PortwayResults.BadRequest($"Parameter validation failed: {string.Join("; ", extractionErrors)}"), null);
             }
 
             // Capability guard: a clear 400 instead of a provider syntax error
@@ -75,11 +62,7 @@ public static class TableValuedFunctionSqlHandler
             {
                 Log.Warning("TVF endpoint {Name} requested against {Provider}, which does not support table valued functions",
                     endpoint.DatabaseObjectName, sqlProvider.ProviderType);
-                return (false, new BadRequestObjectResult(new
-                {
-                    error = $"Table valued functions are not supported by the {sqlProvider.ProviderType} database backing this environment",
-                    success = false
-                }), null);
+                return (false, PortwayResults.BadRequest($"Table valued functions are not supported by the {sqlProvider.ProviderType} database backing this environment"), null);
             }
 
             // Build the function call SQL

@@ -39,14 +39,8 @@ public sealed class ResponseEnvelopeGuardTests
         ["Api/WebUiEndpoints.Webhooks.cs|anonymous-error"] = new(5, Pending),
         ["Classes/Endpoints/Composite/CompositeEndpointHandler.cs|anonymous-error"] = new(2, Pending),
         ["Classes/Endpoints/Composite/CompositeEndpointHandler.cs|minimal-error-result"] = new(3, Pending),
-        ["Classes/Handlers/TableValuedFunctionSqlHandler.cs|anonymous-error"] = new(4, Pending),
-        ["Classes/Handlers/TableValuedFunctionSqlHandler.cs|mvc-error-result"] = new(4, Pending),
         ["Middleware/CompositeEndpoint.cs|minimal-error-result"] = new(1, Pending),
-        ["Middleware/ContentNegotiationMiddleware.cs|anonymous-error"] = new(1, Pending),
-        ["Middleware/FallbackEndpointExtensions.cs|anonymous-error"] = new(1, Pending),
         ["Middleware/RateLimiter.cs|anonymous-error"] = new(2, Pending),
-        ["Services/Endpoints/ProxyRequestHandler.cs|object-result-error"] = new(2, Pending),
-        ["Services/Endpoints/ProxyRequestHandler.cs|plain-text-body"] = new(1, Pending),
     };
 
     [Fact]
