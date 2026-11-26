@@ -1,4 +1,4 @@
-// scalar has no markdown download option, the json button is cloned
+// scalar has no markdown download option, the json button is cloned into its hover menu
 const { base, documents, fallback } = JSON.parse(document.querySelector('script[data-markdown]').dataset.markdown);
 
 const currentDocument = () => {
@@ -17,20 +17,15 @@ const download = () => {
 const inject = () => {
     const box = document.querySelector('.download-container');
     const json = box?.querySelector('button.download-button');
-    if (!json || box.nextElementSibling?.hasAttribute('data-portway-md')) return;
-
-    const wrap = box.cloneNode(false);
-    wrap.classList.remove('download-both');
-    wrap.setAttribute('data-portway-md', '');
+    if (!json || box.querySelector('[data-portway-md]')) return;
 
     const button = json.cloneNode(true);
+    button.setAttribute('data-portway-md', '');
     button.setAttribute('aria-label', 'Download OpenAPI Document as Markdown');
     const badge = button.querySelector('.extension');
     if (badge) badge.textContent = 'md';
     button.addEventListener('click', download);
-
-    wrap.append(button);
-    box.after(wrap);
+    box.append(button);
 };
 
 new MutationObserver(inject).observe(document.body, { childList: true, subtree: true });

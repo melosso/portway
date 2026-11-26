@@ -26,12 +26,6 @@ public sealed class DynamicOpenApiDocumentFilter : IOpenApiDocumentTransformer
         document.Info.Version = settings.Version;
         document.Info.Description = settings.Description;
 
-        if (settings.ServeMarkdown)
-        {
-            var pathBase = context.ApplicationServices.GetService<IHttpContextAccessor>()?.HttpContext?.Request.PathBase.Value ?? "";
-            document.Info.Description = $"{settings.Description}\n\n[View as Markdown]({pathBase}/docs/openapi.md)".TrimStart();
-        }
-
         if (settings.Contact != null)
         {
             document.Info.Contact = new OpenApiContact

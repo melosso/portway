@@ -322,11 +322,8 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
     }
 
     [Fact]
-    public async Task VersionMarkdown_ContainsThatVersionAndLinksToItself()
+    public async Task VersionMarkdown_ContainsThatVersion()
     {
-        using var v2 = await Document("/docs/openapi/v2/openapi.json");
-        Assert.Contains("/docs/openapi/v2/openapi.md)", v2.RootElement.GetProperty("info").GetProperty("description").GetString());
-
         var markdown = await (await Get("/docs/openapi/v2/openapi.md")).Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Contains("/api/{env}/v2/VerTest/Items", markdown);
         Assert.DoesNotContain("/api/{env}/VerTest/Items", markdown);

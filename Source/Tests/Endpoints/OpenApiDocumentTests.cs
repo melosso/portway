@@ -320,6 +320,8 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.Contains("`download-container group`", bundle);
         Assert.Contains("class:`download-button`", bundle);
         Assert.Contains("extension hidden group-hover:flex", bundle);
+        Assert.Contains(":nth-of-type(2){clip-path:none;white-space:normal;width:auto;height:auto;margin:0;padding:0;position:absolute;top:42px;overflow:visible}", bundle);
+        Assert.Contains("width:calc(100% + 24px);height:90px;", bundle);
     }
 
     [Theory]
@@ -543,7 +545,7 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.Contains("- `401` Unauthorized: The bearer token is missing", markdown);
 
         var json = await client.GetStringAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
-        Assert.Contains("[View as Markdown](/docs/openapi.md)", json);
+        Assert.DoesNotContain("View as Markdown", json);
     }
 
     // The document names its own URI so other descriptions can reference it

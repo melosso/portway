@@ -217,7 +217,6 @@ public static class OpenApiConfiguration
                 document.Self = new Uri(self, $"openapi/{version}/openapi.json");
 
             document.Info.Version = version;
-            document.Info.Description = document.Info.Description?.Replace("/docs/openapi.md)", $"/docs/openapi/{version}/openapi.md)");
             return document;
         }
 
@@ -609,6 +608,30 @@ public static class OpenApiConfiguration
 
         .scalar-app .darklight-reference {
             padding-top: 0.75rem;
+        }
+
+        .scalar-app .download-container:has([data-portway-md]) {
+            align-items: flex-start;
+        }
+
+        .scalar-app .download-container .download-button[data-portway-md] {
+            align-items: flex-start;
+            height: 0;
+            margin-top: -16px;
+            top: 58px;
+            clip-path: inset(50%);
+        }
+
+        .scalar-app .download-container .download-button[data-portway-md]::before {
+            height: 42px;
+        }
+
+        .scalar-app .download-container:is(:hover, :has(:focus-visible)) .download-button[data-portway-md] {
+            clip-path: none;
+        }
+
+        .scalar-app .download-container:has([data-portway-md]):is(:hover, :has(:focus-visible))::before {
+            height: 132px;
         }
         """;
 
