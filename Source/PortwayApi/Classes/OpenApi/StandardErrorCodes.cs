@@ -10,20 +10,20 @@ using System.Collections.Generic;
 public static class StandardErrorCodes
 {
     // Every operation can fail these ways regardless of endpoint type; 503 covers a disabled endpoint
-    private static readonly int[] Baseline = [400, 401, 403, 404, 500, 503];
+    private static readonly int[] Baseline = [400, 401, 403, 404, 429, 500, 503];
 
     // Codes an operation kind adds on top of the baseline
     private static readonly FrozenDictionary<ApiOperationKind, int[]> Additional =
         new Dictionary<ApiOperationKind, int[]>
         {
             [ApiOperationKind.SqlRead] = [],
-            [ApiOperationKind.SqlWrite] = [409, 422],
-            [ApiOperationKind.SqlQuery] = [415],
+            [ApiOperationKind.SqlWrite] = [409, 413, 415, 422],
+            [ApiOperationKind.SqlQuery] = [413, 415],
             [ApiOperationKind.SqlDelete] = [],
             [ApiOperationKind.Proxy] = [],
             [ApiOperationKind.Composite] = [422],
             [ApiOperationKind.Static] = [406],
-            [ApiOperationKind.Webhook] = [],
+            [ApiOperationKind.Webhook] = [413, 415],
             [ApiOperationKind.FileUpload] = [409, 413, 415],
             [ApiOperationKind.FileDownload] = [416],
             [ApiOperationKind.FileDelete] = [],

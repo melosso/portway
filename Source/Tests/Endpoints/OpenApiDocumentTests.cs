@@ -561,7 +561,8 @@ public class OpenApiDocumentTests : ApiTestBase
                     ? component.GetProperty("content").GetProperty("application/json").GetProperty("$ref").GetString()
                     : null;
 
-                if (media != "#/components/mediaTypes/ErrorJson" && media != "#/components/mediaTypes/ValidationErrorJson")
+                if (media is not ("#/components/mediaTypes/ErrorJson" or "#/components/mediaTypes/ValidationErrorJson"
+                    or "#/components/mediaTypes/RateLimitErrorJson" or "#/components/mediaTypes/CompositeErrorJson"))
                 {
                     offenders.Add($"{path} {method} {r.Name}: {reference ?? "inline"}");
                 }
@@ -571,6 +572,27 @@ public class OpenApiDocumentTests : ApiTestBase
 
         var challenge = shared.GetProperty("Unauthorized").GetProperty("headers");
         Assert.True(challenge.TryGetProperty("WWW-Authenticate", out _), "401 declares its Bearer challenge");
+    }
+
+    [Fact]
+    public async Task EveryOperation_DocumentsTheRateLimit_AndCompositesTheirStepEnvelope()
+    {
+        SetAllowedEnvironments("500", "700", "Synergy", "WMS");
+
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        var components = doc.RootElement.GetProperty("components");
+
+        var operations = Operations(doc.RootElement).ToList();
+        Assert.All(operations, o => Assert.Equal("#/components/responses/TooManyRequests",
+            o.Operation.GetProperty("responses").GetProperty("429").GetProperty("$ref").GetString()));
+        Assert.True(components.GetProperty("responses").GetProperty("TooManyRequests").GetProperty("headers").TryGetProperty("Retry-After", out _));
+        Assert.Contains("retrytime", components.GetProperty("schemas").GetProperty("RateLimitErrorResponse").GetProperty("required").EnumerateArray().Select(e => e.GetString()));
+
+        var composite = operations.First(o => o.Path.EndsWith("/Sales/Invoices") && o.Method == "post").Operation.GetProperty("responses");
+        Assert.Equal("#/components/responses/CompositeBadRequest", composite.GetProperty("400").GetProperty("$ref").GetString());
+        Assert.Equal("#/components/responses/Unauthorized", composite.GetProperty("401").GetProperty("$ref").GetString());
+        Assert.True(components.GetProperty("schemas").GetProperty("CompositeErrorResponse").GetProperty("properties").TryGetProperty("completedSteps", out _));
     }
 
     // Multipart uploads describe the part encoding, narrowed to the extensions the endpoint allows

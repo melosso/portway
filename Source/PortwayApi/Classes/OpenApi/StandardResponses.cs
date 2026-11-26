@@ -15,6 +15,11 @@ public static class StandardResponses
     public const string ValidationSchemaId = "ValidationErrorResponse";
     public const string ErrorMediaTypeId = "ErrorJson";
     public const string ValidationMediaTypeId = "ValidationErrorJson";
+    public const string RateLimitSchemaId = "RateLimitErrorResponse";
+    public const string RateLimitMediaTypeId = "RateLimitErrorJson";
+    public const string CompositeSchemaId = "CompositeErrorResponse";
+    public const string CompositeMediaTypeId = "CompositeErrorJson";
+    private const string CompositePrefix = "Composite";
 
     private static readonly FrozenDictionary<int, string> Summaries = new Dictionary<int, string>
     {
@@ -35,6 +40,7 @@ public static class StandardResponses
         [415] = "Unsupported Media Type",
         [416] = "Range Not Satisfiable",
         [422] = "Unprocessable Content",
+        [429] = "Too Many Requests",
         [500] = "Internal Server Error",
         [503] = "Service Unavailable"
     }.ToFrozenDictionary();
@@ -58,6 +64,7 @@ public static class StandardResponses
         [415] = "The Content-Type of the request is not supported by this endpoint.",
         [416] = "The requested byte range falls outside the file.",
         [422] = "The payload is well formed but one or more fields failed validation.",
+        [429] = "The rate limit for this token or client address is exhausted; retry after the Retry-After interval.",
         [500] = "The request failed; traceId correlates the failure with the server log.",
         [503] = "The endpoint is unavailable."
     }.ToFrozenDictionary();
@@ -89,26 +96,72 @@ public static class StandardResponses
 
         foreach (var code in StandardErrorCodes.All)
         {
-            document.Components.Responses.TryAdd(ResponseIdFor(code), new OpenApiResponse
+            document.Components.Responses.TryAdd(ResponseIdFor(code), ErrorResponseFor(code, code switch
             {
-                Summary = SummaryFor(code),
-                Description = DescriptionFor(code),
-                Headers = code == 401
-                    ? new Dictionary<string, IOpenApiHeader>
-                    {
-                        ["WWW-Authenticate"] = new OpenApiHeader
-                        {
-                            Description = "Bearer challenge (RFC 6750); error=\"invalid_token\" when a token was sent and rejected",
-                            Schema = new OpenApiSchema { Type = JsonSchemaType.String }
-                        }
-                    }
-                    : null,
-                Content = new Dictionary<string, IOpenApiMediaType>
-                {
-                    ["application/json"] = new OpenApiMediaTypeReference(code == 422 ? ValidationMediaTypeId : ErrorMediaTypeId, document)
-                }
-            });
+                422 => ValidationMediaTypeId,
+                429 => RateLimitMediaTypeId,
+                _ => ErrorMediaTypeId
+            }, document));
         }
+
+        foreach (var code in StandardErrorCodes.For(ApiOperationKind.Composite).Where(UsesCompositeEnvelope))
+        {
+            document.Components.Responses.TryAdd(CompositePrefix + ResponseIdFor(code), ErrorResponseFor(code, CompositeMediaTypeId, document));
+        }
+
+        document.Components.MediaTypes.TryAdd(RateLimitMediaTypeId, new OpenApiMediaType
+        {
+            Schema = new OpenApiSchemaReference(RateLimitSchemaId, document)
+        });
+
+        document.Components.MediaTypes.TryAdd(CompositeMediaTypeId, new OpenApiMediaType
+        {
+            Schema = new OpenApiSchemaReference(CompositeSchemaId, document)
+        });
+
+        document.Components.Schemas.TryAdd(RateLimitSchemaId, new OpenApiSchema
+        {
+            Type = JsonSchemaType.Object,
+            Description = "Rate limit error envelope (429)",
+            Properties = new Dictionary<string, IOpenApiSchema>
+            {
+                ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
+                ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                ["retrytime"] = new OpenApiSchema { Type = JsonSchemaType.String, Format = "date-time", Description = "The moment the limit resets, the same instant as Retry-After" }
+            },
+            Required = new HashSet<string> { "success", "error", "retrytime" },
+            Examples = [new JsonObject { ["success"] = false, ["error"] = "Too many requests", ["retrytime"] = "2026-01-01T12:00:30.0000000+00:00" }]
+        });
+
+        document.Components.Schemas.TryAdd(CompositeSchemaId, new OpenApiSchema
+        {
+            Type = JsonSchemaType.Object,
+            Description = "Composite error envelope; step failures add the failing step and the steps completed before it",
+            Properties = new Dictionary<string, IOpenApiSchema>
+            {
+                ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
+                ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                ["details"] = new OpenApiSchema { Type = JsonSchemaType.String, Description = "Gateway description of the step failure" },
+                ["traceId"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                ["step"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                ["statusCode"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Description = "Status returned by the failing step" },
+                ["completedSteps"] = new OpenApiSchema { Type = JsonSchemaType.Array, Items = new OpenApiSchema { Type = JsonSchemaType.String } }
+            },
+            Required = new HashSet<string> { "success", "error" },
+            Examples =
+            [
+                new JsonObject
+                {
+                    ["success"] = false,
+                    ["error"] = "Error executing step 'CreateOrderHeader'",
+                    ["details"] = "Endpoint 'Sales/OrderHeader' not found",
+                    ["traceId"] = "00-530e2d01e7e446f7c1a9936cd2858df4-77e01a3151145562-02",
+                    ["step"] = "CreateOrderHeader",
+                    ["statusCode"] = 404,
+                    ["completedSteps"] = new JsonArray { "CreateOrderLines" }
+                }
+            ]
+        });
 
         document.Components.MediaTypes.TryAdd(ErrorMediaTypeId, new OpenApiMediaType
         {
@@ -183,7 +236,51 @@ public static class StandardResponses
     /// Adds the error responses this operation kind documents, per the shared error-code matrix
     /// </summary>
     public static void AddErrors(OpenApiOperation operation, ApiOperationKind kind)
-        => AddErrors(operation, StandardErrorCodes.For(kind));
+    {
+        AddErrors(operation, StandardErrorCodes.For(kind));
+
+        if (kind != ApiOperationKind.Composite)
+        {
+            return;
+        }
+
+        foreach (var code in StandardErrorCodes.For(kind).Where(UsesCompositeEnvelope))
+        {
+            operation.Responses![code.ToString()] = new OpenApiResponseReference(CompositePrefix + ResponseIdFor(code));
+        }
+    }
+
+    private static bool UsesCompositeEnvelope(int code) => code is not (401 or 429);
+
+    private static OpenApiResponse ErrorResponseFor(int code, string mediaTypeId, OpenApiDocument document) => new()
+    {
+        Summary = SummaryFor(code),
+        Description = DescriptionFor(code),
+        Headers = code switch
+        {
+            401 => new Dictionary<string, IOpenApiHeader>
+            {
+                ["WWW-Authenticate"] = new OpenApiHeader
+                {
+                    Description = "Bearer challenge (RFC 6750); error=\"invalid_token\" when a token was sent and rejected",
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String }
+                }
+            },
+            429 => new Dictionary<string, IOpenApiHeader>
+            {
+                ["Retry-After"] = new OpenApiHeader
+                {
+                    Description = "Seconds to wait before retrying",
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.Integer }
+                }
+            },
+            _ => null
+        },
+        Content = new Dictionary<string, IOpenApiMediaType>
+        {
+            ["application/json"] = new OpenApiMediaTypeReference(mediaTypeId, document)
+        }
+    };
 
     /// <summary>
     /// Replaces every error response on an operation with references to the shared error responses for the given codes
