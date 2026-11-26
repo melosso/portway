@@ -52,7 +52,7 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
     },
     "SecurityDefinition": {
       "Name": "Bearer",
-      "Description": "Bearer token issued by Portway. Send it as: Authorization: Bearer {token}",
+      "Description": "Bearer token issued by Portway. Use: Authorization: Bearer {token}",
       "In": "Header",
       "Type": "Http",
       "Scheme": "Bearer"
