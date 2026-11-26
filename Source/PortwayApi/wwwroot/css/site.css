@@ -3517,6 +3517,7 @@ th.sortable.sort-desc .sort-icon {
     }
 }
 
+.ep-form[data-writes='false'] .sql-writes,
 .ep-form:not([data-sql-type='Table']):not([data-sql-type='View']) .sql-writes,
 .ep-form[data-write-mode='Table'] .sql-only-procedure,
 .ep-form:not([data-write-mode='Table']) .sql-only-table-writes,

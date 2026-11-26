@@ -57,7 +57,7 @@
                     <line x1="12" y1="5" x2="12" y2="19" />
                     <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
-                New endpoint
+                Add endpoint
             </button>
         </div>
     </div>
@@ -151,7 +151,7 @@
     <div class="drawer-body">
         <div style="display:flex;gap:0.375rem;flex-wrap:wrap;margin-bottom:0rem" id="createTypePicker"></div>
 
-        <div id="createForm"></div>
+        <div id="createForm" class="ep-form"></div>
 
         <div style="margin-top:1.5rem;display:flex;gap:0.5rem;justify-content:flex-end">
             <button class="btn btn-outline" data-drawer-close="createDrawer">Cancel</button>
@@ -595,11 +595,11 @@ function renderStructuredForm(type, content) {
     case 'webhook':   inner = renderWebhookForm(c);   break;
     default:          return `<div class="ep-empty">Unknown type</div>`;
   }
-  return `<div class="ep-form" data-sql-type="${esc(c.DatabaseObjectType ?? 'Table')}" data-write-mode="${esc(writeModeOf(c))}">${rawOnlyNotice(c)}${inner}${renderLifecycleCard(c)}</div>`;
+  return `<div class="ep-form" data-sql-type="${esc(c.DatabaseObjectType ?? 'Table')}" data-write-mode="${esc(writeModeOf(c))}" data-writes="${hasWrite(c.AllowedMethods ?? c.Methods ?? ['GET'])}">${rawOnlyNotice(c)}${inner}${renderLifecycleCard(c)}</div>`;
 }
 
 // config keys without a form field
-const RAW_ONLY_KEYS = ['FallbackUrls', 'Retry', 'Headers', 'SupportsOData', 'Relationships', 'ResponseTransforms.Remove', 'ResponseTransforms.Rename', 'Mcp.Instruction', 'Mcp.AllowedMethods'];
+const RAW_ONLY_KEYS = ['FallbackUrls', 'Retry', 'Headers', 'Relationships', 'ResponseTransforms.Remove', 'ResponseTransforms.Rename', 'Mcp.AllowedMethods'];
 
 function rawOnlyNotice(c) {
   const isSet = v => v != null && v !== false && v !== '' && !(Array.isArray(v) && !v.length) && !(typeof v === 'object' && !Object.keys(v).length);
@@ -764,13 +764,15 @@ function fieldMetadata(c) {
 }
 
 function fieldMcp(c) {
-  return fieldToggle('isMcpExposed', 'Expose in MCP', c.Mcp?.Exposed === true);
+  return fieldToggle('isMcpExposed', 'Expose in MCP', c.Mcp?.Exposed === true)
+    + fieldText('mcpInstruction', 'MCP instruction', c.Mcp?.Instruction ?? '', 'e.g. Use for open orders only', { hint: 'Tells the assistant when to use this endpoint' });
 }
 
 function readMcp(c) {
   const on = document.getElementById('isMcpExposed')?.checked ?? false;
-  if (c.Mcp) return on || c.Mcp.Exposed !== undefined ? { ...c.Mcp, Exposed: on } : c.Mcp;
-  return on ? { Exposed: true } : undefined;
+  const mcp = { ...(c.Mcp ?? {}), Instruction: document.getElementById('mcpInstruction')?.value?.trim() || undefined };
+  if (on || c.Mcp?.Exposed !== undefined) mcp.Exposed = on;
+  return Object.values(mcp).some(v => v !== undefined) ? mcp : undefined;
 }
 
 function fieldSelect(id, label, value, options, onChange) {
@@ -800,8 +802,13 @@ function showExampleTip(el, fnName) {
   Tooltip.show(el, window[fnName](), { side: 'right' });
 }
 
+const WRITE_METHODS = ['POST', 'PUT', 'PATCH', 'MERGE', 'DELETE'];
+const hasWrite = methods => [].concat(methods ?? []).some(m => WRITE_METHODS.includes(String(m).toUpperCase()));
+
 function toggleMethod(btn) {
   btn.setAttribute('aria-pressed', String(btn.classList.toggle('active')));
+  const form = btn.closest('.ep-form');
+  if (form) form.dataset.writes = String(hasWrite(readMethods(btn.parentElement.id)));
 }
 
 function fieldKV(id, label, obj) {
@@ -1080,6 +1087,7 @@ function renderProxyForm(c) {
     <div class="card">
       <div class="card-header"><h2 class="card-title">Target</h2></div>
       ${fieldText('url', 'URL', c.Url ?? '', 'https://erp.internal/api/items', { required: true, hint: 'Checked against the network access policy on every call' })}
+      ${fieldToggle('supportsOData', 'Supports OData queries', c.SupportsOData ?? false)}
       ${fieldToggle('forwardAuthorization', 'Forward Authorization header', c.ForwardAuthorization ?? false)}
       ${fieldColumns('maskFields', 'Masked response fields', c.ResponseTransforms?.Mask, 'Add field', 'e.g. email')}
     </div>
@@ -1637,6 +1645,7 @@ function collectFormConfig(type, existingContent) {
         IsMcpExposed:         undefined,
         Mcp:                  readMcp(c),
         ForwardAuthorization: keepDefault(c, 'ForwardAuthorization', document.getElementById('forwardAuthorization')?.checked ?? false, false),
+        SupportsOData:        keepDefault(c, 'SupportsOData', document.getElementById('supportsOData')?.checked ?? false, false),
         ResponseTransforms:   readResponseTransforms(c.ResponseTransforms),
         DeletePatterns:       readJsonField('deletePatterns'),
         CustomProperties:     customProps,
@@ -1894,7 +1903,6 @@ function renderCreateForm() {
     <div class="card-header"><h2 class="card-title">Access</h2></div>
     ${methods ? fieldMethods(['GET'], 'createMethodPicker') : ''}
     ${fieldAllowedEnvs('*')}
-    ${fieldToggle('createHidden', 'Hidden', false)}
   </div>`;
 
   switch(_createType) {
@@ -1905,21 +1913,14 @@ function renderCreateForm() {
         ${fieldText('createSchema', 'Schema', '', 'dbo', { hint: 'Empty uses the provider default schema' })}
         ${fieldSelect('createObjectType', 'Type', 'Table', ['Table','View','StoredProcedure','TableValuedFunction'])}
       </div>
-      <div class="card">
-        <div class="card-header"><h2 class="card-title">Metadata</h2></div>
-        ${fieldText('createDisplayName', 'Display Name', '', 'e.g. Order lines')}
-        ${fieldText('createNamespaceDisplayName', 'Namespace Label', '', 'e.g. Sales orders')}
-      </div>
-      ${access(true)}
-      ${fieldDocumentation({})}`;
+      ${access(true)}`;
       break;
     case 'proxy':
       html += `<div class="card">
         <div class="card-header"><h2 class="card-title">Target</h2></div>
-        ${fieldText('createUrl', 'URL', '', 'https://erp.internal/api/items', { required: true })}
+        ${fieldText('createUrl', 'URL', '', 'https://erp.internal/api/items', { required: true, hint: 'Checked against the network access policy on every call' })}
       </div>
-      ${access(true)}
-      ${fieldDocumentation({})}`;
+      ${access(true)}`;
       break;
     case 'composite':
       html += `<div class="card">
