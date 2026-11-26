@@ -73,17 +73,17 @@ public class FileHandlerService : IDisposable
     public async Task<string> UploadFileAsync(string environment, string folder, string filename, Stream fileStream, bool overwrite = false)
     {
         if (folder.Length > 0 && !IsSafeRelativePath(folder))
-            throw new ArgumentException("Invalid folder", nameof(folder));
+            throw new ArgumentException("Invalid folder");
 
         // Validate file
         if (fileStream == null || fileStream.Length == 0)
         {
-            throw new ArgumentException("File is empty", nameof(fileStream));
+            throw new ArgumentException("File is empty");
         }
 
         if (fileStream.Length > _optionsMonitor.CurrentValue.MaxFileSizeBytes)
         {
-            throw new ArgumentException($"File size exceeds the maximum allowed size ({_optionsMonitor.CurrentValue.MaxFileSizeBytes / 1024 / 1024}MB)", nameof(fileStream));
+            throw new ArgumentException($"File size exceeds the maximum allowed size ({_optionsMonitor.CurrentValue.MaxFileSizeBytes / 1024 / 1024}MB)");
         }
 
         // Validate file extension
@@ -204,9 +204,9 @@ public class FileHandlerService : IDisposable
     public async Task<IEnumerable<FileInfo>> ListFilesAsync(string environment, string folder, string? prefix)
     {
         if (folder.Length > 0 && !Path.IsPathRooted(folder) && !IsSafeRelativePath(folder))
-            throw new ArgumentException("Invalid folder", nameof(folder));
+            throw new ArgumentException("Invalid folder");
         if (!string.IsNullOrEmpty(prefix) && (Path.IsPathRooted(prefix) || prefix.Contains('\\') || prefix.Split('/').Any(s => s is "." or "..")))
-            throw new ArgumentException("Invalid prefix", nameof(prefix));
+            throw new ArgumentException("Invalid prefix");
 
         if (Path.IsPathRooted(folder))
             return ListAbsolute(environment, folder, prefix);
@@ -242,10 +242,10 @@ public class FileHandlerService : IDisposable
     {
         // Validate file
         if (fileStream == null || fileStream.Length == 0)
-            throw new ArgumentException("File is empty", nameof(fileStream));
+            throw new ArgumentException("File is empty");
 
         if (fileStream.Length > _optionsMonitor.CurrentValue.MaxFileSizeBytes)
-            throw new ArgumentException($"File size exceeds maximum allowed size", nameof(fileStream));
+            throw new ArgumentException($"File size exceeds maximum allowed size");
 
         // Sanitize the filename part only
         string fileName = Path.GetFileName(absoluteFilePath);
@@ -469,10 +469,10 @@ public class FileHandlerService : IDisposable
     {
         var absoluteFolder = Path.IsPathRooted(folder);
         if (folder.Length > 0 && !absoluteFolder && !IsSafeRelativePath(folder))
-            throw new ArgumentException("Invalid folder", nameof(folder));
+            throw new ArgumentException("Invalid folder");
 
         if (!ParseFileId(fileId, out string environment, out string filename))
-            throw new ArgumentException("Invalid file ID", nameof(fileId));
+            throw new ArgumentException("Invalid file ID");
 
         if (!string.Equals(environment, expectedEnvironment, StringComparison.OrdinalIgnoreCase))
             throw new UnauthorizedAccessException("File ID does not belong to the requested environment");
@@ -613,10 +613,10 @@ public class FileHandlerService : IDisposable
         string extension = Path.GetExtension(filename).ToLowerInvariant();
 
         if (_optionsMonitor.CurrentValue.BlockedExtensions.Contains(extension))
-            throw new ArgumentException($"Files with extension {extension} are not allowed", nameof(filename));
+            throw new ArgumentException($"Files with extension {extension} are not allowed");
 
         if (_optionsMonitor.CurrentValue.AllowedExtensions.Count > 0 && !_optionsMonitor.CurrentValue.AllowedExtensions.Contains(extension))
-            throw new ArgumentException($"Only files with extensions {string.Join(", ", _optionsMonitor.CurrentValue.AllowedExtensions)} are allowed", nameof(filename));
+            throw new ArgumentException($"Only files with extensions {string.Join(", ", _optionsMonitor.CurrentValue.AllowedExtensions)} are allowed");
     }
 
     private string SanitizeFileName(string filename)

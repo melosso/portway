@@ -146,6 +146,14 @@ public sealed class FileIdConfinementTests : IDisposable
     }
 
     [Fact]
+    public async Task RejectionMessage_OmitsTheParameterName()
+    {
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => _handler.UploadFileAsync("prod", "/etc", "march.pdf", Body()));
+
+        Assert.Equal("Invalid folder", ex.Message);
+    }
+
+    [Fact]
     public async Task ListStaysInFolder()
     {
         await _handler.UploadFileAsync("prod", "invoices/ACME", "a.pdf", Body());
