@@ -129,7 +129,7 @@ Failure response:
 }
 ```
 
-The response status is the failing step's status. `details` names the cause of the failure. The response body of the failing step is not returned; it is written to the server log at Debug level. `completedSteps` contains the steps completed before the failure.
+The response status is the failing step's status. `details` contains the cause of the failure. The response body of the failing step is not returned; it is written to the server log at Debug level. `completedSteps` contains the steps completed before the failure.
 
 ## Troubleshooting
 
