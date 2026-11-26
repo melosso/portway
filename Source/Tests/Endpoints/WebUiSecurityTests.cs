@@ -848,6 +848,28 @@ public class WebUiSecurityTests : IDisposable
         }
     }
 
+    // Encrypt false keeps connection strings readable for dev checkouts, a secret value is encrypted regardless
+    [Fact]
+    public async Task Secrets_AreEncryptedEvenWhenTheEnvironmentOptsOut()
+    {
+        var (client, name, folder, adminCookie, adminCsrf) = await SecretEnvironmentAsync(
+            """{"Encrypt":false,"ConnectionString":"Data Source=dev.db;","ServerName":"srv","Headers":{}}""");
+        try
+        {
+            var put = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/environments/{name}/secrets/DB-PASSWORD", adminCookie, adminCsrf, new { value = "s3cr3t-value" }), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+
+            var file = File.ReadAllText(Path.Combine(folder, "settings.json"));
+            Assert.DoesNotContain("s3cr3t-value", file);
+            Assert.Contains("DB-PASSWORD", file);
+            Assert.Contains("Data Source=dev.db;", file);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
     [Fact]
     public async Task Secrets_ViewerCannotWrite()
     {
@@ -864,7 +886,9 @@ public class WebUiSecurityTests : IDisposable
 
             Assert.Equal(HttpStatusCode.Forbidden, put.StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, delete.StatusCode);
-            Assert.Contains("plain-secret-value", File.ReadAllText(Path.Combine(folder, "settings.json")));
+            var file = File.ReadAllText(Path.Combine(folder, "settings.json"));
+            Assert.Contains("ERP-KEY", file);
+            Assert.DoesNotContain("NEW-KEY", file);
         }
         finally
         {
@@ -947,7 +971,10 @@ public class WebUiSecurityTests : IDisposable
 
             Assert.Equal(HttpStatusCode.OK, save.StatusCode);
             var saved = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(folder, "settings.json")))!;
-            Assert.Equal("plain-secret-value", saved["Secrets"]!["ERP-KEY"]!.GetValue<string>());
+            var secret = saved["Secrets"]!["ERP-KEY"]!.GetValue<string>();
+            Assert.NotEqual("plain-secret-value", secret);
+            Assert.True(PortwayApi.Helpers.SettingsEncryptionHelper.TryDecryptValue(secret, out var plain));
+            Assert.Equal("plain-secret-value", plain);
             Assert.Equal(1, saved["FutureKey"]!["x"]!.GetValue<int>());
             Assert.Equal("srv2", saved["ServerName"]!.GetValue<string>());
         }

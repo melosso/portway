@@ -110,4 +110,20 @@ public sealed class SecretReferenceTests
 
         Assert.Equal(literal, SecretReference.ResolveConnectionString(literal, Values).Value);
     }
+
+    // the console stores a secret as the whole connection string
+    [Fact]
+    public void WholeConnectionStringReference_ResolvesToTheSecret()
+    {
+        var values = new Dictionary<string, string> { ["WMSDB"] = "Data Source=demo.db;" };
+
+        var result = SecretReference.ResolveConnectionString("${secret:WMSDB}", values);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("Data Source=demo.db;", result.Value);
+    }
+
+    [Fact]
+    public void WholeConnectionStringReference_ToAMissingSecret_Fails() =>
+        Assert.Equal(SecretFailure.Missing, SecretReference.ResolveConnectionString("${secret:NOPE}", new Dictionary<string, string>()).Failure);
 }

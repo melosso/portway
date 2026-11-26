@@ -438,10 +438,23 @@ public static partial class WebUiEndpointExtensions
 
     internal static bool EncryptAtRest(System.Text.Json.Nodes.JsonObject settings)
     {
-        if (settings["Encrypt"] is System.Text.Json.Nodes.JsonValue optOut && optOut.TryGetValue<bool>(out var encrypt) && !encrypt)
-            return false;
-
+        // secret values are encrypted even when the file opts out
         var changed = false;
+        if (settings["Secrets"] is System.Text.Json.Nodes.JsonObject secretValues)
+        {
+            foreach (var (key, value) in secretValues.ToList())
+            {
+                if (value is System.Text.Json.Nodes.JsonValue v && v.TryGetValue<string>(out var text) && !string.IsNullOrWhiteSpace(text) && !SettingsEncryptionHelper.IsEncrypted(text))
+                {
+                    secretValues[key] = SettingsEncryptionHelper.Encrypt(text);
+                    changed = true;
+                }
+            }
+        }
+
+        if (settings["Encrypt"] is System.Text.Json.Nodes.JsonValue optOut && optOut.TryGetValue<bool>(out var encrypt) && !encrypt)
+            return changed;
+
         if (settings["ConnectionString"] is System.Text.Json.Nodes.JsonValue cs && cs.TryGetValue<string>(out var connection)
             && !string.IsNullOrEmpty(connection) && !SettingsEncryptionHelper.IsEncrypted(connection))
         {
@@ -449,17 +462,6 @@ public static partial class WebUiEndpointExtensions
             changed = true;
         }
 
-        if (settings["Secrets"] is System.Text.Json.Nodes.JsonObject secrets)
-        {
-            foreach (var (key, value) in secrets.ToList())
-            {
-                if (value is System.Text.Json.Nodes.JsonValue v && v.TryGetValue<string>(out var text) && !string.IsNullOrWhiteSpace(text) && !SettingsEncryptionHelper.IsEncrypted(text))
-                {
-                    secrets[key] = SettingsEncryptionHelper.Encrypt(text);
-                    changed = true;
-                }
-            }
-        }
         return changed;
     }
 }

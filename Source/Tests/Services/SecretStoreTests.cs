@@ -58,13 +58,16 @@ public sealed class SecretStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task Secrets_EncryptFalse_StaysPlaintext()
+    // the opt-out keeps connection strings readable, never a secret value
+    public async Task Secrets_EncryptFalse_AreStillEncrypted()
     {
         WriteSettings(new Dictionary<string, object> { ["Encrypt"] = false, ["Secrets"] = new Dictionary<string, string> { ["ERP-KEY"] = "plain-key" } });
+        var provider = Provider();
 
-        await Provider().EncryptEnvironmentIfNeededAsync(Env);
+        await provider.EncryptEnvironmentIfNeededAsync(Env);
 
-        Assert.Contains("plain-key", File.ReadAllText(SettingsPath));
+        Assert.DoesNotContain("plain-key", File.ReadAllText(SettingsPath));
+        Assert.Equal("plain-key", await provider.GetSecretAsync(Env, "ERP-KEY", TestContext.Current.CancellationToken));
     }
 
     [Fact]

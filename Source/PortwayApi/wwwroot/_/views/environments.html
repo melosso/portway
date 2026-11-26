@@ -179,7 +179,7 @@
                     </svg>
                 </button>
             </div>
-            <div class="field-help">Required for SQL endpoints.</div>
+            <div class="field-help">Required for database endpoints.</div>
         </div>
         <div class="field">
             <label class="field-label">Headers</label>
@@ -413,7 +413,7 @@ function renderGlobalDetail() {
       <div class="card">
         <div class="card-header"><h2 class="card-title">Server Name</h2></div>
         <div class="field">
-          <label class="field-label" for="gServerName">Default SQL Server</label>
+          <label class="field-label" for="gServerName">Default Server</label>
           <input type="text" class="input" id="gServerName" value="${esc(d?.server_name ?? '')}" placeholder="." data-on="input:markDirty">
           <div class="field-help">Used when an environment has no server name of its own.</div>
         </div>
@@ -569,7 +569,7 @@ function buildFormView(name, d, headersHtml) {
                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
              </button>
            </div>
-           <div class="field-help" style="margin-top:0.25rem">Required for SQL endpoints.</div>`
+           <div class="field-help" style="margin-top:0.25rem">Required for database endpoints.</div>`
       }
     </div>
     ${buildSecretsSection(name, d)}

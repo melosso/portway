@@ -113,6 +113,10 @@ public static partial class SecretReference
         if (!ContainsReference(template))
             return SecretResolution.Ok(template);
 
+        // a secret can hold the whole connection string
+        if (ExactName(template) is not null)
+            return ResolveExact(template, values);
+
         DbConnectionStringBuilder builder;
         try
         {

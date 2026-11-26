@@ -678,15 +678,18 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 
     private EncryptionResult AutoEncryptIfNeeded(string settingsPath, EnvironmentConfig config, string envName)
     {
-        // Explicit opt-out keeps the file plaintext, for dev checkouts where encrypted files get committed
+        bool needsSave = false;
+        bool alreadyEncrypted = true;
+
+        // Explicit opt-out keeps the file readable for dev checkouts, secret values are encrypted regardless
         if (config.Encrypt == false)
         {
             Log.Debug("Encryption disabled for environment {Env} via Encrypt: false", envName);
+            AutoEncryptSecrets(config, envName, ref needsSave, ref alreadyEncrypted);
+            if (needsSave)
+                SaveEncryptedConfig(settingsPath, config);
             return EncryptionResult.AlreadyEncrypted;
         }
-
-        bool needsSave = false;
-        bool alreadyEncrypted = true;
 
         if (!TryAutoEncryptConnectionString(config, envName, ref needsSave, ref alreadyEncrypted))
         {
