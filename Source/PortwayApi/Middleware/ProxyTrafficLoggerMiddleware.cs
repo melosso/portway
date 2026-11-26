@@ -266,36 +266,12 @@ public sealed class ProxyTrafficLoggerMiddleware
                 !path.Contains("index.html", StringComparison.OrdinalIgnoreCase);
     }
 
-    private void ParseApiPath(string? path, out string? env, out string? endpoint)
+    private static void ParseApiPath(string? path, out string? env, out string? endpoint)
     {
-        env = null;
-        endpoint = null;
-
-        if (string.IsNullOrEmpty(path))
-            return;
-
-        // Extract segments
-        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-        if (segments.Length >= 2 &&
-            (segments[0].Equals("api", StringComparison.OrdinalIgnoreCase) ||
-            segments[0].Equals("webhook", StringComparison.OrdinalIgnoreCase)))
-        {
-            // Set environment
-            env = segments[1];
-
-            // Set endpoint if available
-            if (segments.Length >= 3)
-            {
-                endpoint = segments[2];
-
-                // Handle composite endpoints
-                if (endpoint.Equals("composite", StringComparison.OrdinalIgnoreCase) && segments.Length >= 4)
-                {
-                    endpoint = $"composite/{segments[3]}";
-                }
-            }
-        }
+        var segments = path?.Split('/', StringSplitOptions.RemoveEmptyEntries) ?? [];
+        env = segments.Length >= 2 ? segments[1] : null;
+        var (_, name, version) = RequestMetricsExtensions.Label(path, _ => true);
+        endpoint = name.Length > 0 ? name + Classes.EndpointVersion.Suffix(version.Length > 0 ? version : null) : null;
     }
 
     // the token middleware already verified the bearer token, re-hashing it here would cost one PBKDF2 per active token
