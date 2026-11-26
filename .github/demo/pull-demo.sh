@@ -61,8 +61,8 @@ fi
 sed -i "s|PORTWAY_ENCRYPTION_KEY=.*|PORTWAY_ENCRYPTION_KEY=$RANDOM_KEY|" docker-compose.yml
 
 # Optional: Prompt for domain or leave as default
-echo "Portway is configured for: https://portway-demo.melosso.com"
-echo "If you use a different domain, edit PORTWAY_PUBLIC_ORIGINS in docker-compose.yml"
+echo "Portway is configured for: https://portway-demo.melosso.com (console, 127.0.0.1:8081) and https://portway-demo-api.melosso.com (API, 127.0.0.1:8080)"
+echo "If you use different domains, edit PORTWAY_ALLOWED_HOSTS and PORTWAY_PUBLIC_ORIGINS in docker-compose.yml"
 
 echo ""
 echo "Pull complete."
