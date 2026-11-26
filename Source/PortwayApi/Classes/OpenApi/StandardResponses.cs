@@ -187,6 +187,11 @@ public static class StandardResponses
                     {
                         Type = JsonSchemaType.String,
                         Description = "Unique ID correlating internal server errors with logs. Included only on 500 status code."
+                    },
+                    ["field"] = new OpenApiSchema
+                    {
+                        Type = JsonSchemaType.String,
+                        Description = "Name of the input that caused the error, if one input caused it."
                     }
                 },
                 Required = new HashSet<string> { "success", "error" },
