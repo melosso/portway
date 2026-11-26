@@ -91,6 +91,10 @@ public sealed class ContentNegotiationMiddleware
         return Api.EndpointController.ResolveEndpointIdentity(segments[2..]) is { Type: Classes.EndpointType.Proxy or Classes.EndpointType.Composite };
     }
 
+    internal static bool IsJsonMediaType(string contentType) =>
+        Microsoft.Net.Http.Headers.MediaTypeHeaderValue.TryParse(contentType, out var media)
+        && media.MediaType.Equals("application/json", StringComparison.OrdinalIgnoreCase);
+
     internal static bool IsAcceptedWebhookContentType(HttpContext context, string contentType)
     {
         if (!HttpMethods.IsPost(context.Request.Method)
@@ -156,7 +160,7 @@ public sealed class ContentNegotiationMiddleware
         }
 
         // JSON gate for non-proxy endpoints; proxy paths skip it via IsProxyFamilyPath
-        if (!contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase) && !IsAcceptedWebhookContentType(context, contentType))
+        if (!IsJsonMediaType(contentType) && !IsAcceptedWebhookContentType(context, contentType))
         {
             Log.Warning("Invalid Content-Type '{ContentType}' for {Method} request from {RemoteIp}",
                 contentType, context.Request.Method, context.Connection.RemoteIpAddress);
