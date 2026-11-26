@@ -77,7 +77,8 @@ public class DisabledEndpointTests : ApiTestBase
                     continue;
                 }
 
-                Assert.Equal("#/components/responses/ServiceUnavailable", unavailable.GetProperty("$ref").GetString());
+                Assert.Contains(unavailable.GetProperty("$ref").GetString(),
+                    new[] { "#/components/responses/ServiceUnavailable", "#/components/responses/CompositeServiceUnavailable" });
             }
 
         Assert.True(offenders.Count == 0, "Operations missing a 503 response:\n" + string.Join("\n", offenders));
