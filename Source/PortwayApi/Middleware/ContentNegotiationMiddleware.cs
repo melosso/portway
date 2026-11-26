@@ -88,16 +88,7 @@ public sealed class ContentNegotiationMiddleware
         if (segments[2].Equals("composite", StringComparison.OrdinalIgnoreCase))
             return true;
 
-        // Endpoint names may span multiple segments (namespaces); match longest candidate first
-        var proxyEndpoints = Classes.EndpointHandler.GetProxyEndpoints();
-        for (var take = segments.Length - 2; take >= 1; take--)
-        {
-            var candidate = string.Join('/', segments.Skip(2).Take(take));
-            if (proxyEndpoints.ContainsKey(candidate))
-                return true;
-        }
-
-        return false;
+        return Api.EndpointController.ResolveEndpointIdentity(segments[2..]) is { Type: Classes.EndpointType.Proxy or Classes.EndpointType.Composite };
     }
 
     internal static bool IsAcceptedWebhookContentType(HttpContext context, string contentType)
