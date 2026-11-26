@@ -398,6 +398,12 @@ async function createBackup(btn) {
 async function loadBackups() {
   const el = document.getElementById('backupList');
   if (!el) return;
+  const off = _writable['DatabaseMaintenance:Backup:Retention']?.value === 0;
+  document.querySelector('#backupBody [data-on="click:createBackup"]')?.toggleAttribute('hidden', off);
+  if (off) {
+    el.innerHTML = settingItem('Snapshots', 'Disabled', 'Retention 0 disables backups. Existing snapshots stay on disk.');
+    return;
+  }
   try {
     const d = await api('/_/api/backups', { silent: true });
     const pending = d.pending_restore
@@ -585,7 +591,7 @@ const CARDS = {
 
   backupBody: { actions: '<button class="btn btn-outline" data-on="click:createBackup" data-args="' + actionArgs(ARG.THIS) + '">Create backup</button>', rows: () => [
     field('DatabaseMaintenance:Backup:Enabled', 'Scheduled backup', 'Writes a snapshot at the maintenance time.'),
-    field('DatabaseMaintenance:Backup:Retention', 'Retention', 'Retained snapshots. Older snapshots are deleted.', { unit: 'backups' }),
+    field('DatabaseMaintenance:Backup:Retention', 'Retention', 'Retained snapshots. Older snapshots are deleted. 0 disables backups.', { unit: 'backups' }),
     '<div id="backupList"></div>',
   ] },
 

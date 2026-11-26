@@ -1,5 +1,6 @@
 namespace PortwayApi.Endpoints;
 
+using Microsoft.Extensions.Options;
 using PortwayApi.Auth;
 using PortwayApi.Helpers;
 using PortwayApi.Services.Database;
@@ -14,14 +15,29 @@ public static partial class WebUiEndpointExtensions
             return Results.Json(new { results = results.Select(MaintenanceResultDto) });
         }).ExcludeFromDescription();
 
-        app.MapGet("/_/api/backups", () => Results.Json(new
+        // cancelling a pending restore stays possible with backups disabled
+        app.MapDelete("/_/api/backups/restore", (HttpContext ctx) =>
+        {
+            BackupArchive.CancelRestore(Directory.GetCurrentDirectory());
+            configAudit.Record("cancel restore", "backup", "restore-pending", ctx.Connection.RemoteIpAddress?.ToString());
+            return Results.Json(new { ok = true });
+        }).ExcludeFromDescription();
+
+        // retention 0 disables snapshot backups, archives on disk stay
+        var backups = app.MapGroup("/_/api/backups").ExcludeFromDescription()
+            .AddEndpointFilter(async (ctx, next) =>
+                ctx.HttpContext.RequestServices.GetRequiredService<IOptionsMonitor<DatabaseMaintenanceOptions>>().CurrentValue.Backup.Retention > 0
+                    ? await next(ctx)
+                    : PortwayResults.MinimalError("Backups are disabled", 404));
+
+        backups.MapGet("", () => Results.Json(new
         {
             backups = BackupArchive.List(Directory.GetCurrentDirectory())
                 .Select(b => new { name = b.Name, bytes = b.Bytes, created_utc = b.CreatedUtc }),
             pending_restore = BackupArchive.PendingRestore(Directory.GetCurrentDirectory())
-        })).ExcludeFromDescription();
+        }));
 
-        app.MapPost("/_/api/backups/{name}/restore", (string name, HttpContext ctx) =>
+        backups.MapPost("/{name}/restore", (string name, HttpContext ctx) =>
         {
             try
             {
@@ -38,21 +54,13 @@ public static partial class WebUiEndpointExtensions
 
             configAudit.Record("restore", "backup", name, ctx.Connection.RemoteIpAddress?.ToString(), "applied at the next start");
             return Results.Json(new { pending_restore = name, restart_required = true });
-        }).ExcludeFromDescription();
+        });
 
-        app.MapDelete("/_/api/backups/restore", (HttpContext ctx) =>
-        {
-            BackupArchive.CancelRestore(Directory.GetCurrentDirectory());
-            configAudit.Record("cancel restore", "backup", "restore-pending", ctx.Connection.RemoteIpAddress?.ToString());
-            return Results.Json(new { ok = true });
-        }).ExcludeFromDescription();
-
-        app.MapPost("/_/api/backups", async (DatabaseMaintenanceService maintenance, CancellationToken ct) =>
-            Results.Json(new { created = await maintenance.CreateBackupAsync(ct) }))
-            .ExcludeFromDescription();
+        backups.MapPost("", async (DatabaseMaintenanceService maintenance, CancellationToken ct) =>
+            Results.Json(new { created = await maintenance.CreateBackupAsync(ct) }));
 
         // archives contain password and token hashes
-        app.MapGet("/_/api/backups/{name}", async (string name, HttpContext ctx, AdminUserService users) =>
+        backups.MapGet("/{name}", async (string name, HttpContext ctx, AdminUserService users) =>
         {
             if (ctx.Items[SignedInUserKey] is not int me || await users.FindByIdAsync(me) is not { Role: AdminUserRoles.Administrator })
                 return PortwayResults.MinimalError("This action needs an administrator account", 403);
@@ -62,7 +70,7 @@ public static partial class WebUiEndpointExtensions
 
             configAudit.Record("download", "backup", name, ctx.Connection.RemoteIpAddress?.ToString());
             return Results.File(path, "application/zip", name);
-        }).ExcludeFromDescription();
+        });
     }
 
     private static object MaintenanceResultDto(DatabaseMaintenanceResult r) => new

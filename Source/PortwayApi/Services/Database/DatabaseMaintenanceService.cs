@@ -150,10 +150,13 @@ public class DatabaseMaintenanceService : BackgroundService
     }
 
     /// <summary>
-    /// Writes a snapshot archive and applies the retention setting
+    /// Writes a snapshot archive and applies the retention setting; null with retention 0
     /// </summary>
-    public async Task<string> CreateBackupAsync(CancellationToken ct = default)
+    public async Task<string?> CreateBackupAsync(CancellationToken ct = default)
     {
+        if (_options.CurrentValue.Backup.Retention <= 0)
+            return null;
+
         await _gate.WaitAsync(ct);
         try
         {

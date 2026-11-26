@@ -196,7 +196,7 @@ Portway reads `X-Forwarded-For` from a proxy in `KnownProxies` or `KnownNetworks
 | `FreePageRatioThreshold` | number | `0.25` | `VACUUM` runs when free pages reach this fraction of the file |
 | `RunOnStartup` | boolean | `false` | Adds one run shortly after start |
 | `Backup.Enabled` | boolean | `true` | Writes a snapshot archive at the same time |
-| `Backup.Retention` | integer | `7` | Number of archives retained, 1 to 100 |
+| `Backup.Retention` | integer | `7` | Number of archives retained, 0 to 100. `0` disables snapshot backups: the console hides them and the backup routes return `404`. Existing archives stay on disk |
 
 A database that fails `quick_check` is skipped for `ANALYZE` and `VACUUM` and logged as an error. **Settings → Maintenance** displays the result per database. **Run now** starts a run.
 

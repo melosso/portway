@@ -1857,6 +1857,44 @@ public class WebUiSecurityTests : IDisposable
         }
     }
 
+    // retention 0 turns snapshot backups off, archives already on disk stay
+    [Fact]
+    public async Task Backups_AreRefusedWithRetentionZero()
+    {
+        using var factory = _factory.WithWebHostBuilder(b => b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["DatabaseMaintenance:Backup:Retention"] = "0"
+        })));
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var (adminCookie, adminCsrf) = await LoginAsync(client);
+        var root = Directory.GetCurrentDirectory();
+        var existing = await PortwayApi.Services.Database.BackupArchive.CreateAsync(root, 7, TestContext.Current.CancellationToken);
+        try
+        {
+            Assert.Equal(HttpStatusCode.NotFound, (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/backups", adminCookie), TestContext.Current.CancellationToken)).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.SendAsync(AuthedRequest(HttpMethod.Get, $"/_/api/backups/{existing}", adminCookie), TestContext.Current.CancellationToken)).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.SendAsync(AuthedRequest(HttpMethod.Post, "/_/api/backups", adminCookie, adminCsrf), TestContext.Current.CancellationToken)).StatusCode);
+            var restore = await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/_/api/backups/{existing}/restore", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.NotFound, restore.StatusCode);
+            Assert.Equal("Backups are disabled", (await restore.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken)).GetProperty("error").GetString());
+            Assert.Null(PortwayApi.Services.Database.BackupArchive.PendingRestore(root));
+
+            // cancelling a pending restore stays possible
+            Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(AuthedRequest(HttpMethod.Delete, "/_/api/backups/restore", adminCookie, adminCsrf), TestContext.Current.CancellationToken)).StatusCode);
+
+            var before = PortwayApi.Services.Database.BackupArchive.List(root).Count;
+            var maintenance = factory.Services.GetRequiredService<PortwayApi.Services.Database.DatabaseMaintenanceService>();
+            Assert.Null(await maintenance.CreateBackupAsync(TestContext.Current.CancellationToken));
+            Assert.Equal(before, PortwayApi.Services.Database.BackupArchive.List(root).Count);
+            Assert.NotNull(PortwayApi.Services.Database.BackupArchive.Resolve(root, existing));
+        }
+        finally
+        {
+            if (PortwayApi.Services.Database.BackupArchive.Resolve(root, existing) is { } path)
+                File.Delete(path);
+        }
+    }
+
     [Fact]
     public async Task MaintenanceRun_ReturnsIntegrityPerDatabase()
     {
