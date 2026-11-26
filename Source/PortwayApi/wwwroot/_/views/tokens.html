@@ -392,82 +392,6 @@
     </div>
 </div>
 
-<div
-    id="revealBackdrop"
-    style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); z-index:200; align-items:center; justify-content:center;"
->
-    <div
-        style="background:hsl(var(--background)); border:1px solid hsl(var(--border)); border-radius:var(--nav-radius); padding:2rem; width:540px; max-width:92vw; box-shadow:0 25px 50px -12px rgba(0,0,0,0.3);"
-    >
-        <div style="display:flex; align-items:center; gap:0.625rem; margin-bottom:0.875rem;">
-            <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="hsl(38,92%,50%)"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-            >
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-            <strong style="font-size:1rem">Token created</strong>
-        </div>
-        <p style="font-size:0.875rem; color:hsl(var(--muted-foreground)); margin-bottom:1rem; line-height:1.5;">
-            This token is <strong>shown once</strong>. Copy it and store it securely.
-        </p>
-        <div
-            class="code-block"
-            id="revealTokenValue"
-            style="max-height:none; word-break:break-all; user-select:all; margin-bottom:1.25rem; font-size:0.75rem; line-height:1.9; letter-spacing:0.02em;"
-        ></div>
-        <div style="display:flex; gap:0.5rem;">
-            <button
-                class="btn btn-outline"
-                style="flex:1; justify-content:center"
-                data-on="click:copyRevealToken"
-                id="copyBtn"
-            >
-                <svg
-                    id="copyIcon"
-                    width="13"
-                    height="13"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                >
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                </svg>
-                <span id="copyLabel">Copy</span>
-            </button>
-            <button class="btn btn-primary" style="flex:1; justify-content:center" data-on="click:exportRevealToken">
-                <svg
-                    width="13"
-                    height="13"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                >
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                Export
-            </button>
-        </div>
-    </div>
-</div>
-
 <script>
 let allTokens = [];
 let filteredTokens = [];
@@ -1063,24 +987,43 @@ async function rotateToken(id) {
     await Drawer.close('editDrawer', true);
     editingTokenId = null;
     await loadTokens();
-    showRevealModal(d.token, { username: d.username, allowed_scopes: d.allowed_scopes, allowed_environments: d.allowed_environments, expires_in_days: d.expires_in_days });
+    showRevealModal(d.token, { username: d.username, allowed_scopes: d.allowed_scopes, allowed_environments: d.allowed_environments, expires_in_days: d.expires_in_days }, true);
   } catch(e) {
     await loadTokens();
   }
 }
 
-function showRevealModal(token, data) {
+const COPY_ICON = '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>';
+const CHECK_ICON = '<polyline points="20 6 9 17 4 12"/>';
+
+// the token is shown once, so a backdrop click does not close the dialog
+function showRevealModal(token, data, rotated = false) {
   revealData = { ...data, token };
-  document.getElementById('revealTokenValue').textContent = token;
-  document.getElementById('copyLabel').textContent = 'Copy to Clipboard';
-  document.getElementById('copyIcon').innerHTML = `<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>`;
-  document.getElementById('revealBackdrop').style.display = 'flex';
+  const note = rotated
+    ? `New token for <strong>${esc(data.username)}</strong>. The previous token no longer works.`
+    : `Token for <strong>${esc(data.username)}</strong>.`;
+  Dialog.open({
+    id: 'token-reveal',
+    title: rotated ? 'Token rotated' : 'Token created',
+    closeOnBackdrop: false,
+    content: `
+      <p class="token-reveal-note">${note} It is shown once. Copy or export it before closing.</p>
+      <div class="code-block token-reveal-value" id="revealTokenValue">${esc(token)}</div>`,
+    footer: `
+      <button type="button" class="btn btn-outline" data-on="click:exportRevealToken">Export</button>
+      <button type="button" class="btn btn-outline" id="copyBtn" data-on="click:copyRevealToken">
+        <svg id="copyIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${COPY_ICON}</svg>
+        <span id="copyLabel">Copy token</span>
+      </button>
+      <button type="button" class="btn btn-primary" data-on="click:Dialog.close" data-args='["token-reveal"]'>Done</button>`,
+    // runs after the dialog's own initial focus
+    onOpen: () => setTimeout(() => document.getElementById('copyBtn')?.focus(), 120),
+    onClose: () => { revealData = null; }
+  });
 }
 
 function closeRevealModal() {
-  document.getElementById('revealBackdrop').style.display = 'none';
-  document.getElementById('revealTokenValue').textContent = '';
-  revealData = null;
+  Dialog.close('token-reveal');
 }
 
 function exportRevealToken() {
@@ -1110,16 +1053,17 @@ function exportRevealToken() {
 }
 
 async function copyRevealToken() {
-  const token = document.getElementById('revealTokenValue').textContent;
+  if (!revealData) return;
   try {
-    await navigator.clipboard.writeText(token);
+    await navigator.clipboard.writeText(revealData.token);
     const btn = document.getElementById('copyBtn');
     document.getElementById('copyLabel').textContent = 'Copied';
-    document.getElementById('copyIcon').innerHTML = `<polyline points="20 6 9 17 4 12"/>`;
+    document.getElementById('copyIcon').innerHTML = CHECK_ICON;
     btn?.classList.add('is-check');
     setTimeout(() => {
-      document.getElementById('copyLabel').textContent = 'Copy to Clipboard';
-      document.getElementById('copyIcon').innerHTML = `<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>`;
+      if (!document.getElementById('copyBtn')) return;
+      document.getElementById('copyLabel').textContent = 'Copy token';
+      document.getElementById('copyIcon').innerHTML = COPY_ICON;
       btn?.classList.remove('is-check');
     }, 2000);
   } catch(e) {

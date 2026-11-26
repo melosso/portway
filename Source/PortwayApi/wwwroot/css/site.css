@@ -1323,11 +1323,9 @@ h1 {
     color: hsl(var(--muted-foreground));
     pointer-events: none;
 }
-.setting-label label {
-    display: inline;
-}
 .setting-link {
     margin-left: 0.25rem;
+    vertical-align: -1px;
     color: hsl(var(--muted-foreground));
 }
 .setting-link:hover {
@@ -1368,7 +1366,6 @@ h1 {
 }
 
 .setting-label label {
-    display: block;
     font-size: 0.875rem;
     font-weight: 500;
 }
@@ -1688,6 +1685,23 @@ body:has(.drawer-backdrop.open) main {
     overflow-y: auto;
     user-select: text;
     line-height: 1.6;
+}
+
+.token-reveal-note {
+    margin: 0 0 1rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: hsl(var(--muted-foreground));
+}
+.token-reveal-note strong {
+    font-weight: 500;
+    color: hsl(var(--foreground));
+}
+.token-reveal-value {
+    max-height: none;
+    font-size: 0.8125rem;
+    word-break: break-all;
+    user-select: all;
 }
 
 /* Accordion (Environments) */
