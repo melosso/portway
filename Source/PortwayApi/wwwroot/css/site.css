@@ -579,7 +579,7 @@ aside {
 .nav-item.active {
     background-color: hsl(var(--sidebar-active));
     color: hsl(var(--brand));
-    font-weight: 500;
+    font-weight: 450;
 }
 .nav-item.active svg {
     color: hsl(var(--brand));
@@ -3296,7 +3296,7 @@ th.sortable.sort-desc .sort-icon {
 /* one readable form width for endpoint and environment details */
 .ep-form > *,
 .ep-detail-body > .card {
-    max-width: 52rem;
+    max-width: auto;
 }
 
 .field-row {
@@ -3517,6 +3517,7 @@ th.sortable.sort-desc .sort-icon {
     }
 }
 
+.ep-form .card:has(#isMcpExposed:not(:checked)) .mcp-only,
 .ep-form[data-writes='false'] .sql-writes,
 .ep-form:not([data-sql-type='Table']):not([data-sql-type='View']) .sql-writes,
 .ep-form[data-write-mode='Table'] .sql-only-procedure,
@@ -3525,11 +3526,7 @@ th.sortable.sort-desc .sort-icon {
 .wh-verify-row:not(:has([data-key='Deduplicate']:checked)) .wh-only-custom {
     display: none;
 }
-.ep-raw-notice {
-    margin: 0;
-}
 .ep-form .card > .sql-writes {
-    max-width: 45rem;
     margin-bottom: 0.875rem;
 }
 .ep-form .card > .toggle-row + .field {

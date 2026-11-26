@@ -595,16 +595,20 @@ function renderStructuredForm(type, content) {
     case 'webhook':   inner = renderWebhookForm(c);   break;
     default:          return `<div class="ep-empty">Unknown type</div>`;
   }
-  return `<div class="ep-form" data-sql-type="${esc(c.DatabaseObjectType ?? 'Table')}" data-write-mode="${esc(writeModeOf(c))}" data-writes="${hasWrite(c.AllowedMethods ?? c.Methods ?? ['GET'])}">${rawOnlyNotice(c)}${inner}${renderLifecycleCard(c)}</div>`;
+  return `<div class="ep-form" data-sql-type="${esc(c.DatabaseObjectType ?? 'Table')}" data-write-mode="${esc(writeModeOf(c))}" data-writes="${hasWrite(c.AllowedMethods ?? c.Methods ?? ['GET'])}">${inner}${rawOnlySettings(c)}${renderLifecycleCard(c)}</div>`;
 }
 
 // config keys without a form field
-const RAW_ONLY_KEYS = ['FallbackUrls', 'Retry', 'Headers', 'Relationships', 'ResponseTransforms.Remove', 'ResponseTransforms.Rename', 'Mcp.AllowedMethods'];
+const RAW_ONLY_KEYS = ['FallbackUrls', 'Retry', 'Headers', 'Relationships', 'ResponseTransforms.Remove', 'ResponseTransforms.Rename'];
 
-function rawOnlyNotice(c) {
+// settings without a form field, shown read only so the form does not hide behaviour
+function rawOnlySettings(c) {
   const isSet = v => v != null && v !== false && v !== '' && !(Array.isArray(v) && !v.length) && !(typeof v === 'object' && !Object.keys(v).length);
-  const keys = RAW_ONLY_KEYS.filter(k => isSet(k.split('.').reduce((o, p) => o?.[p], c)));
-  return keys.length ? `<p class="field-help ep-raw-notice">Set in Raw JSON: ${keys.map(k => `<code>${esc(k)}</code>`).join(', ')}</p>` : '';
+  const set = RAW_ONLY_KEYS.map(k => [k, k.split('.').reduce((o, p) => o?.[p], c)]).filter(([, v]) => isSet(v));
+  if (!set.length) return '';
+  return accordion(`Raw JSON settings (${set.length})`,
+    set.map(([k, v]) => `<div class="field"><span class="field-label">${esc(k)}</span><pre class="code-block">${esc(JSON.stringify(v, null, 2))}</pre></div>`).join('')
+    + '<div class="field-help">Edit these in Raw JSON.</div>');
 }
 
 function writeModeOf(c) {
@@ -765,12 +769,17 @@ function fieldMetadata(c) {
 
 function fieldMcp(c) {
   return fieldToggle('isMcpExposed', 'Expose in MCP', c.Mcp?.Exposed === true)
-    + fieldText('mcpInstruction', 'MCP instruction', c.Mcp?.Instruction ?? '', 'e.g. Use for open orders only', { hint: 'Tells the assistant when to use this endpoint' });
+    + `<div class="mcp-only">
+      ${fieldText('mcpInstruction', 'MCP instruction', c.Mcp?.Instruction ?? '', 'e.g. Use for open orders only', { hint: 'Tells the assistant when to use this endpoint' })}
+      ${fieldMethods(c.Mcp?.AllowedMethods ?? [], 'mcpMethodPicker', 'MCP methods', false)}
+      <div class="field-help">Empty allows the first endpoint method only.</div>
+    </div>`;
 }
 
 function readMcp(c) {
   const on = document.getElementById('isMcpExposed')?.checked ?? false;
-  const mcp = { ...(c.Mcp ?? {}), Instruction: document.getElementById('mcpInstruction')?.value?.trim() || undefined };
+  const mcpMethods = document.getElementById('mcpMethodPicker') ? readMethods('mcpMethodPicker') : c.Mcp?.AllowedMethods ?? [];
+  const mcp = { ...(c.Mcp ?? {}), Instruction: document.getElementById('mcpInstruction')?.value?.trim() || undefined, AllowedMethods: mcpMethods.length ? mcpMethods : undefined };
   if (on || c.Mcp?.Exposed !== undefined) mcp.Exposed = on;
   return Object.values(mcp).some(v => v !== undefined) ? mcp : undefined;
 }
@@ -783,11 +792,11 @@ function fieldSelect(id, label, value, options, onChange) {
   </div>`;
 }
 
-function fieldMethods(selected, id = 'methodPicker') {
+function fieldMethods(selected, id = 'methodPicker', label = 'Methods', required = true) {
   const sel = [].concat(selected ?? ['GET']).map(m => String(m).toUpperCase());
   const all = [...new Set(['GET','POST','PUT','PATCH','MERGE','DELETE','QUERY', ...sel])];
   return `<div class="field">
-    <span class="field-label" id="${id}-label">Methods<span class="field-required" aria-hidden="true">*</span></span>
+    <span class="field-label" id="${id}-label">${label}${required ? '<span class="field-required" aria-hidden="true">*</span>' : ''}</span>
     <div class="method-picker" id="${id}" role="group" aria-labelledby="${id}-label">
       ${all.map(m => `<button type="button" class="method-btn m-${m.toLowerCase()} ${sel.includes(m) ? 'active' : ''}" aria-pressed="${sel.includes(m)}" data-on="click:toggleMethod click:markDirty" data-args='[{"ref":"this"}]'>${m}</button>`).join('')}
     </div>
@@ -808,7 +817,7 @@ const hasWrite = methods => [].concat(methods ?? []).some(m => WRITE_METHODS.inc
 function toggleMethod(btn) {
   btn.setAttribute('aria-pressed', String(btn.classList.toggle('active')));
   const form = btn.closest('.ep-form');
-  if (form) form.dataset.writes = String(hasWrite(readMethods(btn.parentElement.id)));
+  if (form && btn.parentElement.id === 'methodPicker') form.dataset.writes = String(hasWrite(readMethods('methodPicker')));
 }
 
 function fieldKV(id, label, obj) {
@@ -1063,6 +1072,9 @@ function renderSqlForm(c) {
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldMethods(c.AllowedMethods)}
       ${fieldTenancy(c.Tenancy, (c.DatabaseObjectType ?? 'Table') === 'TableValuedFunction' ? 'Parameter' : 'Column')}
+    </div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Visibility</h2></div>
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
       ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
       ${fieldMcp(c)}
@@ -1097,6 +1109,9 @@ function renderProxyForm(c) {
       ${fieldMethods(c.Methods ?? c.AllowedMethods)}
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldTenancy(c.Tenancy, 'Upstream header')}
+    </div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Visibility</h2></div>
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
       ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
       ${fieldMcp(c)}
@@ -1125,6 +1140,9 @@ function renderCompositeForm(c) {
       <div class="card-header"><h2 class="card-title">Access</h2></div>
       ${fieldMethods(c.Methods ?? c.AllowedMethods)}
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
+    </div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Visibility</h2></div>
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
       ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
       ${fieldMcp(c)}
@@ -1153,6 +1171,9 @@ function renderFileForm(c) {
     <div class="card">
       <div class="card-header"><h2 class="card-title">Access</h2></div>
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
+    </div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Visibility</h2></div>
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
       ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
       ${fieldMcp(c)}
@@ -1174,6 +1195,9 @@ function renderStaticForm(c) {
     <div class="card">
       <div class="card-header"><h2 class="card-title">Access</h2></div>
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
+    </div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Visibility</h2></div>
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
       ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
       ${fieldMcp(c)}
@@ -1205,6 +1229,9 @@ function renderWebhookForm(c) {
     <div class="card">
       <div class="card-header"><h2 class="card-title">Access</h2></div>
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
+    </div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Visibility</h2></div>
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
       ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
       ${fieldMcp(c)}
