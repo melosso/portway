@@ -1211,7 +1211,7 @@ function renderWebhookForm(c) {
     <div class="card">
       <div class="card-header"><h2 class="card-title">Webhook IDs</h2>
         <a class="card-doc" href="https://melosso.github.io/portway/guide/endpoints-webhook" target="_blank" rel="noopener noreferrer" aria-label="Webhook documentation" title="Documentation"></a></div>
-      <div class="field-help">Senders post to <code>/api/{env}/${esc(_selected?.name ?? '')}/{id}</code>. Each ID requires a Portway token or the signature of its verification mode.</div>
+      <div class="field-help">Each ID is its own URL. It requires a Portway token or the signature of its verification mode.</div>
       <span class="field-label" id="webhookIds-label">IDs<span class="field-required" aria-hidden="true">*</span></span>
       <div id="verificationList" class="wh-verify-list" role="group" aria-labelledby="webhookIds-label">${renderVerificationRows(c.AllowedColumns ?? [], c.Verification ?? {})}</div>
       <button type="button" class="ep-add-row" data-on="click:addWebhookRow click:markDirty">
@@ -1299,7 +1299,7 @@ function verifyRow(id, v) {
   const select = (key, label, options) => `<label class="wh-field"><span>${esc(label)}</span>
       <select class="input" data-key="${key}" data-on="change:markDirty">${options.map(o => `<option ${(v[key] ?? options[0]) === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`;
   const secret = (key, label) => `<label class="wh-field"><span>${esc(label)}</span>
-      <input type="text" class="input wh-secret" data-key="${key}" list="secretNames" value="${esc(secretRefName(v[key]))}" placeholder="SECRET-NAME" spellcheck="false" autocomplete="off" data-on="input:markDirty"></label>`;
+      <input type="text" class="input wh-secret" data-key="${key}" list="secretNames" value="${esc(secretRefName(v[key]))}" placeholder="SECRET-NAME" spellcheck="false" autocomplete="off" data-on="input:markDirty input:secretChanged" data-args='[{"ref": "this"}]'></label>`;
   const toggle = (key, label) => `<label class="wh-toggle"><span class="switch"><input type="checkbox" data-key="${key}" ${v[key] ? 'checked' : ''} data-on="change:markDirty"><span class="slider"></span></span>${esc(label)}</label>`;
   const hmacValue = key => {
     if (key === 'Header') return shared ? '' : v.Header;
@@ -1309,15 +1309,20 @@ function verifyRow(id, v) {
   const extra = key => key === 'ToleranceSeconds' ? 'min="60" max="900" step="1"' : '';
   return `<div class="wh-verify-row" data-mode="${esc(mode)}">
     <div class="wh-verify-head">
-      <input type="text" class="input wh-id-input" value="${esc(id)}" placeholder="e.g. github" aria-label="Webhook ID" spellcheck="false" autocomplete="off" data-on="input:markDirty">
+      <input type="text" class="input wh-id-input" value="${esc(id)}" placeholder="e.g. github" aria-label="Webhook ID" spellcheck="false" autocomplete="off" data-on="input:markDirty input:whIdChanged" data-args='[{"ref": "this"}]'>
       <select class="input wh-mode" aria-label="Verification mode" data-on="change:modeChanged" data-args='[{"ref": "this"}]'>${modeOptions(mode)}</select>
       <button type="button" class="btn btn-ghost btn-icon" data-on="click:removeClosest click:markDirty" data-args='[{"ref":"this"}, ".wh-verify-row"]' title="Remove" aria-label="Remove webhook ID">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
+    <code class="wh-url">${esc(webhookUrl(id))}</code>
     <div class="wh-verify-body">
       <div class="wh-preset-info">${presetInfo(mode)}</div>
       <div class="wh-grid">${secret('Secret', 'Secret')}${secret('PreviousSecret', 'Previous secret')}</div>
+      <div class="wh-secret-actions">
+        <button type="button" class="btn btn-ghost btn-sm" data-on="click:rotateSecret" data-args='[{"ref": "this"}]'>Rotate secret</button>
+        <span class="field-help wh-secret-warn"></span>
+      </div>
       <div class="wh-grid wh-only-shared">${input('SharedHeader', 'Credential header', 'e.g. X-Hook-Key', v.SharedHeader ?? (shared ? v.Header : ''))}${input('Username', 'Basic username', 'e.g. sender', v.Username)}</div>
       <div class="wh-grid wh-only-hmac">${HMAC_FIELDS.map(([key, label, placeholder]) => input(key, label, placeholder, hmacValue(key), extra(key))).join('')}${HMAC_SELECTS.map(f => select(...f)).join('')}</div>
       <div class="wh-grid wh-only-custom">${DELIVERY_FIELDS.map(([key, label, placeholder]) => input(key, label, placeholder, v[key])).join('')}${select('DedupeKey', 'Dedupe key', ['DeliveryId', 'BodyHash'])}</div>
@@ -1342,16 +1347,51 @@ function readWebhookIds() {
   return [...document.querySelectorAll('#verificationList .wh-id-input')].map(i => i.value.trim()).filter(Boolean);
 }
 
+let _secretsByEnv = {};
+
 async function loadSecretNames() {
   const lists = document.querySelectorAll('datalist[data-secret-names]');
   if (!lists.length) return;
   const envs = readEnvs() ?? (await api('/_/api/environments', { silent: true }).catch(() => ({}))).allowed_environments ?? [];
-  const names = new Set();
+  _secretsByEnv = {};
   await Promise.all(envs.map(async env => {
-    try { (await api(`/_/api/environments/${encodeURIComponent(env)}`, { silent: true })).secret_names?.forEach(n => names.add(n)); } catch (e) {}
+    try { _secretsByEnv[env] = new Set((await api(`/_/api/environments/${encodeURIComponent(env)}`, { silent: true })).secret_names ?? []); } catch (e) {}
   }));
+  const names = new Set(Object.values(_secretsByEnv).flatMap(set => [...set]));
   const options = [...names].sort().map(n => `<option value="${esc(n)}"></option>`).join('');
   lists.forEach(list => { list.innerHTML = options; });
+  document.querySelectorAll('.wh-verify-row [data-key="Secret"]').forEach(secretChanged);
+}
+
+function webhookUrl(id) {
+  return `/api/{env}/${_selected?.name ?? ''}/${id || '{id}'}`;
+}
+
+function whIdChanged(input) {
+  const url = input.closest('.wh-verify-row')?.querySelector('.wh-url');
+  if (url) url.textContent = webhookUrl(input.value.trim());
+}
+
+// a secret reference resolves per environment, so name each environment that lacks it
+function secretChanged(input) {
+  const row = input.closest('.wh-verify-row');
+  const name = row?.querySelector('[data-key="Secret"]')?.value.trim();
+  const warn = row?.querySelector('.wh-secret-warn');
+  if (!warn) return;
+  const missing = Object.entries(_secretsByEnv).filter(([, names]) => name && !names.has(name)).map(([env]) => env);
+  warn.textContent = missing.length ? `Missing in ${missing.join(', ')}. Add it under Environments.` : '';
+}
+
+// the previous secret keeps verifying while senders switch to the new one
+function rotateSecret(btn) {
+  const row = btn.closest('.wh-verify-row');
+  const current = row.querySelector('[data-key="Secret"]');
+  if (!current.value.trim()) { current.focus(); return; }
+  row.querySelector('[data-key="PreviousSecret"]').value = current.value;
+  current.value = '';
+  current.focus();
+  secretChanged(current);
+  markDirty();
 }
 
 function collectVerification(keepAll = false) {
