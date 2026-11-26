@@ -1,4 +1,4 @@
-// First-run checklist from /_/api/overview, shown until dismissed or complete
+// first run checklist from the overview api, shown until dismissed or complete
 (function () {
     'use strict';
 

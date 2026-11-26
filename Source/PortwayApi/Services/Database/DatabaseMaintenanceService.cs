@@ -150,7 +150,7 @@ public class DatabaseMaintenanceService : BackgroundService
     }
 
     /// <summary>
-    /// Writes a snapshot archive and applies the retention setting; null with retention 0
+    /// Writes a snapshot archive and applies the retention setting
     /// </summary>
     public async Task<string?> CreateBackupAsync(CancellationToken ct = default)
     {

@@ -348,7 +348,7 @@ class AreaChart {
         return d;
     }
 
-    // local time from the timestamp; the server label is utc, hourly buckets read as their end so the axis ends at now
+    // the server label is utc, hourly labels show the bucket end in local time
     _axisLabel(pt) {
         if (!pt.timestamp) return pt.label;
         if (!this._isHourly())

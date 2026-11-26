@@ -681,7 +681,7 @@ public sealed class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         bool needsSave = false;
         bool alreadyEncrypted = true;
 
-        // Explicit opt-out keeps the file readable for dev checkouts, secret values are encrypted regardless
+        // the opt-out keeps the file readable for dev checkouts, secret values are encrypted regardless
         if (config.Encrypt == false)
         {
             Log.Debug("Encryption disabled for environment {Env} via Encrypt: false", envName);

@@ -112,7 +112,7 @@ public static class RootNavigationExtensions
                     return;
                 }
 
-                // Browser request: landing page for local clients or allowed PublicOrigins; others go to the console on its own port, else docs
+                // local and public origin browsers get the landing page, others the console on its own port, else docs
                 var remoteIp = context.Connection.RemoteIpAddress;
                 var urlValidator = context.RequestServices.GetRequiredService<UrlValidator>();
                 var isLocalClient = remoteIp != null && urlValidator.IsClientIpAllowed(

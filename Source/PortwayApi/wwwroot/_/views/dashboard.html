@@ -449,7 +449,7 @@ function fmtDuration(secs) {
 const CHECK_NAMES = { Diskspace: 'Disk space', ProxyEndpoints: 'Proxy endpoints', SqlConnectivity: 'SQL connectivity' };
 function checkName(n) { return CHECK_NAMES[n] ?? n.replace(/([a-z])([A-Z])/g, '$1 $2'); }
 
-// next step per check and problem; the raw error stays in the logs
+// next step per check and problem, the raw error stays in the logs
 function nextStep(check, problem) {
   if (check === 'SqlConnectivity') {
     return problem === 'Timed out'
@@ -499,7 +499,7 @@ function problemsAndHealthy(d) {
 const CHECK_ORDER = ['SqlConnectivity', 'ProxyEndpoints'];
 const PLURAL = { Environment: 'environments', 'Proxy endpoint': 'proxy endpoints', 'Composite endpoint': 'composite endpoints' };
 
-// environments before endpoints, failures before warnings; repeats of one problem share a row
+// environments before endpoints and failures before warnings, repeats of one problem share a row
 function group(problems) {
   const rank = p => (p.warn ? 10 : 0) + (CHECK_ORDER.includes(p.check) ? CHECK_ORDER.indexOf(p.check) : CHECK_ORDER.length);
   const groups = new Map();
@@ -704,7 +704,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTraffic();
   });
   Promise.allSettled([loadChecks(), loadBlocked(), loadTraffic()]);
-  // health arrives through the event stream; rate limit blocks have no event
+  // health arrives through the event stream, rate limit blocks need the poll
   setInterval(loadBlocked, 30000);
   connectSSE();
   SetupGuide.init('setupGuide');
