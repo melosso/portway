@@ -79,6 +79,46 @@ public sealed class BackendUnavailableTests : ApiTestBase, IDisposable
         await AssertUnavailable(response);
     }
 
+    // an unreachable upstream is an operational state, does not need a stack trace
+    [Theory]
+    [InlineData("GET", "UnavailableTest/Down", "UnavailableTest/Down")]
+    [InlineData("POST", "UnavailableTest/Combined", "UnavailableTest/Combined")]
+    public async Task UnreachableUpstream_LogsOneWarningWithoutException(string method, string endpoint, string logged)
+    {
+        var sink = new CollectingSink();
+        var previous = Serilog.Log.Logger;
+        var traceId = "";
+        Serilog.Log.Logger = new Serilog.LoggerConfiguration().MinimumLevel.Debug().WriteTo.Sink(sink).CreateLogger();
+        try
+        {
+            using var request = new HttpRequestMessage(new HttpMethod(method), $"/api/{Env}/{endpoint}")
+            {
+                Content = method == "POST" ? new StringContent("{}", System.Text.Encoding.UTF8, "application/json") : null
+            };
+            var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+            traceId = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).RootElement.GetProperty("traceId").GetString()!;
+        }
+        finally
+        {
+            Serilog.Log.Logger = previous;
+        }
+
+        var events = sink.Events.Where(e => e.RenderMessage().Contains(logged)).ToList();
+        var warning = Assert.Single(events, e => e.Level == Serilog.Events.LogEventLevel.Warning && e.RenderMessage().Contains("Upstream unavailable"));
+        Assert.DoesNotContain(events, e => e.Level >= Serilog.Events.LogEventLevel.Error || e.Exception is not null);
+
+        var reference = ((Serilog.Events.ScalarValue)warning.Properties["TraceRef"]).Value as string;
+        Assert.Matches("^[0-9a-f]{8}$", reference);
+        Assert.Contains(reference, traceId);
+    }
+
+    private sealed class CollectingSink : Serilog.Core.ILogEventSink
+    {
+        private readonly System.Collections.Concurrent.ConcurrentQueue<Serilog.Events.LogEvent> _events = new();
+        public IEnumerable<Serilog.Events.LogEvent> Events => _events;
+        public void Emit(Serilog.Events.LogEvent logEvent) => _events.Enqueue(logEvent);
+    }
+
     [Fact]
     public async Task UnreachableWebhookDatabase_Returns503WithoutDetail()
     {

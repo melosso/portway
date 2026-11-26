@@ -8,6 +8,14 @@ namespace PortwayApi.Helpers;
 /// </summary>
 public static class ProxyFailoverHelper
 {
+    public static bool IsUpstreamUnavailable(Exception ex, CancellationToken aborted) => ex switch
+    {
+        HttpRequestException { HttpRequestError: HttpRequestError.ConnectionError or HttpRequestError.NameResolutionError } => true,
+        HttpRequestException { InnerException: System.Net.Sockets.SocketException } => true,
+        TaskCanceledException => !aborted.IsCancellationRequested,
+        _ => false
+    };
+
     /// <summary>
     /// Sends a request with retry per URL and failover across fallbacks; single attempt when not configured
     /// </summary>

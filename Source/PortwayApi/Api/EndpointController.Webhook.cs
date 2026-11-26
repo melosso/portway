@@ -69,7 +69,7 @@ public sealed partial class EndpointController
         }
         catch (System.Data.Common.DbException ex) when (SqlErrorClassifier.IsConnectionFailure(ex))
         {
-            Log.Warning("Database unreachable for webhook {WebhookId} ({Detail}): {Message}", route.Id, SqlErrorClassifier.DescribeForLog(ex), ex.Message);
+            Log.Warning("Database unreachable [{TraceRef}] for webhook {WebhookId} ({Detail}): {Message}", PortwayResults.TraceRefOf(HttpContext), route.Id, SqlErrorClassifier.DescribeForLog(ex), ex.Message);
             return PortwayResults.ServiceUnavailable(HttpContext, "Database unavailable. Retry later.");
         }
         catch (Exception ex)

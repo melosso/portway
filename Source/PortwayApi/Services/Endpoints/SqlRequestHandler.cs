@@ -544,17 +544,16 @@ public sealed partial class SqlRequestHandler
     // Masked reference for any provider's database error; full detail stays in the log
     private static IActionResult MaskedDataError(HttpContext context, DbException dbEx, string endpointName)
     {
-        var errorId = Guid.NewGuid().ToString("N")[..8];
+        var traceRef = PortwayResults.TraceRefOf(context);
         if (SqlErrorClassifier.IsConnectionFailure(dbEx))
         {
-            Log.Warning("Database unreachable [{ErrorId}] for endpoint {EndpointName} ({Detail}): {Message}",
-                errorId, endpointName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
-            return PortwayResults.ServiceUnavailable(context, $"Database unavailable. Retry later. Reference: T{errorId}");
+            Log.Warning("Database unreachable [{TraceRef}] for endpoint {EndpointName} ({Detail}): {Message}",
+                traceRef, endpointName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
+            return PortwayResults.ServiceUnavailable(context, "Database unavailable. Retry later.");
         }
-        Log.Error(dbEx, "Database error [{ErrorId}] for endpoint {EndpointName} ({Detail}): {Message}",
-            errorId, endpointName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
-        return PortwayResults.ServerError(context,
-            $"A data error occurred. Please contact support with reference: T{errorId}");
+        Log.Error(dbEx, "Database error [{TraceRef}] for endpoint {EndpointName} ({Detail}): {Message}",
+            traceRef, endpointName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
+        return PortwayResults.ServerError(context, "A data error occurred. Quote the trace ID when contacting support.");
     }
 
     /// <summary>

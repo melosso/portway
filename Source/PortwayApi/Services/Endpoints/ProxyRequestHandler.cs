@@ -37,14 +37,6 @@ public sealed class ProxyRequestHandler
     // Endpoint Urls are config-static, so the path/query split and reserved param names are computed once per Url
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Path, string Query, HashSet<string> Reserved)> _splitUrlCache = new();
 
-    internal static bool IsUpstreamUnavailable(Exception ex, CancellationToken aborted) => ex switch
-    {
-        HttpRequestException { HttpRequestError: HttpRequestError.ConnectionError or HttpRequestError.NameResolutionError } => true,
-        HttpRequestException { InnerException: System.Net.Sockets.SocketException } => true,
-        TaskCanceledException => !aborted.IsCancellationRequested,
-        _ => false
-    };
-
     internal static string DropReservedParams(string query, IReadOnlySet<string> reserved, IReadOnlySet<string> credentials)
     {
         if (reserved.Count == 0 && credentials.Count == 0)
@@ -361,14 +353,14 @@ public sealed class ProxyRequestHandler
             Log.Warning("Blocked proxy connection for {EndpointName}: {Reason}", endpointName, blocked.Message);
             return PortwayResults.Forbidden("Request blocked due to security restrictions");
         }
-        catch (Exception ex) when (!context.Response.HasStarted && IsUpstreamUnavailable(ex, context.RequestAborted))
+        catch (Exception ex) when (!context.Response.HasStarted && ProxyFailoverHelper.IsUpstreamUnavailable(ex, context.RequestAborted))
         {
-            Log.Warning("Upstream unavailable for {EndpointName}: {Message}", endpointName, ex.Message);
+            Log.Warning("Upstream unavailable [{TraceRef}] for {EndpointName}: {Message}", PortwayResults.TraceRefOf(context), endpointName, ex.Message);
             return PortwayResults.ServiceUnavailable(context, "Upstream unavailable. Retry later.");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error during proxy request: {EndpointName}", endpointName);
+            Log.Error(ex, "Error during proxy request [{TraceRef}]: {EndpointName}", PortwayResults.TraceRefOf(context), endpointName);
 
             return PortwayResults.ServerError(context,
                 $"Error processing endpoint {endpointName}. Please check the logs for more details.");

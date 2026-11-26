@@ -113,8 +113,8 @@ public sealed class CompositeEndpointHandler
                 {
                     // 4xx means a request or step configuration error
                     Log.Write(ex.StatusCode is >= 400 and < 500 ? Serilog.Events.LogEventLevel.Warning : Serilog.Events.LogEventLevel.Error,
-                        "Composite endpoint {Endpoint} step {StepName} failed with status {StatusCode}: {ErrorMessage}",
-                        endpointName, ex.StepName, ex.StatusCode, ex.Message);
+                        "Composite endpoint [{TraceRef}] {Endpoint} step {StepName} failed with status {StatusCode}: {ErrorMessage}",
+                        PortwayResults.TraceRefOf(context), endpointName, ex.StepName, ex.StatusCode, ex.Message);
                     Log.Debug("Composite step {StepName} upstream response: {ResponseContent}", ex.StepName,
                         ex.ResponseContent.Length > 200 ? ex.ResponseContent[..200] + "..." : ex.ResponseContent);
 
@@ -124,16 +124,20 @@ public sealed class CompositeEndpointHandler
                         PortwayResults.TraceIdOf(context), ex.StepName, completedSteps, ex.ErrorDetail, ex.StatusCode),
                         statusCode: statusCode);
                 }
+                catch (Exception ex) when (ProxyFailoverHelper.IsUpstreamUnavailable(ex, context.RequestAborted))
+                {
+                    Log.Warning("Upstream unavailable [{TraceRef}] for {Endpoint} at step {StepName}: {Message}", PortwayResults.TraceRefOf(context), endpointName, step.Name, ex.Message);
+                    return Results.Json(CompositeErrorResponse.Of($"Upstream unavailable at step '{step.Name}'. Retry later.",
+                        PortwayResults.TraceIdOf(context), step.Name, completedSteps), statusCode: StatusCodes.Status503ServiceUnavailable);
+                }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Error executing step {StepName} for composite endpoint {Endpoint}: {ErrorMessage}",
-                        step.Name, endpointName, ex.Message);
+                    Log.Error(ex, "Error executing step {StepName} [{TraceRef}] for composite endpoint {Endpoint}: {ErrorMessage}",
+                        step.Name, PortwayResults.TraceRefOf(context), endpointName, ex.Message);
 
                     // Detail stays masked; the trace id correlates the response with the logged exception
                     return Results.Json(CompositeErrorResponse.Of($"Error executing step '{step.Name}'",
-                        PortwayResults.TraceIdOf(context), step.Name, completedSteps), statusCode: Services.ProxyRequestHandler.IsUpstreamUnavailable(ex, context.RequestAborted)
-                        ? StatusCodes.Status503ServiceUnavailable
-                        : StatusCodes.Status500InternalServerError);
+                        PortwayResults.TraceIdOf(context), step.Name, completedSteps), statusCode: StatusCodes.Status500InternalServerError);
                 }
                 finally
                 {

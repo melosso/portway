@@ -137,8 +137,8 @@ public static class TableValuedFunctionSqlHandler
         }
         catch (System.Data.Common.DbException dbEx) when (SqlErrorClassifier.IsConnectionFailure(dbEx))
         {
-            Log.Warning("Database unreachable for TVF {FunctionName} ({Detail}): {ErrorMessage}",
-                endpoint.DatabaseObjectName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
+            Log.Warning("Database unreachable [{TraceRef}] for TVF {FunctionName} ({Detail}): {ErrorMessage}",
+                PortwayResults.TraceRefOf(request.HttpContext), endpoint.DatabaseObjectName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
             return (false, PortwayResults.ServiceUnavailable(request.HttpContext, "Database unavailable. Retry later."), null);
         }
         catch (System.Data.Common.DbException dbEx)

@@ -76,6 +76,9 @@ public static class PortwayResults
     public static string TraceIdOf(HttpContext? context)
         => System.Diagnostics.Activity.Current?.Id ?? context?.TraceIdentifier ?? string.Empty;
 
+    public static string TraceRefOf(HttpContext? context)
+        => System.Diagnostics.Activity.Current is { } activity ? activity.TraceId.ToHexString()[..8] : context?.TraceIdentifier ?? string.Empty;
+
     public static IActionResult Created(string message, object? id)
         => new ObjectResult(CreatedResponse.Of(message, id: id)) { StatusCode = StatusCodes.Status201Created };
 
