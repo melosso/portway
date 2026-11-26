@@ -48,7 +48,7 @@ public static partial class WebUiEndpointExtensions
                 return PortwayResults.MinimalError("username is required", 400);
             var error = await UiValidationHelper.FirstErrorAsync(request, context.RequestServices, context.RequestAborted);
             if (error != null)
-                return Results.Json(new { error }, statusCode: error.EndsWith("already exists") ? 409 : 400);
+                return PortwayResults.MinimalError(error, error.EndsWith("already exists") ? 409 : 400);
             var token = await tokenService.GenerateTokenAsync(
                 request.Username.Trim(), request.AllowedScopes, request.AllowedEnvironments, request.Description,
                 request.ExpiresInDays, request.RateLimitRequests, request.RateLimitWindowSeconds,

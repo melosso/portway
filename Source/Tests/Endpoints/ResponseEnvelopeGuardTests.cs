@@ -7,7 +7,7 @@ public sealed class ResponseEnvelopeGuardTests
 {
     private static readonly Dictionary<string, Regex> Patterns = new()
     {
-        ["anonymous-error"] = new(@"new\s*\{\s*(?:ok\s*=\s*false\s*,\s*)?(?:error\s*[=,]|success\s*=\s*false)"),
+        ["anonymous-error"] = new(@"new\s*\{\s*(?:ok\s*=\s*false\s*,\s*)?(?:error\s*[=,}]|success\s*=\s*false)"),
         ["mvc-error-result"] = new(@"new\s+(?:BadRequest|NotFound|Conflict|UnprocessableEntity)ObjectResult\("),
         ["object-result-error"] = new(@"new\s+ObjectResult\(\s*ErrorResponse"),
         ["minimal-error-result"] = new(@"(?<![\w.])(?:Typed)?Results\.(?:BadRequest|NotFound|Conflict|Problem|ValidationProblem|Unauthorized|Forbid)\("),
@@ -61,6 +61,7 @@ public sealed class ResponseEnvelopeGuardTests
     [Theory]
     [InlineData("anonymous-error", "Results.Json(new { error = \"x\" }, statusCode: 400)")]
     [InlineData("anonymous-error", "Results.Json(new { ok = false, error = msg })")]
+    [InlineData("anonymous-error", "return Results.Json(new { error }, statusCode: 400);")]
     [InlineData("anonymous-error", "WriteAsJsonAsync(new\n{\n    error,\n    detail,\n    success = false\n})")]
     [InlineData("anonymous-error", "new BadRequestObjectResult(new\n{\n    success = false,\n    message = \"x\"\n})")]
     [InlineData("mvc-error-result", "return new NotFoundObjectResult(body);")]
