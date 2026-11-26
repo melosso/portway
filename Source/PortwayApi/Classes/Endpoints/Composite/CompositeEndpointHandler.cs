@@ -68,10 +68,7 @@ public sealed class CompositeEndpointHandler
             }
 
             // Check if the environment is allowed for this endpoint
-            if (endpointDefinitions.TryGetValue(endpointName, out var endpointDefinition) &&
-                endpointDefinition.AllowedEnvironments != null &&
-                endpointDefinition.AllowedEnvironments.Count > 0 &&
-                !endpointDefinition.AllowedEnvironments.Contains(env, StringComparer.OrdinalIgnoreCase))
+            if (endpointDefinitions.TryGetValue(endpointName, out var endpointDefinition) && !endpointDefinition.AllowsEnvironment(env))
             {
                 Log.Warning("Environment '{Env}' is not allowed for endpoint '{Endpoint}'.", env, endpointName);
                 return Results.BadRequest(ErrorResponse.Of($"Environment '{env}' is not allowed for this endpoint."));

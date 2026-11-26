@@ -179,7 +179,7 @@ public static partial class EndpointHandler
     }
 
     private static int RoutingIndex(EndpointType type) =>
-        Array.FindIndex(RoutingOrder, t => t.Type == (type is EndpointType.Composite or EndpointType.Standard ? EndpointType.Proxy : type));
+        Array.FindIndex(RoutingOrder, t => t.Type == (type is EndpointType.Composite ? EndpointType.Proxy : type));
 
     /// <summary>
     /// Endpoints of a type as routing serves them; a composite is a proxy endpoint
@@ -209,7 +209,7 @@ public static partial class EndpointHandler
     /// </summary>
     internal static string? NameOwner(string key, EndpointType type)
     {
-        var own = RoutingIndex(type);
+        var own = RoutingIndex(type is EndpointType.Standard ? EndpointType.Proxy : type);
         var routed = Snapshot.Routed;
         for (var i = 0; i < routed.Length; i++)
         {
@@ -279,7 +279,7 @@ public static partial class EndpointHandler
         lock (_loadLock)
         {
             var i = RoutingIndex(type);
-            if (i < 0 || type == EndpointType.Standard)
+            if (i < 0)
             {
                 Log.Warning("Unknown endpoint type for reload: {Type}", type);
                 return;

@@ -10,20 +10,7 @@ public sealed class EndpointResolver
 {
     public bool TryResolve(EndpointType type, string? namespaceName, string endpointName, [NotNullWhen(true)] out EndpointDefinition? endpoint)
     {
-        endpoint = null;
-
-        var endpoints = type switch
-        {
-            EndpointType.SQL => EndpointHandler.GetSqlEndpoints(),
-            EndpointType.Proxy => EndpointHandler.GetProxyEndpoints(),
-            EndpointType.Webhook => EndpointHandler.GetSqlWebhookEndpoints(),
-            EndpointType.Static => EndpointHandler.GetStaticEndpoints(),
-            EndpointType.Files => EndpointHandler.GetFileEndpoints(),
-            _ => null
-        };
-
-        if (endpoints == null)
-            return false;
+        var endpoints = EndpointHandler.EndpointsOf(type);
 
         if (!string.IsNullOrEmpty(namespaceName) &&
             endpoints.TryGetValue($"{namespaceName}/{endpointName}", out endpoint))
