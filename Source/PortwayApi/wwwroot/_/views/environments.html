@@ -47,7 +47,7 @@
                     <line x1="12" y1="5" x2="12" y2="19" />
                     <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
-                New environment
+                Add environment
             </button>
         </div>
     </div>
@@ -82,24 +82,6 @@
             <div class="ep-list">
                 <div class="ep-list-scroll" id="envListScroll">
                     <div class="ep-empty" style="padding:1.5rem;font-size:0.8rem">Loading…</div>
-                </div>
-                <div class="ep-list-footer">
-                    <button class="btn btn-outline" style="width:100%;font-size:0.8rem" data-on="click:openCreateDrawer">
-                        <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        >
-                            <line x1="12" y1="5" x2="12" y2="19" />
-                            <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
-                        Add Environment
-                    </button>
                 </div>
             </div>
 
@@ -379,9 +361,19 @@ function setActiveItem(id) {
   if (el) el.classList.add('active');
 }
 
+// on phones the split shows the list or the detail, never both
+function showDetail(on) {
+  document.querySelector('.ep-split')?.classList.toggle('has-selection', on);
+}
+
+function closeEnvDetail() {
+  showDetail(false);
+}
+
 function trySelect(target) {
-  if (state.selected === target) return;
+  if (state.selected === target) { showDetail(true); return; }
   confirmNavigate(() => {
+    showDetail(true);
     if (target === '__global__') selectGlobal();
     else selectEnv(target);
   });
@@ -411,6 +403,9 @@ function renderGlobalDetail() {
   const d = state.globalData;
   document.getElementById('envDetail').innerHTML = `
     <div class="ep-detail-header">
+      <button type="button" class="btn btn-ghost btn-icon ep-back" data-on="click:closeEnvDetail" aria-label="Back to environments" title="Back to environments">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
       <span class="ep-type-dot" style="background:hsl(var(--muted-foreground))"></span>
       <h2>Global Settings</h2>
     </div>
@@ -430,7 +425,7 @@ function renderGlobalDetail() {
         </div>
       </div>
     </div>
-    <div style="padding:0.75rem 1rem;border-top:1px solid hsl(var(--border));display:flex;gap:0.5rem;justify-content:flex-end;flex-shrink:0">
+    <div style="padding:0.75rem 1rem;display:flex;gap:0.5rem;justify-content:flex-end;flex-shrink:0">
       <button class="btn btn-outline btn-sm" data-on="click:selectGlobal">Discard</button>
       <button id="globalSaveBtn" class="btn btn-primary btn-sm" data-on="click:saveGlobal">
         <span class="btn-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save</span>
@@ -489,6 +484,9 @@ function paintEnvDetail(name, d, rawMode) {
       <button class="btn btn-outline btn-sm" style="margin-left:auto" data-on="click:reloadEnv" data-args="${actionArgs(name)}">Reload</button>
     </div>
     <div class="ep-detail-header">
+      <button type="button" class="btn btn-ghost btn-icon ep-back" data-on="click:closeEnvDetail" aria-label="Back to environments" title="Back to environments">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
       <span class="ep-type-dot dot-static"></span>
       ${nameHeader}
       ${_envRenaming ? '' : `<div class="actions">
@@ -509,7 +507,7 @@ function paintEnvDetail(name, d, rawMode) {
     <div class="ep-detail-body" id="envDetailBody">
       ${rawMode ? buildRawView(name, d) : buildFormView(name, d, headersHtml)}
     </div>
-    <div style="padding:0.75rem 1rem;border-top:1px solid hsl(var(--border));display:flex;gap:0.5rem;justify-content:flex-end;flex-shrink:0">
+    <div style="padding:0.75rem 1rem;display:flex;gap:0.5rem;justify-content:flex-end;flex-shrink:0">
       <button class="btn btn-outline btn-sm" data-on="click:reloadEnv" data-args="${actionArgs(name)}">Discard</button>
       ${rawMode
         ? `<button class="btn btn-outline btn-sm" data-on="click:validateRaw" data-args='[true]'>Validate</button>
@@ -1234,8 +1232,11 @@ async function refreshAll() {
 async function init() {
   Drawer.onClose('createDrawer', () => { state.isDirty = _preDrawerDirty; });
   try {
-    await loadGlobal();
-    selectGlobal();
+    const d = await loadGlobal();
+    // the dashboard links a failing environment as environments#name
+    const target = decodeURIComponent(location.hash.slice(1));
+    if ((d.allowed_environments ?? []).includes(target)) { showDetail(true); await selectEnv(target); }
+    else selectGlobal();
   } catch(e) {
     document.getElementById('envDetail').innerHTML =
       `<div class="ep-empty" style="color:hsl(var(--destructive))">Failed to load: ${esc(e.message)}</div>`;

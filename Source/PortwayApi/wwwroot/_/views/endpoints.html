@@ -87,24 +87,6 @@
                 <div class="ep-list-scroll" id="epListScroll">
                     <div class="ep-empty" style="padding:1.5rem;font-size:0.8rem">Loading…</div>
                 </div>
-                <div class="ep-list-footer">
-                    <button class="btn btn-outline" style="width:100%;font-size:0.8rem" data-on="click:openCreateDrawer">
-                        <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        >
-                            <line x1="12" y1="5" x2="12" y2="19" />
-                            <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
-                        Add Endpoint
-                    </button>
-                </div>
             </div>
             <div class="ep-detail" id="epDetail">
                 <div class="ep-empty">
@@ -538,7 +520,7 @@ function renderDetail() {
     <div class="ep-detail-body" id="epDetailBody">
       ${_rawMode ? renderRawForm(raw) : renderStructuredForm(type, content)}
     </div>
-    <div class="ep-save-bar" style="padding:0.75rem 1rem;border-top:1px solid hsl(var(--border));display:flex;gap:0.5rem;justify-content:flex-end;align-items:center;flex-shrink:0">
+    <div class="ep-save-bar" style="padding:0.75rem 1rem;display:flex;gap:0.5rem;justify-content:flex-end;align-items:center;flex-shrink:0">
       <span id="epDirty" class="ep-dirty" role="status" ${_dirty ? '' : 'hidden'}>Unsaved changes</span>
       <button class="btn btn-outline btn-sm" data-on="click:reloadDetail">Discard</button>
       <button id="epSaveBtn" class="btn btn-primary btn-sm" data-on="click:saveEndpoint">
